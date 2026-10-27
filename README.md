@@ -4,7 +4,7 @@ A one-business Philippine B2B hackathon MVP connecting collections, a 30-day cas
 
 PondoPath is the product; SoloForge is the builder brand. The transparent logo mark is in `public/brand/pondopath-mark.png`. Sign-in and the workspace share this identity. Login feedback uses accessible, dismissible notifications; a successful sign-in notice is consumed on the first overview navigation.
 
-Tasks 1–5 establish the money/date and forecast engines, authenticated persistence, atomic record-saving and actual-payment commands, and a minimal protected workspace. Record-entry screens, reminder review, AI assistance, and automation remain subsequent tasks.
+Tasks 1–6 provide a persistent cash overview and 30-day forecast, customer/invoice/expense forms, verified partial and full payments, owner-only corrections, and recoverable validation/conflict states. Customer commitment updates, follow-up workflows, reminder review, AI assistance and automation remain in Tasks 7–12.
 
 ## Local setup
 
@@ -19,7 +19,7 @@ npm run dev
 
 The seed command refuses other projects and real businesses. It provisions two fictional, email-confirmed accounts without sending signup emails. It writes their `DEMO_OWNER_EMAIL` / `DEMO_OWNER_PASSWORD` and `DEMO_FINANCE_EMAIL` / `DEMO_FINANCE_PASSWORD` to ignored `.env.local`, together with the actual `AUTOMATION_BUSINESS_ID`. Re-running preserves existing records and credentials; it is not a data-reset command.
 
-Open [localhost:3000](http://localhost:3000). Sign in with one of those local demo accounts. The demo clearly labels its fixed **2026-10-26** financial reference date. Opening cash is PHP 40,000, an expected invoice is PHP 50,000 on October 29, and October 30 obligations total PHP 80,000. These are fictional values, not observed business results.
+Open [localhost:3000](http://localhost:3000). Sign in with one of those local demo accounts. The demo clearly labels its fixed **2026-10-29** financial reference date and **2026-10-26** opening cutoff. Opening cash is PHP 40,000, an expected invoice is PHP 50,000 on October 29, and October 30 obligations total PHP 80,000. These are fictional values, not observed business results.
 
 ## Checks
 

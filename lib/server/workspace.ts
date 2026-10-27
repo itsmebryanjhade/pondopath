@@ -35,15 +35,53 @@ export async function getWorkspace(): Promise<WorkspaceSnapshot> {
   if (error || !data) readError(error?.message ?? "");
   // This JSON contract is produced by our versioned SQL function, not user input.
   const snapshot = data as unknown as WorkspaceSnapshot;
-  if (snapshot.business.id !== actor.businessId || snapshot.actor.userId !== actor.userId) readError("");
+  if (snapshot.business.id !== actor.businessId || snapshot.actor.userId !== actor.userId)
+    readError("");
   calculateForecast(snapshot.forecastInput);
   return snapshot;
 }
 
-export async function getRecordHistory(kind: "invoice" | "expense", id: string, cursor?: string): Promise<{ events: AuditEvent[]; nextCursor: string | null }> {
+export async function getRecordHistory(
+  kind: "invoice" | "expense",
+  id: string,
+  cursor?: string,
+): Promise<{ events: AuditEvent[]; nextCursor: string | null }> {
   await requireActor();
   const client = await createClient();
-  const { data, error } = await client.rpc("workspace_history", { p_kind: kind, p_id: id, p_cursor: cursor ?? undefined });
+  const { data, error } = await client.rpc("workspace_history", {
+    p_kind: kind,
+    p_id: id,
+    p_cursor: cursor ?? undefined,
+  });
   if (error || !data) readError(error?.message ?? "");
   return data as unknown as { events: AuditEvent[]; nextCursor: string | null };
+}
+
+export async function getCashMovements(
+  kind: "receipt" | "expense_payment",
+  expectedRevision: number,
+  parentId?: string,
+): Promise<Row<"cash_movements">[]> {
+  const actor = await requireActor();
+  const client = await createClient();
+  let query = client
+    .from("cash_movements")
+    .select("*")
+    .eq("business_id", actor.businessId)
+    .eq("kind", kind);
+  if (parentId) query = query.eq(kind === "receipt" ? "invoice_id" : "expense_id", parentId);
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(50);
+  if (error || !data) readError(error?.message ?? "");
+  const current = await client
+    .from("businesses")
+    .select("revision")
+    .eq("id", actor.businessId)
+    .single();
+  if (current.error || current.data?.revision !== expectedRevision) {
+    throw new Error("Records changed while loading. Retry to load matching balances and payments.");
+  }
+  return data;
 }

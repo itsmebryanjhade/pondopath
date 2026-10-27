@@ -7,6 +7,8 @@ out/
 build/
 coverage/
 graphify-out/
+.superpowers/
+.taste-skill/
 .taste-skill/
 .env*
 *.pem

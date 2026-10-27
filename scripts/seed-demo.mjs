@@ -31,11 +31,17 @@ let business = checked(await admin.from("businesses").select("*").eq("id", busin
 if (!business) {
   business = checked(await admin.from("businesses").insert({
     id: businessId, name: "SoloForge Demo Services", opening_cash_cents: 4_000_000,
-    opening_date: "2026-10-26", is_demo: true, demo_reference_date: "2026-10-26",
+    opening_date: "2026-10-26", is_demo: true, demo_reference_date: "2026-10-29",
   }).select().single(), "Demo business creation");
 }
 assert.equal(business.is_demo, true, "Refusing to seed a real business.");
 assert.equal(business.name, "SoloForge Demo Services", "Refusing an unrelated workspace.");
+if (business.demo_reference_date !== "2026-10-29") {
+  const posted = checked(await admin.from("cash_movements").select("id").eq("business_id", businessId).limit(1), "Demo date safety check");
+  assert.equal(posted.length, 0, "Refusing to change the fictional date after money movements exist.");
+  business = checked(await admin.from("businesses").update({ demo_reference_date: "2026-10-29", revision: business.revision + 1 })
+    .eq("id", businessId).eq("is_demo", true).eq("revision", business.revision).select().single(), "Interactive demo date");
+}
 const accounts = {};
 for (const role of ["owner", "finance"]) {
   const prefix = "DEMO_" + role.toUpperCase();
