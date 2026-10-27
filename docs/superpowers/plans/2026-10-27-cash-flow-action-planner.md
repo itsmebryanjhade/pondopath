@@ -10,7 +10,7 @@
 
 **Spec:** [SoloForge PRD v1.0](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). Read both alongside this plan.
 
-**Status:** Planning only, October 27, 2026, Asia/Manila. All implementation checkboxes are pending. Passing examples in this document are required outcomes, not test results.
+**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–2 are implemented and verified; Task 3 awaits a saved local server key. Later tasks remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
 
 ## Global Constraints
 
@@ -171,8 +171,8 @@ Normal app operations use the user's cookie-bound Supabase client. A separate `s
 
 **Interfaces:** Produces `Cents`, `LocalDate`, `UUID`, `parseMoney`, `formatPHP`, `checkedSum`, `manilaDate`, `assertLocalDate`, `addDays` as defined above. Add `test:unit = vitest run lib/domain`, `typecheck = next typegen && tsc --noEmit`; preserve existing dev/build/lint commands.
 
-- [ ] Select Node 24.x; set `.nvmrc` to `24` and `engines.node` to `24.x`. Record original baseline results from `npm run lint` and `npm run build`; diagnose existing failures separately. Install exact compatible versions of Vitest and Zod, recording versions in the lockfile. Configure Vitest's Node environment; no DOM/React testing packages yet.
-- [ ] Write the following money/date assertions plus invalid-input cases for empty text, `1e3`, `1,000`, `0.001`, negative amounts, a value over the record limit, invalid leap dates, and unsafe sums:
+- [x] Select Node 24.x; set `.nvmrc` to `24` and `engines.node` to `24.x`. Record original baseline results from `npm run lint` and `npm run build`; diagnose existing failures separately. Install exact compatible versions of Vitest and Zod, recording versions in the lockfile. Configure Vitest's Node environment; no DOM/React testing packages yet.
+- [x] Write the following money/date assertions plus invalid-input cases for empty text, `1e3`, `1,000`, `0.001`, negative amounts, a value over the record limit, invalid leap dates, and unsafe sums:
 
 ```ts
 expect(parseMoney('40000.00')).toBe(4_000_000);
@@ -184,9 +184,9 @@ expect(addDays('2026-10-26', 29)).toBe('2026-11-24');
 expect(() => assertLocalDate('2026-02-30')).toThrow();
 ```
 
-- [ ] Run `npm run test:unit -- lib/domain/money.test.ts lib/domain/dates.test.ts`; confirm failure from missing domain implementations, not broken tooling.
-- [ ] Implement the declared functions. Convert decimal strings by splitting digits and padding centavos, not by multiplying `parseFloat`. Date arithmetic must validate round trips and remain timezone-independent. Run the same tests and `npm run typecheck`; require all pass.
-- [ ] Commit only this task's files: `test: establish money and date contracts`. Record installed versions and baseline failures, if any, in the task notes.
+- [x] Run `npm run test:unit -- lib/domain/money.test.ts lib/domain/dates.test.ts`; confirm failure from missing domain implementations, not broken tooling.
+- [x] Implement the declared functions. Convert decimal strings by splitting digits and padding centavos, not by multiplying `parseFloat`. Date arithmetic must validate round trips and remain timezone-independent. Run the same tests and `npm run typecheck`; require all pass.
+- [x] Commit only this task's files: `test: establish money and date contracts`. Record installed versions and baseline failures, if any, in the task notes.
 
 ### Task 2: Implement the forecast and temporary scenario engine
 
@@ -194,7 +194,7 @@ expect(() => assertLocalDate('2026-02-30')).toThrow();
 
 **Interfaces:** Consumes the money/date helpers; produces `calculateForecast` and `compareScenario`. Fixtures export `initialCase()`, `delayedCase()`, and `partialCase()` returning independent `ForecastInput` objects. The first two use October 26; the partial case uses October 29 so its recorded receipt is not a future actual movement.
 
-- [ ] Write tests for the three sample cases and the review-focus date/window cases:
+- [x] Write tests for the three sample cases and the review-focus date/window cases:
 
 ```ts
 expect(calculateForecast(initialCase()).days).toHaveLength(30);
@@ -206,10 +206,10 @@ expect(calculateForecast(partialCase()).firstShortage?.shortfallCents).toBe(2_00
 ```
 
 Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash `1_000_000`, stale inflow excluded, overdue unpaid expense charged on the reference date, unplanned partial remainder flagged, zero remaining expectation excluded, safe aggregate failure, and an expectation outside the window excluded. A scenario must leave a deep-frozen input unchanged, reject negative/over-outstanding amounts, and allow zero as an explicit no-receipt scenario.
-- [ ] Run `npm run test:unit -- lib/domain/forecast.test.ts`; confirm a genuine red test.
-- [ ] Implement a 30-element daily accumulator with source IDs. Apply due-now expenses and exclude needs-review/stale expectations. Return positive shortfall magnitudes while retaining negative daily closing balances. No random/probabilistic forecasting and no AI calls.
-- [ ] Run unit tests and type checking. Add a deterministic 1,000-record fixture and measure computation separately from database/network time; require the PRD's one-second computation target on the demo machine, recording the measured duration.
-- [ ] Commit `feat: calculate traceable cash forecasts and scenarios`.
+- [x] Run `npm run test:unit -- lib/domain/forecast.test.ts`; confirm a genuine red test.
+- [x] Implement a 30-element daily accumulator with source IDs. Apply due-now expenses and exclude needs-review/stale expectations. Return positive shortfall magnitudes while retaining negative daily closing balances. No random/probabilistic forecasting and no AI calls.
+- [x] Run unit tests and type checking. Add a deterministic 1,000-record fixture and measure computation separately from database/network time; require the PRD's one-second computation target on the demo machine, recording the measured duration.
+- [x] Commit `feat: calculate traceable cash forecasts and scenarios`.
 
 ### Task 3: Establish authenticated persistence and protected reads
 

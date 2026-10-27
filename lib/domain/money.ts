@@ -1,5 +1,7 @@
 import type { Cents } from "./types";
 
+export const MAX_RECORD_CENTS = 99_999_999_999;
+
 const pesoFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
@@ -14,7 +16,7 @@ export function parseMoney(input: string, options?: { allowZero?: boolean }): Ce
   }
   const [pesos, fraction = ""] = value.split(".");
   const cents = Number(pesos) * 100 + Number(fraction.padEnd(2, "0"));
-  if (!Number.isSafeInteger(cents) || cents > 99_999_999_999 || (cents === 0 && !options?.allowZero)) {
+  if (!Number.isSafeInteger(cents) || cents > MAX_RECORD_CENTS || (cents === 0 && !options?.allowZero)) {
     throw new RangeError("Amount must be positive and at most PHP 999,999,999.99.");
   }
   return cents;
