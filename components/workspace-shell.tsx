@@ -45,6 +45,7 @@ export function WorkspaceShell({
         {navigation}
         <div className="account-controls">
           <p>{role}</p>
+          {workspace.actor.role === "owner" && <Link className="button secondary" href="/team">Invite a teammate</Link>}
           <form action={signOut}>
             <button className="button secondary">Sign out</button>
           </form>
@@ -59,6 +60,7 @@ export function WorkspaceShell({
               {workspace.business.name} · {role}
             </p>
             {navigation}
+            {workspace.actor.role === "owner" && <Link className="button secondary" href="/team">Invite a teammate</Link>}
             <form action={signOut}>
               <button className="button secondary">Sign out</button>
             </form>

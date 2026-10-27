@@ -2,7 +2,15 @@
 
 A one-business Philippine B2B hackathon MVP connecting collections, a 30-day cash forecast, and reviewed follow-up actions. Scope is defined in the [PRD](docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md) and [implementation plan](docs/superpowers/plans/2026-10-27-cash-flow-action-planner.md).
 
-PondoPath is the product; SoloForge is the builder brand. The transparent logo mark is in `public/brand/pondopath-mark.png`. Sign-in and the workspace share this identity. Login feedback uses accessible, dismissible notifications; a successful sign-in notice is consumed on the first overview navigation.
+PondoPath is the product; SoloForge is the builder brand. The transparent logo mark is in `public/brand/pondopath-mark.png`. Sign-in and the workspace share this identity. Sign-in errors appear beside the form; a dismissible successful sign-in notice is consumed on the first overview navigation.
+
+## Private team access
+
+Sign in at `/login`. New teammates join at `/signup` using a private owner-provided invitation; opening `/signup` without that link explains how to request access. This user-approved scope addition is recorded in the [onboarding plan](docs/superpowers/plans/2026-10-27-invite-only-onboarding.md).
+
+Owners can choose **Invite a teammate** in the workspace, enter the recipient's name and work email, and copy the generated link. Share it privately with that person. No email is sent automatically. The invited account receives finance access in that owner's workspace; the invitation cannot transfer an existing membership or create an owner. Existing activated accounts should sign in instead.
+
+Set `APP_URL` to the application's trusted origin (for example `http://localhost:3000` in development, an HTTPS origin in production). Invitation links use this address, so a localhost link works only on the same computer. Supabase Auth controls invitation expiry and one-use verification. The token is kept in the URL fragment, consumed only by the password setup POST, and never written to application logs. If setup is interrupted after verification, the same authenticated invited session can retry setting its password. Missing workspace membership still blocks access.
 
 Tasks 1–7 provide a persistent cash overview and 30-day forecast, customer/invoice/expense forms, verified payments, owner-only corrections, reviewed receipt commitments, assigned follow-ups, collection filters, invoice history and unsaved what-if previews. Reminder review, AI assistance and automation remain in Tasks 8–12.
 

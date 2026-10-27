@@ -1,24 +1,22 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { signIn } from "./actions";
-import { AuthToast } from "@/components/auth-toast";
+import { PasswordField } from "@/components/password-field";
+import styles from "@/app/auth.module.css";
 
 export function LoginForm() {
   const [error, action, pending] = useActionState(signIn, null);
+  const [email, setEmail] = useState("");
   return (
-    <form action={action} className="grid gap-5">
-      <div className="grid gap-2">
-        <label htmlFor="email">Email address</label>
-        <input id="email" name="email" type="email" autoComplete="username" required maxLength={254} className="field" aria-describedby={error ? "login-error" : undefined} />
+    <form action={action} className={styles.form} aria-busy={pending}>
+      <div className={styles.fieldGroup}>
+        <label htmlFor="email" className={styles.label}>Work email</label>
+        <input id="email" name="email" type="email" autoComplete="username" placeholder="you@company.com" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={254} className={styles.input} aria-describedby={error ? "login-error" : undefined} />
       </div>
-      <div className="grid gap-2">
-        <label htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" autoComplete="current-password" required maxLength={200} className="field" aria-describedby={error ? "login-error" : undefined} />
-      </div>
-      <p id="login-error" className="min-h-6 text-sm text-red-800">{pending ? null : error}</p>
-      {error && !pending && <AuthToast kind="error" message={error} />}
-      <button disabled={pending} className="button">{pending ? "Signing in…" : "Sign in"}</button>
+      <PasswordField id="password" label="Password" autoComplete="current-password" describedBy={error ? "login-error" : undefined} />
+      {error && !pending && <p id="login-error" role="alert" className={styles.error}>{error}</p>}
+      <button disabled={pending} className={styles.submit}>{pending ? "Signing in…" : "Sign in"}<span aria-hidden="true">↗</span></button>
     </form>
   );
 }
