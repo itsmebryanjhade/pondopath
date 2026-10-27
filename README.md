@@ -1,4 +1,8 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SoloForge — Cash-Flow Action Planner
+
+A one-business Philippine B2B hackathon MVP connecting collections, a 30-day cash forecast, and reviewed follow-up actions. Implementation follows the [PRD](docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md) and [implementation plan](docs/superpowers/plans/2026-10-27-cash-flow-action-planner.md). Product screens and integrations are still being implemented.
+
+Use Node.js **24.x** and npm. Verify `node --version` before installing dependencies; `.nvmrc` and `package.json` declare the required major version. Run `npm ci` for a reproducible installation.
 
 ## Getting Started
 
@@ -20,7 +24,22 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## Project checks and configuration
+
+```sh
+npm run test:unit
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Money uses safe integer centavos. Dates are validated calendar dates in Asia/Manila. Payment promises remain distinct from actual cash.
+
+Copy `.env.example` to `.env.local` only if a local file does not already exist. Keep real keys in the ignored local file. Only the Supabase URL and publishable key may use `NEXT_PUBLIC_`; server keys and automation tokens remain private. Use the dedicated nonproduction database; schema and authentication are introduced by their plan tasks, rather than creating ad hoc tables manually.
+
+The scaffold's production build downloads Google Fonts and needs network access. Node-RED will run separately from the Next.js/Vercel application. Read [AGENTS.md](AGENTS.md) before implementation.
+
+## Next.js references
 
 To learn more about Next.js, take a look at the following resources:
 
