@@ -9,12 +9,22 @@ const date = z.string().refine(value => {
 }, "Enter a valid date in YYYY-MM-DD format.");
 const envelope = { requestId: z.uuid(), expectedRevision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) };
 const recordId = { id: z.uuid().optional() };
+const movementPayload = z.strictObject({
+  kind: z.enum(["receipt", "expense_payment"]), parentId: z.uuid(), amountCents: cents.min(1), date,
+  reference: z.string().trim().max(100), duplicateReviewed: z.boolean().optional(), duplicateReviewReason: text(4000).optional(),
+}).superRefine((value, context) => {
+  if ((value.duplicateReviewed === true) !== (value.duplicateReviewReason !== undefined)) {
+    context.addIssue({ code: "custom", path: ["duplicateReviewReason"], message: "Confirm the duplicate review and provide its reason together." });
+  }
+});
 
 export const workspaceCommandSchema = z.discriminatedUnion("type", [
   z.strictObject({ ...envelope, type: z.literal("set_opening_cash"), payload: z.strictObject({ amountCents: cents.min(0), date }) }),
   z.strictObject({ ...envelope, type: z.literal("save_customer"), payload: z.strictObject({ ...recordId, name: text(200), contactName: text(200), email: z.union([z.email().max(254), z.literal("")]).optional(), phone: z.string().trim().max(50).optional() }) }),
   z.strictObject({ ...envelope, type: z.literal("save_invoice"), payload: z.strictObject({ ...recordId, number: text(100), customerId: z.uuid(), amountCents: cents.min(1), dueDate: date, reason: text(4000).optional() }) }),
   z.strictObject({ ...envelope, type: z.literal("save_expense"), payload: z.strictObject({ ...recordId, label: text(200), payee: text(200), amountCents: cents.min(1), dueDate: date, reason: text(4000).optional() }) }),
+  z.strictObject({ ...envelope, type: z.literal("post_cash_movement"), payload: movementPayload }),
+  z.strictObject({ ...envelope, type: z.literal("void_cash_movement"), payload: z.strictObject({ movementId: z.uuid(), reason: text(4000) }) }),
 ]);
 
 export type WorkspaceCommand = z.infer<typeof workspaceCommandSchema>;

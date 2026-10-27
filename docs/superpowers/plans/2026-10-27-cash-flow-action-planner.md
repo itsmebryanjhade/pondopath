@@ -10,7 +10,7 @@
 
 **Spec:** [SoloForge PRD v1.0](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). Read both alongside this plan.
 
-**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–4 are implemented and verified in the dedicated development environment. Tasks 5–12 remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
+**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–5 are implemented and verified in the dedicated development environment. Tasks 6–12 remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
 
 **Identity update (October 27; implemented):** PondoPath is the product name; SoloForge remains the builder brand. Added the approved P-shaped path logo, consistent sign-in/workspace branding and accessible login notifications. Verified one-time success feedback, repeatable error feedback and browser behavior. This does not advance Task 4 or change financial/authorization rules.
 
@@ -243,11 +243,11 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 **Interfaces:** Add `post_cash_movement` payload `{ kind: 'receipt' | 'expense_payment'; parentId: UUID; amountCents: Cents; date: LocalDate; reference: string; duplicateReviewed?: boolean; duplicateReviewReason?: string }`; add owner-only `void_cash_movement` payload `{ movementId: UUID; reason: string }`. The outer envelope supplies request ID/revision. Preserve effect metadata needed to reopen auto-resolved follow-ups correctly.
 
-- [ ] Write tests for actual partial/full receipt and expense payment, cutoff/future-date rejection, overpayment rejection, duplicated request/reference, possible duplicate warning and reviewed override. Normalize references with trim/case-folding; nonempty references remain unique within the business, including void history. A corrected entry uses a new reference and retains the original movement in its audit explanation.
-- [ ] Add the exact retry-after-timeout test and two simultaneous `20_000`-peso receipt attempts against a `30_000`-peso remaining balance. At most one new attempt can post; the other must conflict. Assert sample receipt results: cash `6_000_000`, outstanding/remaining expected `3_000_000`, Friday shortfall `2_000_000` centavos.
-- [ ] Run red integration tests, then implement all effects in one SQL transaction. Query authoritative unpaid totals while locked, reduce the current expectation by the valid receipt amount bounded at zero, resolve only applicable automatic tasks, invalidate affected reminder approvals and bump the revision. Record actual cash independently from promises.
-- [ ] Test void: cash returns to `4_000_000`, outstanding to `5_000_000`, latest expectation becomes needs-review and adds no projected inflow; never revive a superseded promise. Reopen only a task auto-resolved by that movement; otherwise attach/create the duplicate-safe correction task. Human-completed tasks stay completed. Test repeated void, failed transaction and subsequent authorized total/date correction. Run all access/record/payment tests.
-- [ ] Commit `feat: record and correct duplicate-safe cash movements`.
+- [x] Write tests for actual partial/full receipt and expense payment, cutoff/future-date rejection, overpayment rejection, duplicated request/reference, possible duplicate warning and reviewed override. Normalize references with trim/case-folding; nonempty references remain unique within the business, including void history. A corrected entry uses a new reference and retains the original movement in its audit explanation.
+- [x] Add the exact retry-after-timeout test and two simultaneous `20_000`-peso receipt attempts against a `30_000`-peso remaining balance. At most one new attempt can post; the other must conflict. Assert sample receipt results: cash `6_000_000`, outstanding/remaining expected `3_000_000`, Friday shortfall `2_000_000` centavos.
+- [x] Run red integration tests, then implement all effects in one SQL transaction. Query authoritative unpaid totals while locked, reduce the current expectation by the valid receipt amount bounded at zero, resolve only applicable automatic tasks, invalidate affected reminder approvals and bump the revision. Record actual cash independently from promises.
+- [x] Test void: cash returns to `4_000_000`, outstanding to `5_000_000`, latest expectation becomes needs-review and adds no projected inflow; never revive a superseded promise. Reopen only a task auto-resolved by that movement; otherwise attach/create the duplicate-safe correction task. Human-completed tasks stay completed. Test repeated void, failed transaction and subsequent authorized total/date correction. Run all access/record/payment tests.
+- [x] Commit `feat: record and correct duplicate-safe cash movements`.
 
 ### Task 6: Deliver the first usable financial workflow
 
