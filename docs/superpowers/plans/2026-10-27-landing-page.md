@@ -59,3 +59,15 @@
 - Browser checked measured widths from 480px upward without horizontal content overflow. The viewport tool did not produce the requested exact narrow-phone dimensions; 320px remains unverified. A stacked metric layout is supplied below 380px.
 - A fresh read-only reviewer found no material issues in this slice. No unrelated application suites were rerun.
 - Graphify code-map refresh passed; SQL remains outside the map because its optional parser is not installed.
+
+### Task 2: Approved hero responsiveness polish
+
+**Files:** `app/landing.module.css`, `components/landing-preview.tsx`.
+
+- [x] Center the desktop hero group below the header, use even columns, and cap the preview at 520px wide.
+- [x] Compact the chart and spacing without scaling down the whole card. Move source notes into a native disclosure; retain the interactive example and its amounts.
+- [x] Stack and center the tablet layout below 1101px; keep phone copy left aligned and touch controls at least 44px.
+- [x] Verify 1366×768, 1024×768, 440×956 and 320px layouts with exact-size iframe viewports, plus scenario switching and keyboard disclosure access. Laptop copy, action and collapsed preview must fit within the initial viewport.
+- [x] Run focused lint/type checks, refresh the code map and commit the polish independently.
+
+**Polish evidence:** At the 1366×768 initial viewport, the preview measured 520×519px and ended at y=681; the primary action ended at y=548, and the hero at y=766. The laptop, tablet, 440px and 320px frame sizes had no horizontal overflow; each headline remained two lines and each radio label retained a 44px hit area. Selecting the delayed case showed the PHP 40,000 gap; Enter opened the calculation notes with focus on the summary. This exact iframe check supersedes the initial slice's narrow-phone verification limitation. Focused component lint and typecheck passed; unrelated application suites were not repeated.
