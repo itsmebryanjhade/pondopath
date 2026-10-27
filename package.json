@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "vitest run lib/domain",
+    "test:unit": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "typecheck": "next typegen && tsc --noEmit"
   },

@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Project scope
 
-- Product: SoloForge's AI-Assisted Cash-Flow Action Planner.
+- Product: PondoPath by SoloForge — AI-Assisted Cash-Flow Action Planner.
 - Requirements: `docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md`. Read the sections and acceptance criteria relevant to the current task.
 - Approved stack: Next.js, TypeScript, Tailwind CSS, Supabase, OpenRouter, Node-RED, and Vercel. Their inclusion in the PRD does not mean they are configured or verified.
 - Keep the one-business MVP scope. Respect the PRD's exclusions and current user instructions.

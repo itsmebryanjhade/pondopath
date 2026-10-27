@@ -1,6 +1,8 @@
-# SoloForge — Cash-Flow Action Planner
+# PondoPath by SoloForge — Cash-Flow Action Planner
 
 A one-business Philippine B2B hackathon MVP connecting collections, a 30-day cash forecast, and reviewed follow-up actions. Scope is defined in the [PRD](docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md) and [implementation plan](docs/superpowers/plans/2026-10-27-cash-flow-action-planner.md).
+
+PondoPath is the product; SoloForge is the builder brand. The transparent logo mark is in `public/brand/pondopath-mark.png`. Sign-in and the workspace share this identity. Login feedback uses accessible, dismissible notifications; a successful sign-in notice is consumed on the first overview navigation.
 
 Tasks 1–3 establish the money/date and forecast engines, authenticated persistence, and a minimal protected workspace. Record-entry workflows, reminder review, AI assistance, and automation are implemented in subsequent tasks.
 

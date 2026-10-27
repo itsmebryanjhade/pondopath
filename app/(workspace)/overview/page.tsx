@@ -2,15 +2,21 @@ import { Suspense } from "react";
 import { getWorkspace } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
 import { signOut } from "@/app/login/actions";
+import { headers } from "next/headers";
+import { LOGIN_NOTICE_HEADER } from "@/lib/auth-notice";
+import { ProductBrand } from "@/components/product-brand";
+import { AuthToast } from "@/components/auth-toast";
 
 async function WorkspaceStatus() {
   const workspace = await getWorkspace();
+  const showLoginToast = (await headers()).get(LOGIN_NOTICE_HEADER) === "signed-in";
   return (
     <main data-ui className="mx-auto w-full max-w-5xl px-6 py-10">
       <header className="mb-12 flex flex-wrap items-center justify-between gap-4 border-b border-neutral-200 pb-6">
-        <p className="font-semibold">SoloForge <span className="font-normal text-neutral-600">/ Cash flow</span></p>
+        <ProductBrand />
         <form action={signOut}><button className="button secondary">Sign out</button></form>
       </header>
+      {showLoginToast && <AuthToast kind="success" message="You’re signed in. Your business cash plan is ready." />}
       <h1 className="text-3xl font-semibold tracking-tight">{workspace.business.name}</h1>
       <p className="mt-3 text-neutral-600">Signed in as {workspace.actor.role === "owner" ? "Owner" : "Finance staff"}.</p>
       {workspace.business.is_demo && <p className="mt-6 border-l-2 border-neutral-400 pl-4 text-sm">Fictional demo · Financial reference date: {workspace.forecastInput.referenceDate} (Asia/Manila).</p>}

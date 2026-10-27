@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { cookies } from "next/headers";
+import { LOGIN_NOTICE_COOKIE } from "@/lib/auth-notice";
 import { createClient } from "@/lib/supabase/server";
 
 const credentials = z.object({ email: z.email().max(254), password: z.string().min(1).max(200) });
@@ -17,6 +19,13 @@ export async function signIn(_previous: string | null, form: FormData): Promise<
     await client.auth.signOut();
     return "This account does not have workspace access. Contact the business owner.";
   }
+  (await cookies()).set(LOGIN_NOTICE_COOKIE, "signed-in", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60,
+    path: "/",
+  });
   redirect("/overview");
 }
 

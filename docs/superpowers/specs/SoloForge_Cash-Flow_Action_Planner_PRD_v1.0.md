@@ -1,13 +1,14 @@
 # Product Requirements Document
-# AI-Assisted Cash-Flow Action Planner
+# PondoPath — AI-Assisted Cash-Flow Action Planner
 
 | Document detail | Value |
 | --- | --- |
 | Project | SoloForge |
+| Product name | PondoPath by SoloForge |
 | Product owner and solo builder | Bryan |
 | Version | 1.0 |
 | Date | October 26, 2026 — Asia/Manila |
-| Status | Prepared for product review; implementation has not started |
+| Status | Approved MVP scope; implementation in progress |
 | Primary challenge category | Finance & Operations |
 | Supporting categories | Business Process Automation; Data Analytics and Reporting |
 | Delivery target | One-business hackathon MVP within approximately two weeks |

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { LoginForm } from "./login-form";
+import { ProductBrand } from "@/components/product-brand";
 
 async function SessionNotice({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { reason } = await searchParams;
@@ -11,9 +12,9 @@ async function SessionNotice({ searchParams }: { searchParams: Promise<Record<st
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main data-ui className="mx-auto my-auto w-full max-w-md px-6 py-12">
-      <p className="mb-12 font-semibold tracking-tight">SoloForge <span className="font-normal text-neutral-600">/ Cash flow</span></p>
-      <h1 className="mb-3 text-3xl font-semibold tracking-tight">Sign in to your cash plan</h1>
-      <p className="mb-8 text-neutral-600">Use your owner or finance account to access the business workspace.</p>
+      <div className="mb-10"><ProductBrand /></div>
+      <h1 className="mb-3 text-3xl font-semibold tracking-tight">Sign in to PondoPath</h1>
+      <p className="mb-8 text-neutral-600">Access your business cash plan with your owner or finance account.</p>
       <Suspense><SessionNotice searchParams={searchParams} /></Suspense>
       <LoginForm />
       <p className="mt-8 text-sm text-neutral-600">Accounts are provided by the business owner.</p>

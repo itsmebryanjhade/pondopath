@@ -2,8 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
 import { publicSupabaseConfig } from "./config";
+import { consumeLoginNotice, prepareLoginNotice } from "@/lib/auth-notice";
 
 export async function updateSession(request: NextRequest) {
+  prepareLoginNotice(request);
   let response = NextResponse.next({ request });
   const { url, key } = publicSupabaseConfig();
   const client = createServerClient<Database>(url, key, {
@@ -18,6 +20,7 @@ export async function updateSession(request: NextRequest) {
     },
   });
   await client.auth.getClaims();
+  consumeLoginNotice(request, response);
   response.headers.set("Cache-Control", "private, no-store, max-age=0");
   return response;
 }
