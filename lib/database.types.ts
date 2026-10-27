@@ -612,12 +612,16 @@ export type Database = {
       reminders: {
         Row: {
           approval_basis: Json | null
+          approved_body: string | null
+          approved_recipient: string | null
+          approved_version: number | null
           body: string
           business_id: string
           created_at: string
           id: string
           invoice_id: string
           recipient: string
+          reported_by: string | null
           rejection_reason: string | null
           reported_channel: string | null
           reported_sent_at: string | null
@@ -629,12 +633,16 @@ export type Database = {
         }
         Insert: {
           approval_basis?: Json | null
+          approved_body?: string | null
+          approved_recipient?: string | null
+          approved_version?: number | null
           body: string
           business_id: string
           created_at?: string
           id?: string
           invoice_id: string
           recipient: string
+          reported_by?: string | null
           rejection_reason?: string | null
           reported_channel?: string | null
           reported_sent_at?: string | null
@@ -646,12 +654,16 @@ export type Database = {
         }
         Update: {
           approval_basis?: Json | null
+          approved_body?: string | null
+          approved_recipient?: string | null
+          approved_version?: number | null
           body?: string
           business_id?: string
           created_at?: string
           id?: string
           invoice_id?: string
           recipient?: string
+          reported_by?: string | null
           rejection_reason?: string | null
           reported_channel?: string | null
           reported_sent_at?: string | null
@@ -683,6 +695,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_approved_reminder_text: { Args: { p_id: string }; Returns: Json }
       workspace_command: { Args: { p_command: Json }; Returns: Json }
       workspace_history: {
         Args: { p_cursor?: string; p_id: string; p_kind: string }

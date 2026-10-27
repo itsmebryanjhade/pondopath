@@ -140,7 +140,7 @@ describe("reviewed customer commitments and follow-ups", () => {
     expect(saved.followups.find((row: { automatic_type: string }) => row.automatic_type === "correction_review").state).toBe("completed");
   });
   it("invalidates approved reminders and exposes paginated collection changes in invoice history", async () => {
-    checked(await admin.from("reminders").insert({ business_id: fixture.id, invoice_id: fixture.invoiceId, recipient: "Contact", body: "Reminder", state: "approved", approval_basis: {}, reviewed_by: fixture.accounts.owner.id, reviewed_at: new Date().toISOString() }));
+    checked(await admin.from("reminders").insert({ business_id: fixture.id, invoice_id: fixture.invoiceId, recipient: "Contact", body: "Reminder", state: "approved", approval_basis: { digest: "a".repeat(64) }, approved_version: 1, approved_body: "Reminder", approved_recipient: "Contact", reviewed_by: fixture.accounts.owner.id, reviewed_at: new Date().toISOString() }));
     checked(await admin.from("audit_events").insert(Array.from({ length: 25 }, (_, index) => ({ business_id: fixture.id, actor_id: fixture.accounts.owner.id, entity_kind: "invoice", entity_id: fixture.invoiceId, change: { fixtureIndex: index }, created_at: "2026-10-20T00:00:00Z" }))));
     await confirm();
     expect(checked(await owner.from("reminders").select("state,approval_basis").single()).data).toEqual({ state: "draft", approval_basis: null });

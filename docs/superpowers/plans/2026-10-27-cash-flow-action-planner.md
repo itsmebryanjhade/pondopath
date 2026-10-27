@@ -279,11 +279,12 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 **Interfaces:** `reminderBasis(input: { invoiceId; invoiceVersion; outstandingCents; contactVersion; expectationId; expectationVersion; referenceDate }): string` returns a deterministic digest. `getApprovedReminderText(id: UUID): Promise<ActionResult<{ text: string }>>` rechecks current authorization and approval basis immediately before copying. Add reminder command variants for save, submit, approve, reject and report-manual-send; approval references the exact draft version/basis.
 
-- [ ] Write domain/integration tests for the state sequence Draft → Awaiting review → Approved → optional Reported sent manually, owner-only approval, rejection reason, and renewed review after body/recipient/balance/commitment/contact changes. Changing the relevant reference date also requires review if the wording depended on that date.
-- [ ] Run red tests, then implement state transitions and approval invalidation inside database transactions. Save the recipient snapshot and exact approved body/version. A stale global revision rejects confirmation; unrelated changes need a refreshed confirmation but do not erase a still-valid historical approval automatically.
-- [ ] Add a deterministic non-AI reminder template, editable preview, owner review controls and copy action using the server-checked approved text. Draft for the outstanding balance; never the original total after a part payment. Avoid claiming email/phone validation establishes delivery.
-- [ ] Verify copy failure/fallback, stale draft in a second session, finance rejection on direct approval requests and manual-send reporting with channel/user-entered time. Show explicit labels: copying is not delivery; reported sending is unverified. Run reminder/access/payment tests and browser checks.
-- [ ] Commit `feat: review and approve accurate payment reminders`.
+- [x] Write domain/integration tests for the state sequence Draft → Awaiting review → Approved → optional Reported sent manually, owner-only approval, rejection reason, and renewed review after body/recipient/balance/commitment/contact changes. Changing the relevant reference date also requires review if the wording depended on that date.
+- [x] Run red tests, then implement state transitions and approval invalidation inside database transactions. Save the recipient snapshot and exact approved body/version. A stale global revision rejects confirmation; unrelated changes need a refreshed confirmation but do not erase a still-valid historical approval automatically.
+- [x] Add a deterministic non-AI reminder template, editable preview, owner review controls and copy action using the server-checked approved text. Draft for the outstanding balance; never the original total after a part payment. Avoid claiming email/phone validation establishes delivery.
+- [x] Verify owner-only direct approval, stale revision/reference-date handling, rejection and manual-send reporting with channel/user-entered time. The mobile browser view shows that copying does not send. Run reminder/access/payment tests and browser checks.
+- [ ] Exercise the clipboard-denied fallback and a separate-session UI flow. The server-side copy recheck, stale-reference invalidation and stale-revision behavior are covered by integration tests.
+- [x] Commit `feat: review and approve accurate payment reminders`.
 
 ### Task 9: Add bounded AI assistance and evaluate it
 

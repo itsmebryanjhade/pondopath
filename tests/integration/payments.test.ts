@@ -222,7 +222,7 @@ describe("actual cash movements and corrections", () => {
   });
 
   it("invalidates a reminder approval when actual cash changes", async () => {
-    const reminder = checked(await admin.from("reminders").insert({ business_id: fixture.id, invoice_id: fixture.invoiceId, recipient: "Contact", body: "Payment reminder", state: "approved", approval_basis: { invoiceVersion: 1 }, reviewed_by: fixture.accounts.owner.id, reviewed_at: new Date().toISOString() }).select("id").single()).data;
+    const reminder = checked(await admin.from("reminders").insert({ business_id: fixture.id, invoice_id: fixture.invoiceId, recipient: "Contact", body: "Payment reminder", state: "approved", approval_basis: { digest: "a".repeat(64) }, approved_version: 1, approved_body: "Payment reminder", approved_recipient: "Contact", reviewed_by: fixture.accounts.owner.id, reviewed_at: new Date().toISOString() }).select("id").single()).data;
     await post();
     expect(checked(await owner.from("reminders").select("*").eq("id", reminder.id).single()).data).toMatchObject({ state: "draft", approval_basis: null, reviewed_by: null });
   });

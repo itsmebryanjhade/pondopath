@@ -12,6 +12,8 @@ import { CollectionPanel } from "@/components/collection-panel";
 import { FollowupPanel } from "@/components/followup-panel";
 import { ScenarioPanel } from "@/components/scenario-panel";
 import { RecordHistory } from "@/components/record-history";
+import { ReminderPanel } from "@/components/reminder-panel";
+import { reminderTemplate } from "@/lib/domain/reminders";
 import { z } from "zod";
 
 type InvoiceDetailProps = {
@@ -33,6 +35,13 @@ async function InvoiceDetailContent({ params, searchParams }: InvoiceDetailProps
   const invoice = workspace.invoices.find((row) => row.id === id);
   if (!invoice) notFound();
   const customer = workspace.customers.find((row) => row.id === invoice.customer_id)!;
+  const reminderDraft = reminderTemplate({
+    contactName: customer.contact_name,
+    invoiceNumber: invoice.number,
+    outstandingCents: invoice.outstanding_cents,
+    dueDate: invoice.due_date,
+    referenceDate: workspace.forecastInput.referenceDate,
+  });
   const query = await searchParams;
   if (query.movement && !z.uuid().safeParse(query.movement).success) notFound();
   const [movements, history] = await Promise.all([
@@ -81,6 +90,7 @@ async function InvoiceDetailContent({ params, searchParams }: InvoiceDetailProps
       </div>
       <ScenarioPanel key={workspace.revision} workspace={workspace} invoiceId={invoice.id} />
       <FollowupPanel workspace={workspace} invoice={invoice} />
+      <ReminderPanel workspace={workspace} invoice={invoice} customer={customer} template={reminderDraft} />
       <CashMovements workspace={workspace} movements={movements} selected={!!query.movement} />
       {query.movement && (
         <Link className="back-link" href={`/invoices/${invoice.id}#payment-history`}>

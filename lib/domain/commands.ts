@@ -20,6 +20,8 @@ const movementPayload = z.strictObject({
 const completionPayload = z.strictObject({ id: z.uuid(), outcome: text(4000), assigneeId: z.uuid(), nextAction: text(4000).optional(), nextDate: date.optional() }).superRefine((value, context) => {
   if ((value.nextAction !== undefined) !== (value.nextDate !== undefined)) context.addIssue({ code: "custom", path: ["nextDate"], message: "Provide the next action and date together." });
 });
+const reminderVersion = z.number().int().min(1).max(2_147_483_647);
+const approvalBasis = z.string().regex(/^[a-f0-9]{64}$/);
 
 export const workspaceCommandSchema = z.discriminatedUnion("type", [
   z.strictObject({ ...envelope, type: z.literal("set_opening_cash"), payload: z.strictObject({ amountCents: cents.min(0), date }) }),
@@ -31,6 +33,11 @@ export const workspaceCommandSchema = z.discriminatedUnion("type", [
   z.strictObject({ ...envelope, type: z.literal("confirm_expectation"), payload: z.strictObject({ invoiceId: z.uuid(), amountCents: cents.min(1), date, kind: z.enum(["assumption", "commitment"]), sourceNote: text(4000), nextFollowupDate: date, assigneeId: z.uuid() }) }),
   z.strictObject({ ...envelope, type: z.literal("save_followup"), payload: z.strictObject({ ...recordId, invoiceId: z.uuid(), date, nextAction: text(4000), assigneeId: z.uuid() }) }),
   z.strictObject({ ...envelope, type: z.literal("complete_followup"), payload: completionPayload }),
+  z.strictObject({ ...envelope, type: z.literal("save_reminder"), payload: z.strictObject({ ...recordId, invoiceId: z.uuid(), recipient: text(200), body: text(2000) }) }),
+  z.strictObject({ ...envelope, type: z.literal("submit_reminder"), payload: z.strictObject({ id: z.uuid(), reminderVersion }) }),
+  z.strictObject({ ...envelope, type: z.literal("approve_reminder"), payload: z.strictObject({ id: z.uuid(), reminderVersion, approvalBasis }) }),
+  z.strictObject({ ...envelope, type: z.literal("reject_reminder"), payload: z.strictObject({ id: z.uuid(), reminderVersion, approvalBasis, reason: text(4000) }) }),
+  z.strictObject({ ...envelope, type: z.literal("report_manual_send"), payload: z.strictObject({ id: z.uuid(), reminderVersion, channel: text(200), sentAt: z.iso.datetime({ offset: true }) }) }),
 ]);
 
 export type WorkspaceCommand = z.infer<typeof workspaceCommandSchema>;

@@ -555,6 +555,29 @@ th.num,
   margin: 16px 0 8px;
   font-size: 24px;
 }
+.reminder-panel {
+  margin-top: 16px;
+}
+.reminder-panel > .muted {
+  margin-top: 8px;
+}
+.reminder-status,
+.reminder-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.reminder-preview {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+.reminder-preview blockquote {
+  margin-bottom: 0;
+}
+.reminder-copy-fallback {
+  margin-top: 12px;
+}
 .workspace blockquote {
   border-left: 2px solid var(--edge);
   padding-left: 12px;

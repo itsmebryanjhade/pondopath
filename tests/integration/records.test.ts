@@ -142,7 +142,7 @@ describe("atomic record commands", () => {
   });
 
   it("invalidates approval when customer contact details change", async () => {
-    const reminder = await admin.from("reminders").insert({ business_id: fixture.id, invoice_id: fixture.invoiceId, recipient: "Old contact", body: "Please confirm payment.", state: "approved", approval_basis: { invoiceVersion: 1 }, reviewed_by: fixture.accounts.owner.id, reviewed_at: new Date().toISOString() }).select("id").single();
+    const reminder = await admin.from("reminders").insert({ business_id: fixture.id, invoice_id: fixture.invoiceId, recipient: "Old contact", body: "Please confirm payment.", state: "approved", approval_basis: { digest: "a".repeat(64) }, approved_version: 1, approved_body: "Please confirm payment.", approved_recipient: "Old contact", reviewed_by: fixture.accounts.owner.id, reviewed_at: new Date().toISOString() }).select("id").single();
     expect(reminder.error).toBeNull();
     expect((await callCommand(finance, await command("save_customer", { ...customer, id: fixture.customerId, email: "updated@example.com" }))).error).toBeNull();
     const changed = await owner.from("reminders").select("*").eq("id", reminder.data!.id).single();
