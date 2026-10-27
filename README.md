@@ -4,7 +4,7 @@ A one-business Philippine B2B hackathon MVP connecting collections, a 30-day cas
 
 PondoPath is the product; SoloForge is the builder brand. The transparent logo mark is in `public/brand/pondopath-mark.png`. Sign-in and the workspace share this identity. Login feedback uses accessible, dismissible notifications; a successful sign-in notice is consumed on the first overview navigation.
 
-Tasks 1–3 establish the money/date and forecast engines, authenticated persistence, and a minimal protected workspace. Record-entry workflows, reminder review, AI assistance, and automation are implemented in subsequent tasks.
+Tasks 1–4 establish the money/date and forecast engines, authenticated persistence, atomic record-saving commands, and a minimal protected workspace. Payment workflows, record-entry screens, reminder review, AI assistance, and automation remain subsequent tasks.
 
 ## Local setup
 

@@ -10,7 +10,7 @@
 
 **Spec:** [SoloForge PRD v1.0](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). Read both alongside this plan.
 
-**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–3 are implemented and verified in the dedicated development environment. Tasks 4–12 remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
+**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–4 are implemented and verified in the dedicated development environment. Tasks 5–12 remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
 
 **Identity update (October 27; implemented):** PondoPath is the product name; SoloForge remains the builder brand. Added the approved P-shaped path logo, consistent sign-in/workspace branding and accessible login notifications. Verified one-time success feedback, repeatable error feedback and browser behavior. This does not advance Task 4 or change financial/authorization rules.
 
@@ -231,11 +231,11 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 **Interfaces:** Produces the `WorkspaceCommand` union, `runCommand`, `ActionResult`, and `workspace_command` dispatcher. Implement `set_opening_cash`, `save_customer`, `save_invoice`, `save_expense`; define later command variants in their owning tasks, not empty executable handlers.
 
-- [ ] Write red tests: opening cash is owner-only; parent/customer IDs must belong to this business; invalid totals/dates fail; a new invoice gets a labelled due-date assumption; an exact request retry returns `replayed: true`; same request ID/different payload fails; stale revisions cannot overwrite. Seed a posted movement through the test setup and prove opening cash locks afterward.
-- [ ] Run `npm run test:integration -- tests/integration/records.test.ts`; confirm the new contract fails before implementation.
-- [ ] Implement transactional SQL validation and append-only audit with the lock/retry order above. Disallow `businessId`, actor, approval or role overrides in request payloads. Return structured command errors. Add a supported invoice/expense correction path with owner-only total/due-date corrections after posting and a floor equal to valid linked payments; lock identity/counterparty once any movement has been posted.
-- [ ] Run access/record integration tests and unit tests. Force an audit/write failure in the isolated test database and verify record/revision/request receipt all roll back; remove the test-only fault mechanism afterward. Confirm direct REST writes still fail.
-- [ ] Commit `feat: save validated operational records atomically`.
+- [x] Write red tests: opening cash is owner-only; parent/customer IDs must belong to this business; invalid totals/dates fail; a new invoice gets a labelled due-date assumption; an exact request retry returns `replayed: true`; same request ID/different payload fails; stale revisions cannot overwrite. Seed a posted movement through the test setup and prove opening cash locks afterward.
+- [x] Run `npm run test:integration -- tests/integration/records.test.ts`; confirm the new contract fails before implementation.
+- [x] Implement transactional SQL validation and append-only audit with the lock/retry order above. Disallow `businessId`, actor, approval or role overrides in request payloads. Return structured command errors. Add a supported invoice/expense correction path with owner-only total/due-date corrections after posting and a floor equal to valid linked payments; lock identity/counterparty once any movement has been posted.
+- [x] Run access/record integration tests and unit tests. Force an audit/write failure in the isolated test database and verify record/revision/request receipt all roll back; remove the test-only fault mechanism afterward. Confirm direct REST writes still fail.
+- [x] Commit `feat: save validated operational records atomically`.
 
 ### Task 5: Post, retry, and correct actual money movements
 

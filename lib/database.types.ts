@@ -683,6 +683,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      workspace_command: { Args: { p_command: Json }; Returns: Json }
       workspace_history: {
         Args: { p_cursor?: string; p_id: string; p_kind: string }
         Returns: Json
