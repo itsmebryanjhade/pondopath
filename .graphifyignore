@@ -1,0 +1,15 @@
+# Keep the local code map focused on project source.
+node_modules/
+.next/
+.git/
+.vercel/
+out/
+build/
+coverage/
+graphify-out/
+.taste-skill/
+.env*
+*.pem
+*.key
+package-lock.json
+desktop.ini
