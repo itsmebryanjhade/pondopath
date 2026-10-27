@@ -10,7 +10,7 @@
 
 **Spec:** [SoloForge PRD v1.0](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). Read both alongside this plan.
 
-**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–2 are implemented and verified; Task 3 awaits a saved local server key. Later tasks remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
+**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–3 are implemented and verified in the dedicated development environment. Tasks 4–12 remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
 
 ## Global Constraints
 
@@ -217,11 +217,11 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 **Interfaces:** Produces `requireActor`, `getWorkspace`, `getRecordHistory`, `WorkspaceSnapshot`, and `private`/public read-RPC boundaries. Test helpers export `createTestBusiness()`, `signInAs(role)`, `callCommand(client, command)`, and `disposeTestBusiness(fixture)`; administrative cleanup touches only IDs created by that test fixture.
 
-- [ ] Install exact `@supabase/supabase-js`, `@supabase/ssr` and CLI versions; inspect CLI help. Create the core schema/RLS migration using the documented CLI workflow. Include all table responsibilities above, with later command functions added by their owning tasks. Add `test:integration` as a separate non-skipping Vitest run over `tests/integration`. Missing test credentials must fail this command clearly rather than report a pass. Use built-in `process.loadEnvFile` for the ignored `.env.test.local`, with no fallback to a live environment.
-- [ ] Write real API access tests: anon cannot read records; owner/finance can read their own snapshot; a separate test business cannot be read or referenced; direct table writes and role self-promotion fail. After opening an owner session, change its database membership to finance or remove it; the next authorized operation must reflect that change. Do not count an RLS test using only a service-role client as authorization evidence.
-- [ ] Run integration tests; verify the expected permission/schema failure before installing the implementation. Implement current-cookie clients with `getClaims()` verification, per-request server clients and current-membership lookup. Configure `proxy.ts` to preserve refreshed cookies and cache-control headers. No public signup flow; configure two provisioned fictional accounts. Keep key values out of stdout and committed fixtures.
-- [ ] Apply the migration to the identified nonproduction environment, generate real database types, and run access tests. Verify login/logout/expired-session recovery in a real browser, and preserve `cacheComponents` using `Suspense` around authenticated content. Do not use shared caching for user financial snapshots.
-- [ ] Commit `feat: secure the single-business workspace`. Record migration filename, CLI/package versions and environment label without secrets.
+- [x] Install exact `@supabase/supabase-js`, `@supabase/ssr` and CLI versions; inspect CLI help. Create the core schema/RLS migration using the documented CLI workflow. Include all table responsibilities above, with later command functions added by their owning tasks. Add `test:integration` as a separate non-skipping Vitest run over `tests/integration`. Missing test credentials must fail this command clearly rather than report a pass. Use built-in `process.loadEnvFile` for the ignored `.env.test.local`, with no fallback to a live environment.
+- [x] Write real API access tests: anon cannot read records; owner/finance can read their own snapshot; a separate test business cannot be read or referenced; direct table writes and role self-promotion fail. After opening an owner session, change its database membership to finance or remove it; the next authorized operation must reflect that change. Do not count an RLS test using only a service-role client as authorization evidence.
+- [x] Run integration tests; verify the expected permission/schema failure before installing the implementation. Implement current-cookie clients with `getClaims()` verification, per-request server clients and current-membership lookup. Configure `proxy.ts` to preserve refreshed cookies and cache-control headers. No public signup flow; configure two provisioned fictional accounts. Keep key values out of stdout and committed fixtures.
+- [x] Apply the migration to the identified nonproduction environment, generate real database types, and run access tests. Verify login/logout/expired-session recovery in a real browser, and preserve `cacheComponents` using `Suspense` around authenticated content. Do not use shared caching for user financial snapshots.
+- [x] Commit `feat: secure the single-business workspace`. Record migration filename, CLI/package versions and environment label without secrets.
 
 ### Task 4: Save operational records through atomic commands
 
