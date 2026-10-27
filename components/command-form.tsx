@@ -7,6 +7,7 @@ import {
   useTransition,
   type ReactNode,
   type InputHTMLAttributes,
+  type TextareaHTMLAttributes,
 } from "react";
 import { useRouter } from "next/navigation";
 import { executeWorkspaceAction } from "@/app/(workspace)/actions";
@@ -18,6 +19,40 @@ import {
 } from "@/lib/domain/commands";
 
 type Failure = Extract<ActionResult<CommandResult>, { ok: false }>;
+
+export function TextAreaField({
+  label,
+  ...input
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }) {
+  const id = useId();
+  return (
+    <div className="form-field">
+      <label htmlFor={id}>{label}</label>
+      <textarea {...input} id={id} className="field" rows={input.rows ?? 3} />
+    </div>
+  );
+}
+
+export function AssigneeField({
+  members,
+  defaultValue,
+}: {
+  members: { user_id: string; display_name: string }[];
+  defaultValue: string;
+}) {
+  return (
+    <label className="form-field">
+      <span>Assigned to</span>
+      <select className="field" name="assigneeId" defaultValue={defaultValue} required>
+        {members.map((member) => (
+          <option key={member.user_id} value={member.user_id}>
+            {member.display_name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 export function Field({
   label,

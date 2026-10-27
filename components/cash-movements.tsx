@@ -5,20 +5,23 @@ import { VoidForm } from "./payment-form";
 export function CashMovements({
   movements,
   workspace,
+  selected = false,
 }: {
   movements: Awaited<ReturnType<typeof getCashMovements>>;
   workspace: WorkspaceSnapshot;
+  selected?: boolean;
 }) {
   return (
-    <section className="panel">
-      <h2>Recent actual payments</h2>
+    <section className="panel" id="payment-history">
+      <h2>{selected ? "Retained payment record" : "Recent actual payments"}</h2>
       <p className="muted">
-        Latest 50 entries in this view. A void retains the original record and reference.
+        {selected ? "Selected from invoice history." : "Latest 50 entries in this view."} A void
+        retains the original record and reference.
       </p>
       {movements.length ? (
         <ul className="movement-list">
           {movements.map((movement) => (
-            <li key={movement.id}>
+            <li id={`movement-${movement.id}`} key={movement.id}>
               <div className="section-heading">
                 <div>
                   <strong>{movement.reference || "No payment reference"}</strong>

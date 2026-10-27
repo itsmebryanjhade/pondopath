@@ -2,14 +2,22 @@ import Link from "next/link";
 import { Suspense } from "react";
 import WorkspaceLoading from "../../loading";
 import { notFound } from "next/navigation";
-import { getCashMovements, getWorkspace } from "@/lib/server/workspace";
+import { getCashMovements, getRecordHistory, getWorkspace } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { InvoiceForm, CustomerForm } from "@/components/record-forms";
 import { PaymentForm } from "@/components/payment-form";
 import { CashMovements } from "@/components/cash-movements";
+import { CollectionPanel } from "@/components/collection-panel";
+import { FollowupPanel } from "@/components/followup-panel";
+import { ScenarioPanel } from "@/components/scenario-panel";
+import { RecordHistory } from "@/components/record-history";
+import { z } from "zod";
 
-type InvoiceDetailProps = { params: Promise<{ id: string }> };
+type InvoiceDetailProps = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ history?: string; movement?: string }>;
+};
 
 export default function InvoiceDetail(props: InvoiceDetailProps) {
   return (
@@ -19,14 +27,19 @@ export default function InvoiceDetail(props: InvoiceDetailProps) {
   );
 }
 
-async function InvoiceDetailContent({ params }: InvoiceDetailProps) {
+async function InvoiceDetailContent({ params, searchParams }: InvoiceDetailProps) {
   const { id } = await params;
   const workspace = await getWorkspace();
   const invoice = workspace.invoices.find((row) => row.id === id);
   if (!invoice) notFound();
   const customer = workspace.customers.find((row) => row.id === invoice.customer_id)!;
-  const expectation = workspace.expectations.find((row) => row.invoice_id === invoice.id);
-  const movements = await getCashMovements("receipt", workspace.revision, invoice.id);
+  const query = await searchParams;
+  if (query.movement && !z.uuid().safeParse(query.movement).success) notFound();
+  const [movements, history] = await Promise.all([
+    getCashMovements("receipt", workspace.revision, invoice.id, query.movement),
+    getRecordHistory("invoice", invoice.id, query.history, workspace.revision),
+  ]);
+  if (query.movement && !movements.length) notFound();
   return (
     <WorkspaceShell workspace={workspace} active="/invoices">
       <Link className="back-link" href="/invoices">
@@ -64,37 +77,16 @@ async function InvoiceDetailContent({ params }: InvoiceDetailProps) {
             remainingCents={invoice.outstanding_cents}
           />
         </section>
-        <section className="panel">
-          <h2>Current cash-plan expectation</h2>
-          {expectation ? (
-            <>
-              <p className="expectation-amount num">{formatPHP(expectation.remaining_cents)}</p>
-              <p>
-                Expected {expectation.expected_date} ·{" "}
-                {expectation.kind === "commitment"
-                  ? "Customer-confirmed commitment"
-                  : "Due-date assumption"}
-              </p>
-              <p className="muted">
-                {expectation.state === "needs_review" ||
-                expectation.expected_date < workspace.forecastInput.referenceDate
-                  ? "Needs review. Excluded from projected inflows."
-                  : "Included only if its date falls within the 30-day forecast."}
-              </p>
-              <blockquote>{expectation.source_note}</blockquote>
-            </>
-          ) : (
-            <p className="empty-state">
-              No current expectation. Unplanned unpaid money is excluded from the forecast.
-            </p>
-          )}
-          <p className="muted">
-            A promise changes the cash plan; it never changes actual cash. Review the source, date
-            and remaining amount before relying on expected cash.
-          </p>
-        </section>
+        <CollectionPanel workspace={workspace} invoice={invoice} />
       </div>
-      <CashMovements workspace={workspace} movements={movements} />
+      <ScenarioPanel key={workspace.revision} workspace={workspace} invoiceId={invoice.id} />
+      <FollowupPanel workspace={workspace} invoice={invoice} />
+      <CashMovements workspace={workspace} movements={movements} selected={!!query.movement} />
+      {query.movement && (
+        <Link className="back-link" href={`/invoices/${invoice.id}#payment-history`}>
+          Back to recent payments
+        </Link>
+      )}
       <div className="two-column form-panels">
         <details className="panel disclosure">
           <summary>Edit invoice details</summary>
@@ -105,6 +97,12 @@ async function InvoiceDetailContent({ params }: InvoiceDetailProps) {
           <CustomerForm workspace={workspace} customer={customer} />
         </details>
       </div>
+      <RecordHistory
+        invoiceId={invoice.id}
+        {...history}
+        cursor={query.history}
+        members={workspace.members}
+      />
     </WorkspaceShell>
   );
 }

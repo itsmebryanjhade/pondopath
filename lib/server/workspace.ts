@@ -45,8 +45,9 @@ export async function getRecordHistory(
   kind: "invoice" | "expense",
   id: string,
   cursor?: string,
+  expectedRevision?: number,
 ): Promise<{ events: AuditEvent[]; nextCursor: string | null }> {
-  await requireActor();
+  const actor = await requireActor();
   const client = await createClient();
   const { data, error } = await client.rpc("workspace_history", {
     p_kind: kind,
@@ -54,13 +55,27 @@ export async function getRecordHistory(
     p_cursor: cursor ?? undefined,
   });
   if (error || !data) readError(error?.message ?? "");
+  if (expectedRevision !== undefined)
+    await assertRevision(client, actor.businessId, expectedRevision);
   return data as unknown as { events: AuditEvent[]; nextCursor: string | null };
+}
+
+async function assertRevision(
+  client: Awaited<ReturnType<typeof createClient>>,
+  businessId: string,
+  expectedRevision: number,
+) {
+  const current = await client.from("businesses").select("revision").eq("id", businessId).single();
+  if (current.error || current.data?.revision !== expectedRevision) {
+    throw new Error("Records changed while loading. Retry to load matching balances and history.");
+  }
 }
 
 export async function getCashMovements(
   kind: "receipt" | "expense_payment",
   expectedRevision: number,
   parentId?: string,
+  movementId?: string,
 ): Promise<Row<"cash_movements">[]> {
   const actor = await requireActor();
   const client = await createClient();
@@ -70,18 +85,12 @@ export async function getCashMovements(
     .eq("business_id", actor.businessId)
     .eq("kind", kind);
   if (parentId) query = query.eq(kind === "receipt" ? "invoice_id" : "expense_id", parentId);
+  if (movementId) query = query.eq("id", movementId);
   const { data, error } = await query
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(50);
   if (error || !data) readError(error?.message ?? "");
-  const current = await client
-    .from("businesses")
-    .select("revision")
-    .eq("id", actor.businessId)
-    .single();
-  if (current.error || current.data?.revision !== expectedRevision) {
-    throw new Error("Records changed while loading. Retry to load matching balances and payments.");
-  }
+  await assertRevision(client, actor.businessId, expectedRevision);
   return data;
 }

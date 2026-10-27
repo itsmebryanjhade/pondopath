@@ -5,8 +5,13 @@ import { getWorkspace } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { CustomerForm, InvoiceForm } from "@/components/record-forms";
+import {
+  collectionFilters,
+  collectionFlags,
+  type CollectionFilter,
+} from "@/lib/domain/collection-status";
 
-type InvoicePageProps = { searchParams: Promise<{ page?: string }> };
+type InvoicePageProps = { searchParams: Promise<{ page?: string; filter?: string }> };
 
 export default function Invoices(props: InvoicePageProps) {
   return (
@@ -21,9 +26,37 @@ async function InvoicesContent({ searchParams }: InvoicePageProps) {
   const params = await searchParams;
   const requestedPage =
     typeof params.page === "string" && /^[1-9]\d{0,4}$/.test(params.page) ? Number(params.page) : 1;
-  const pages = Math.max(1, Math.ceil(workspace.invoices.length / 50));
+  const filter: CollectionFilter =
+    params.filter && Object.hasOwn(collectionFilters, params.filter)
+      ? (params.filter as CollectionFilter)
+      : "all";
+  const nextFollowups = new Map(
+    workspace.invoices.map((invoice) => [
+      invoice.id,
+      workspace.followups
+        .filter((row) => row.invoice_id === invoice.id && row.state === "open")
+        .sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id.localeCompare(b.id))[0],
+    ]),
+  );
+  const flags = new Map(
+    workspace.forecastInput.invoices.map((invoice) => [
+      invoice.id,
+      collectionFlags(
+        {
+          ...invoice,
+          dueDate: workspace.invoices.find((row) => row.id === invoice.id)!.due_date,
+          hasOpenFollowup: !!nextFollowups.get(invoice.id),
+        },
+        workspace.forecastInput.referenceDate,
+      ),
+    ]),
+  );
+  const matching = workspace.invoices.filter(
+    (invoice) => filter === "all" || flags.get(invoice.id)![filter],
+  );
+  const pages = Math.max(1, Math.ceil(matching.length / 50));
   const page = Math.min(requestedPage, pages);
-  const invoices = [...workspace.invoices]
+  const invoices = [...matching]
     .sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id.localeCompare(b.id))
     .slice((page - 1) * 50, page * 50);
   return (
@@ -42,10 +75,25 @@ async function InvoicesContent({ searchParams }: InvoicePageProps) {
       <section className="panel">
         <div className="section-heading">
           <h2>
-            {workspace.invoices.length} {workspace.invoices.length === 1 ? "invoice" : "invoices"}
+            {matching.length} of {workspace.invoices.length} invoices
           </h2>
           <span className="muted">PHP</span>
         </div>
+        <form method="get" className="collection-filter">
+          <label className="form-field">
+            <span>Collection view</span>
+            <select className="field" name="filter" defaultValue={filter}>
+              {Object.entries(collectionFilters).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="button secondary" type="submit">
+            Apply filter
+          </button>
+        </form>
         {invoices.length ? (
           <div className="table-scroll" role="region" aria-label="Customer invoices" tabIndex={0}>
             <table>
@@ -61,6 +109,7 @@ async function InvoicesContent({ searchParams }: InvoicePageProps) {
                     Outstanding
                   </th>
                   <th scope="col">Current expectation</th>
+                  <th scope="col">Next follow-up</th>
                 </tr>
               </thead>
               <tbody>
@@ -72,6 +121,7 @@ async function InvoicesContent({ searchParams }: InvoicePageProps) {
                     expectation &&
                     (expectation.state === "needs_review" ||
                       expectation.expected_date < workspace.forecastInput.referenceDate);
+                  const next = nextFollowups.get(invoice.id);
                   return (
                     <tr key={invoice.id}>
                       <th scope="row">
@@ -88,7 +138,14 @@ async function InvoicesContent({ searchParams }: InvoicePageProps) {
                           )}
                       </td>
                       <td className="num">{formatPHP(invoice.amount_cents)}</td>
-                      <td className="num">{formatPHP(invoice.outstanding_cents)}</td>
+                      <td className="num">
+                        {formatPHP(invoice.outstanding_cents)}
+                        {flags.get(invoice.id)!.unplannedCents > 0 && (
+                          <p className="muted">
+                            {formatPHP(flags.get(invoice.id)!.unplannedCents)} unplanned
+                          </p>
+                        )}
+                      </td>
                       <td>
                         {invoice.outstanding_cents === 0 ? (
                           "Fully received"
@@ -104,9 +161,37 @@ async function InvoicesContent({ searchParams }: InvoicePageProps) {
                             <p className="muted">
                               {formatPHP(expectation.remaining_cents)} · {expectation.expected_date}
                             </p>
+                            <Link href={`/invoices/${invoice.id}#collection-plan`}>
+                              Review source and plan
+                            </Link>
                           </>
                         ) : (
                           "No current expectation"
+                        )}
+                      </td>
+                      <td>
+                        {next ? (
+                          <>
+                            <Link href={`/invoices/${invoice.id}#followup-${next.id}`}>
+                              {next.next_action}
+                            </Link>
+                            <p
+                              className={
+                                next.due_date < workspace.forecastInput.referenceDate
+                                  ? "negative"
+                                  : "muted"
+                              }
+                            >
+                              {next.due_date} ·{" "}
+                              {workspace.members.find(
+                                (member) => member.user_id === next.assignee_id,
+                              )?.display_name ?? "Previous team member"}
+                            </p>
+                          </>
+                        ) : invoice.outstanding_cents > 0 ? (
+                          "No next follow-up"
+                        ) : (
+                          "Fully received"
                         )}
                       </td>
                     </tr>
@@ -117,18 +202,22 @@ async function InvoicesContent({ searchParams }: InvoicePageProps) {
           </div>
         ) : (
           <p className="empty-state">
-            No invoices yet. Add a customer, then an invoice that remains unpaid at the opening
-            cutoff.
+            {workspace.invoices.length
+              ? "No invoices match this collection view."
+              : "No invoices yet. Add a customer, then an invoice that remains unpaid at the opening cutoff."}
           </p>
         )}
-        {workspace.invoices.length > 50 && (
+        {matching.length > 50 && (
           <nav className="pagination" aria-label="Invoice pages">
             <span>
-              {(page - 1) * 50 + 1}–{Math.min(page * 50, workspace.invoices.length)} of{" "}
-              {workspace.invoices.length}
+              {(page - 1) * 50 + 1}–{Math.min(page * 50, matching.length)} of {matching.length}
             </span>
-            {page > 1 && <Link href={`/invoices?page=${page - 1}`}>Previous 50</Link>}
-            {page < pages && <Link href={`/invoices?page=${page + 1}`}>Next 50</Link>}
+            {page > 1 && (
+              <Link href={`/invoices?filter=${filter}&page=${page - 1}`}>Previous 50</Link>
+            )}
+            {page < pages && (
+              <Link href={`/invoices?filter=${filter}&page=${page + 1}`}>Next 50</Link>
+            )}
           </nav>
         )}
       </section>

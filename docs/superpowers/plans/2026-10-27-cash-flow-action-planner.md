@@ -10,7 +10,7 @@
 
 **Spec:** [SoloForge PRD v1.0](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). Read both alongside this plan.
 
-**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–6 are implemented and verified in the dedicated development environment. Tasks 7–12 remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
+**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–7 are implemented and verified in the dedicated development environment. Tasks 8–12 remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
 
 **Identity update (October 27; implemented):** PondoPath is the product name; SoloForge remains the builder brand. Added the approved P-shaped path logo, consistent sign-in/workspace branding and accessible login notifications. Verified one-time success feedback, repeatable error feedback and browser behavior. This does not advance Task 4 or change financial/authorization rules.
 
@@ -267,11 +267,11 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 **Interfaces:** Add `confirm_expectation` payload `{ invoiceId; amountCents; date; kind; sourceNote; nextFollowupDate; assigneeId }`; add `save_followup` and `complete_followup` with explicit outcome, next action/date and assignee. All IDs/dates are validated. `previewExpectation(input: ForecastInput, proposal: { invoiceId; date; amountCents }): { baseline; scenario }` delegates to `compareScenario`; this preview performs no write.
 
-- [ ] Write tests: confirmation changes expected cash/date but not available cash or original due date; one active expectation; partial promise leaves visible unplanned remainder; supersession preserves history and resolves old automatic tasks without recording payment; assignee must be a current same-business member; unresolved follow-up completion requires an outcome/next action/date. Stale confirmation after another update fails.
-- [ ] Run red tests, then implement commitment/task commands and invoice history reads. Retain pasted customer replies as source notes; a reply proposing several installments requires staff to select one active expectation. Do not compress multiple dates into an invented installment schedule.
-- [ ] Implement collection filters for unpaid/due/overdue, current promise/source, needs-review/no-expectation/no-next-action, and the next follow-up. Add contextual history with pagination. Void/correction events must be understandable and link to the retained record.
-- [ ] Add a single unsaved scenario control to overview/invoice detail. Show before/after first-shortage date and amount, ending cash and remaining uncertainty; discarding or navigating away clears it. Verify delayed sample receipt changes Friday from `+10_000` to `-40_000` pesos and saving a promise leaves real cash unchanged. Run collection/payment tests and check concurrent changes in two browser sessions.
-- [ ] Commit `feat: connect customer commitments to cash actions`.
+- [x] Write tests: confirmation changes expected cash/date but not available cash or original due date; one active expectation; partial promise leaves visible unplanned remainder; supersession preserves history and resolves old automatic tasks without recording payment; assignee must be a current same-business member; unresolved follow-up completion requires an outcome/next action/date. Stale confirmation after another update fails.
+- [x] Run red tests, then implement commitment/task commands and invoice history reads. Retain pasted customer replies as source notes; a reply proposing several installments requires staff to select one active expectation. Do not compress multiple dates into an invented installment schedule.
+- [x] Implement collection filters for unpaid/due/overdue, current promise/source, needs-review/no-expectation/no-next-action, and the next follow-up. Add contextual history with pagination. Void/correction events must be understandable and link to the retained record.
+- [x] Add a single unsaved scenario control to overview/invoice detail. Show before/after first-shortage date and amount, ending cash and remaining uncertainty; discarding or navigating away clears it. Verify delayed sample receipt changes Friday from `+10_000` to `-40_000` pesos and saving a promise leaves real cash unchanged. Run collection/payment tests and check concurrent changes in two browser sessions.
+- [x] Commit `feat: connect customer commitments to cash actions`.
 
 ### Task 8: Implement versioned reminder approval and manual sending
 

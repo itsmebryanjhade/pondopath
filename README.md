@@ -4,7 +4,7 @@ A one-business Philippine B2B hackathon MVP connecting collections, a 30-day cas
 
 PondoPath is the product; SoloForge is the builder brand. The transparent logo mark is in `public/brand/pondopath-mark.png`. Sign-in and the workspace share this identity. Login feedback uses accessible, dismissible notifications; a successful sign-in notice is consumed on the first overview navigation.
 
-Tasks 1–6 provide a persistent cash overview and 30-day forecast, customer/invoice/expense forms, verified partial and full payments, owner-only corrections, and recoverable validation/conflict states. Customer commitment updates, follow-up workflows, reminder review, AI assistance and automation remain in Tasks 7–12.
+Tasks 1–7 provide a persistent cash overview and 30-day forecast, customer/invoice/expense forms, verified payments, owner-only corrections, reviewed receipt commitments, assigned follow-ups, collection filters, invoice history and unsaved what-if previews. Reminder review, AI assistance and automation remain in Tasks 8–12.
 
 ## Local setup
 
@@ -47,5 +47,7 @@ All exposed tables have RLS and explicitly denied direct application writes. Aut
 Actual receipts and expense payments update balances together. Exact request retries replay the original result. Nonempty payment references are normalized and reserved even after an owner voids a mistaken entry; replacements require a new reference. A same-record, same-date, same-amount entry requires a reasoned duplicate review. Voids retain history, preserve the latest customer promise for review, and restore the unpaid balance without treating it as expected cash.
 
 Money uses safe integer centavos; promises are distinct from actual cash. Forecasts use Asia/Manila date-only values. Actual audit, session and automation timestamps remain real wall-clock time.
+
+Confirming a receipt plan supersedes its previous expectation, retains the full customer message, and reuses or creates an assigned follow-up. Only one remaining amount/date is selected; a partial promise leaves the remainder visibly unplanned. Past dates need review and contribute no future cash. Completing an unpaid invoice's follow-up requires an outcome and a next assigned action/date. Invoice history retains the changes and links to actual payment records, including voids. What-if previews make no writes and clear when discarded or when leaving the page.
 
 The production build downloads Google Fonts and needs network access. Next.js Cache Components and Partial Prefetching remain enabled. Node-RED will run separately from Next.js/Vercel. Read [AGENTS.md](AGENTS.md) before implementation.

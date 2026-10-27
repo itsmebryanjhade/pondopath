@@ -4,12 +4,14 @@ const mocks = vi.hoisted(() => ({
   client: vi.fn(),
   movements: vi.fn(),
   revision: vi.fn(),
+  history: vi.fn(),
+  eq: vi.fn().mockReturnThis(),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/auth", () => ({ requireActor: mocks.actor }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
-import { getCashMovements } from "./workspace";
+import { getCashMovements, getRecordHistory } from "./workspace";
 
 describe("consistent payment reads", () => {
   beforeEach(() => {
@@ -21,7 +23,7 @@ describe("consistent payment reads", () => {
     });
     const paymentQuery = {
       select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
+      eq: mocks.eq.mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       limit: mocks.movements,
     };
@@ -32,9 +34,11 @@ describe("consistent payment reads", () => {
     };
     mocks.client.mockResolvedValue({
       from: (name: string) => (name === "cash_movements" ? paymentQuery : businessQuery),
+      rpc: mocks.history,
     });
     mocks.movements.mockResolvedValue({ data: [{ id: "recorded-payment" }], error: null });
     mocks.revision.mockResolvedValue({ data: { revision: 7 }, error: null });
+    mocks.history.mockResolvedValue({ data: { events: [], nextCursor: null }, error: null });
   });
   it("returns payments only when they belong to the displayed snapshot revision", async () => {
     await expect(getCashMovements("receipt", 7, "invoice-id")).resolves.toEqual([
@@ -49,5 +53,18 @@ describe("consistent payment reads", () => {
     mocks.actor.mockRejectedValue(new Error("Sign-in required"));
     await expect(getCashMovements("expense_payment", 7)).rejects.toThrow("Sign-in required");
     expect(mocks.client).not.toHaveBeenCalled();
+  });
+  it("scopes an older retained payment to the business, invoice and selected movement", async () => {
+    await getCashMovements("receipt", 7, "invoice-id", "older-payment");
+    expect(mocks.eq.mock.calls).toEqual([
+      ["business_id", "current-business"],
+      ["kind", "receipt"],
+      ["invoice_id", "invoice-id"],
+      ["id", "older-payment"],
+    ]);
+  });
+  it("rejects history that changed after the displayed snapshot was read", async () => {
+    mocks.revision.mockResolvedValue({ data: { revision: 8 }, error: null });
+    await expect(getRecordHistory("invoice", "invoice-id", undefined, 7)).rejects.toThrow();
   });
 });

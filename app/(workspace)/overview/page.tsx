@@ -10,6 +10,7 @@ import { AuthToast } from "@/components/auth-toast";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { CashForecast } from "@/components/cash-forecast";
 import { OpeningCashForm } from "@/components/record-forms";
+import { ScenarioPanel } from "@/components/scenario-panel";
 
 export default function Overview() {
   return (
@@ -119,6 +120,7 @@ async function OverviewContent() {
         </section>
         <CashForecast forecast={forecast} workspace={workspace} />
       </div>
+      <ScenarioPanel key={workspace.revision} workspace={workspace} />
       <div className="two-column">
         <section className="panel">
           <div className="section-heading">

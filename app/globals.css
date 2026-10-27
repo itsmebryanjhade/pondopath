@@ -442,6 +442,39 @@ th.num,
 .form-panels {
   margin-top: 16px;
 }
+.expectation-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+.cash-impact {
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+}
+.cash-impact h3, .cash-impact > p {
+  margin-bottom: 12px;
+}
+.scenario-actions, .collection-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.collection-filter {
+  margin: 16px 0;
+}
+.collection-filter .form-field {
+  flex: 1 1 200px;
+  max-width: 360px;
+}
+.scenario-actions {
+  margin-top: 16px;
+}
+.followup-panel h3, #record-history h3 {
+  overflow-wrap: anywhere;
+}
 .record-form {
   margin-top: 16px;
 }
