@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import WorkspaceLoading from "../../loading";
 import { notFound } from "next/navigation";
 import { getCashMovements, getWorkspace } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
@@ -7,7 +9,17 @@ import { InvoiceForm, CustomerForm } from "@/components/record-forms";
 import { PaymentForm } from "@/components/payment-form";
 import { CashMovements } from "@/components/cash-movements";
 
-export default async function InvoiceDetail({ params }: { params: Promise<{ id: string }> }) {
+type InvoiceDetailProps = { params: Promise<{ id: string }> };
+
+export default function InvoiceDetail(props: InvoiceDetailProps) {
+  return (
+    <Suspense fallback={<WorkspaceLoading />}>
+      <InvoiceDetailContent {...props} />
+    </Suspense>
+  );
+}
+
+async function InvoiceDetailContent({ params }: InvoiceDetailProps) {
   const { id } = await params;
   const workspace = await getWorkspace();
   const invoice = workspace.invoices.find((row) => row.id === id);

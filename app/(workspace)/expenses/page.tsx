@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import WorkspaceLoading from "../loading";
 import { getCashMovements, getWorkspace } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
 import { WorkspaceShell } from "@/components/workspace-shell";
@@ -6,11 +8,17 @@ import { ExpenseForm } from "@/components/record-forms";
 import { PaymentForm } from "@/components/payment-form";
 import { CashMovements } from "@/components/cash-movements";
 
-export default async function Expenses({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string }>;
-}) {
+type ExpensePageProps = { searchParams: Promise<{ page?: string }> };
+
+export default function Expenses(props: ExpensePageProps) {
+  return (
+    <Suspense fallback={<WorkspaceLoading />}>
+      <ExpensesContent {...props} />
+    </Suspense>
+  );
+}
+
+async function ExpensesContent({ searchParams }: ExpensePageProps) {
   const workspace = await getWorkspace();
   const params = await searchParams;
   const requestedPage =

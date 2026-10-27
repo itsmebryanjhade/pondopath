@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import WorkspaceLoading from "../loading";
 import { getWorkspace } from "@/lib/server/workspace";
 import { formatPHP, checkedSum } from "@/lib/domain/money";
 import { calculateForecast } from "@/lib/domain/forecast";
@@ -9,7 +11,15 @@ import { WorkspaceShell } from "@/components/workspace-shell";
 import { CashForecast } from "@/components/cash-forecast";
 import { OpeningCashForm } from "@/components/record-forms";
 
-export default async function Overview() {
+export default function Overview() {
+  return (
+    <Suspense fallback={<WorkspaceLoading />}>
+      <OverviewContent />
+    </Suspense>
+  );
+}
+
+async function OverviewContent() {
   const workspace = await getWorkspace();
   const forecast = calculateForecast(workspace.forecastInput);
   const showLoginToast = (await headers()).get(LOGIN_NOTICE_HEADER) === "signed-in";
