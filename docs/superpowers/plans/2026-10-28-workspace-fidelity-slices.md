@@ -61,6 +61,10 @@ Merged the source's teal SectionView, asymmetric feature surface, rounded metric
 
 One focused verification pass: three tests (complete totals/destinations, finance versus owner controls/retained voids, empty histories), changed-file lint and TypeScript passed. Desktop/390px fictional-data browser checks showed no document overflow; existing correction disclosure and reason field remained available, and both history regions are keyboard focusable. No browser warnings/errors. No full production build or authenticated write rerun for this presentation-only slice. Graphify's existing policy blocker remains; no new Next.js feedback candidate.
 
+### Payments analytics correction
+
+The user expected an analytics panel from the supplied design. Replaced the action-only feature content with the source's animated bars comparing complete verified receipt and expense-payment totals since the opening cutoff. Kept exact PHP values, accessible hover/focus labels, zero-height bars with full keyboard targets, and the real recording links. This is a category comparison, not an invented historical series. Three focused tests now cover chart totals and zero values; changed-file lint and TypeScript passed. Desktop/390px previews confirmed the 4:1 sample bar proportion, keyboard access and no document overflow or browser warnings. No posting/domain/database change or full-build/authenticated-write rerun.
+
 ## Review focus
 
 Long business/member names; active nested routes; mobile access to all seven destinations and search; keyboard dismissal/focus; actual zero counts and records; persistent shell while page data loads. No new libraries or claimed end-to-end verification from a fixture-only preview.

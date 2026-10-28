@@ -196,9 +196,16 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .payments-page .payment-source-link:hover { gap: 9px; }
 .workspace-root .payments-page .mini-chart-head span,
 .workspace-root .payments-page .payment-note { color: var(--ink-soft); font-size: 12px; }
-.workspace-root .payments-page .payment-action-list { margin-top: 14px; }
-.workspace-root .payments-page .payment-action-list .record-row { grid-template-columns: 34px minmax(0, 1fr) 20px; padding-inline: 0; text-decoration: none; }
-.workspace-root .payments-page .payment-action-list .record-row > div span { white-space: normal; color: var(--ink-soft); }
+.workspace-root .payments-page .payment-bars { justify-content: space-around; }
+.workspace-root .payments-page .payment-bars > button { height: 100%; max-width: 120px; display: flex; align-items: flex-end; background: transparent; animation: none; opacity: 1; }
+.workspace-root .payments-page .payment-bars > button > span { display: block; width: 100%; border-radius: inherit; background: linear-gradient(to top, var(--section-deep), var(--section-accent)); transform-origin: bottom; animation: bar-rise 420ms cubic-bezier(.2,.8,.2,1) backwards; }
+.workspace-root .payments-page .payment-bars > button:nth-child(2) > span { background: linear-gradient(to top, #4f769f, #91b1cd); animation-delay: 35ms; }
+.workspace-root .payments-page .payment-bars > button::after { max-width: min(210px, 65vw); white-space: normal; }
+.workspace-root .payments-page .payment-bar-labels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; color: var(--ink-soft); text-align: center; }
+.workspace-root .payments-page .payment-bar-labels strong { display: block; margin-top: 3px; color: var(--section-deep); font-size: 14px; overflow-wrap: anywhere; }
+.workspace-root .payments-page .payment-chart-actions { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 8px; }
+.workspace-root .payments-page .payment-chart-actions a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--section-deep); font-size: 12px; font-weight: 600; text-decoration: none; }
+.workspace-root .payments-page .payment-chart-actions a:hover { gap: 9px; }
 .workspace-root .payments-page .payment-note { margin: 14px 0 0; }
 .workspace-root .payments-page > .section-lower-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 .workspace-root .payments-page .payment-history-card { max-height: 480px; overflow: auto; }

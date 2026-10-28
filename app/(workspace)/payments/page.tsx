@@ -16,6 +16,8 @@ export default async function PaymentsPage() {
     { label: "Verified expense payments", value: checkedSum(workspace.expenses.map((expense) => expense.paid_cents)), note: "Since opening cutoff · excludes voids", tone: "blue" },
     { label: "Opening cash baseline", value: workspace.business.opening_cash_cents, note: `Start of ${formatPlanDate(workspace.business.opening_date)}`, tone: "purple" },
   ];
+  const movementTotals = metrics.slice(0, 2);
+  const chartMaximum = Math.max(1, ...movementTotals.map((metric) => metric.value));
   return <WorkspaceShell workspace={workspace} className="section-page section-payments payments-page" header={
     <header className="section-heading">
       <div><p className="eyebrow">Cash movements · {workspace.business.is_demo ? "Fictional demo" : workspace.business.name}</p><h1>Payments</h1><p>Verified cash movements and their retained correction history.</p></div>
@@ -26,25 +28,26 @@ export default async function PaymentsPage() {
       </div>
     </header>
   }>
-    <section className="section-feature" aria-label="Recorded cash and payment actions">
+    <section className="section-feature" aria-label="Recorded cash and payment analytics">
       <div className="section-feature-copy">
         <span>Recorded available cash</span><strong className="num">{formatPHP(workspace.forecastInput.availableCents)}</strong>
         <p>Opening cash + verified receipts − verified expense payments. Customer promises and pending reminders are excluded from this history.</p>
         <Link className="payment-source-link" href="/cash">Review cash position <DashboardIcon name="arrowRight" size={15} /></Link>
       </div>
-      <div className="mini-chart">
-        <div className="mini-chart-head"><div><strong>Record verified money</strong><span>Check the money first, then record it against its invoice or expense.</span></div></div>
-        <div className="payment-action-list">
-          <Link className="record-row" href="/invoices?filter=unpaid">
-            <span className="record-icon"><DashboardIcon name="arrowIn" size={16} /></span>
-            <div><strong>Customer receipt</strong><span>Open an unpaid invoice to record received money</span></div><DashboardIcon name="arrowRight" size={16} />
-          </Link>
-          <Link className="record-row" href="/expenses">
-            <span className="record-icon record-1"><DashboardIcon name="arrowOut" size={16} /></span>
-            <div><strong>Expense payment</strong><span>Open an expense to record money already paid</span></div><DashboardIcon name="arrowRight" size={16} />
-          </Link>
+      <div className="mini-chart" role="region" aria-labelledby="payment-analytics-title">
+        <div className="mini-chart-head"><div><strong id="payment-analytics-title">Verified cash movement</strong><span>{formatPlanDate(workspace.business.opening_date)}–{formatPlanDate(workspace.forecastInput.referenceDate)} · recorded totals</span></div><span className="mini-chart-change">PHP</span></div>
+        <div className="bars payment-bars" aria-label="Verified receipts compared with expense payments">
+          {movementTotals.map((metric) => <button type="button" key={metric.label} data-cents={metric.value}
+            aria-label={`${metric.label}: ${formatPHP(metric.value)}`}
+            data-tooltip={`${metric.label}: ${formatPHP(metric.value)}`}>
+            <span aria-hidden="true" style={{ height: `${metric.value / chartMaximum * 100}%` }} />
+          </button>)}
         </div>
-        <p className="payment-note">Partial payments update the remaining balance. Only the owner can void an incorrect entry; its history is retained.</p>
+        <div className="bar-dates payment-bar-labels" aria-hidden="true">
+          {movementTotals.map((metric) => <span key={metric.label}>{metric.label}<strong className="num">{formatPHP(metric.value)}</strong></span>)}
+        </div>
+        <p className="payment-note">All saved receipts and expense payments since the opening cutoff. Voided entries and expected customer payments are excluded.</p>
+        <div className="payment-chart-actions"><Link href="/invoices?filter=unpaid">Record a receipt <DashboardIcon name="arrowRight" size={14} /></Link><Link href="/expenses">Record an expense payment <DashboardIcon name="arrowRight" size={14} /></Link></div>
       </div>
     </section>
     <section className="section-lower-grid" aria-label="Retained payment history">

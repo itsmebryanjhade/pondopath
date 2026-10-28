@@ -18,12 +18,12 @@ const receipt: Awaited<ReturnType<typeof getCashMovements>>[number] = {
   reference: "DEMO-RECEIPT", effects: {}, voided_at: null, voided_by: null, void_reason: null,
 };
 
-async function render(role: "owner" | "finance", receipts = [receipt]) {
+async function render(role: "owner" | "finance", receipts = [receipt], totals = [2_000_000, 500_000]) {
   const saved = uiWorkspace();
   saved.actor.role = role;
-  saved.invoices[0].paid_cents = 2_000_000;
-  saved.expenses[0].paid_cents = 500_000;
-  saved.forecastInput.availableCents = 5_500_000;
+  saved.invoices[0].paid_cents = totals[0];
+  saved.expenses[0].paid_cents = totals[1];
+  saved.forecastInput.availableCents = saved.business.opening_cash_cents + totals[0] - totals[1];
   readers.getWorkspace.mockResolvedValue(saved);
   readers.getCashMovements.mockImplementation(async (kind: string) => kind === "receipt" ? receipts : []);
   return renderToStaticMarkup(await PaymentsPage());
@@ -36,6 +36,9 @@ describe("source Payments layout preserves verified records", () => {
     expect(html).toContain("₱55,000.00");
     expect(html).toContain("₱20,000.00");
     expect(html).toContain("₱5,000.00");
+    expect([...html.matchAll(/data-cents="(\d+)"/g)].map((match) => Number(match[1]))).toEqual([2_000_000, 500_000]);
+    expect(html).toContain("Verified cash movement");
+    expect(html).toContain("Voided entries and expected customer payments are excluded");
     expect(html).toContain('href="/invoices?filter=unpaid"');
     expect(html).toContain('href="/expenses"');
     expect(html).toContain('data-void="receipt-1"');
@@ -50,7 +53,9 @@ describe("source Payments layout preserves verified records", () => {
     expect(html).not.toContain("Correct this payment entry");
   });
   it("keeps both empty histories understandable", async () => {
-    const html = await render("owner", []);
+    const html = await render("owner", [], [0, 0]);
     expect(html.match(/No actual payments recorded in this view/g)).toHaveLength(2);
+    expect([...html.matchAll(/data-cents="(\d+)"/g)].map((match) => Number(match[1]))).toEqual([0, 0]);
+    expect(html).not.toContain("NaN");
   });
 });
