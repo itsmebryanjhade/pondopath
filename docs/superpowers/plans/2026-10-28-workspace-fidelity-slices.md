@@ -25,7 +25,7 @@ Port the original overview heading, dark summary/chart composition, metric cards
 - [x] Reuse the original hero/forecast, summary-card, entity/status table and filter markup and existing source CSS. Replace old overview compatibility overrides; retain the approved shell and wide-screen spacing.
 - [x] Connect the chart's gradient, line reveal, risk guide and hover/focus points to all 30 actual calculated daily balances. Retain the daily source table and the standalone Forecast presentation.
 - [x] Verify actual amounts, early shortages, partial/unplanned receipts, source links and filtering; check desktop/mobile rendering and obtain one focused review.
-- [ ] User review before slice 3.
+- [x] User approved the overview before slice 3.
 
 Slice 2 result: the provided source structure now drives the overview panel, animated chart, lift/shadow cards, initials, status pills and active filter states. Fake sample balances, bank connections, growth percentages and 60/90-day options were not imported. Card source controls and table actions lead to existing record workflows. The source colour/animation rules are reused; only real-data semantics, readable labels, keyboard access and the previously approved responsive layout are adapted.
 
@@ -33,9 +33,19 @@ Verification: the new overview-chart regression failed before implementation; fi
 
 Final wide-chart correction: the source's fixed 1200px SVG dash pattern left part of the stretched line hidden after its reveal. The overview now reveals a continuous stroke with a width-independent clip, retaining the source's 700ms duration, easing and 80ms delay. Verified the full final line in a 1920px fictional-data preview and parsed the changed CSS. Financial calculations and geometry were not changed; the already-passing application suite was not rerun for this CSS-only correction.
 
-## Slice 3 — Workspace pages and forms (awaits slice 2 approval)
+## Slice 3 — Workspace pages and forms
 
 Port each source tab's layout, analytics surfaces, tables, controls and transitions onto the matching existing page. Arrange current working forms into the source's presentation without replacing validation, approvals or actions. Review each page in manageable sub-slices if needed.
+
+### Slice 3.1 — Cash (implemented; awaiting user review)
+
+- [x] Reuse the source SectionView heading, three metric cards, dark feature panel, record rows, lower grid, insight card and existing animations/hover styles.
+- [x] Show saved available cash, opening baseline, verified receipt/payment totals and the five latest retained movements. Use complete snapshot totals rather than the limited history query for money totals. Preserve void labels, links to actual records and the original owner-only/locked opening-cash controls.
+- [x] Check desktop/mobile layout and focused presentation contracts; stop before Invoices for user review.
+
+The source's fictional bank balances, transfer button and hard-coded historical series were replaced with the existing recorded-cash workflows. The recent list uses the existing authenticated, revision-checked receipt and expense-payment readers in parallel. Calculations, posting actions, database policies, landing and onboarding were unchanged; no dependency was added.
+
+Verification: three focused checks passed for complete saved totals, newest-five ordering/retained voids, empty/negative balances and baseline access. Lint and production build (including TypeScript) passed. The real presentation and original opening form were checked with fictional records at 1920px, 1366px and 390px; no document overflow or browser warnings/errors. Keyboard navigation from the opening amount reaches the cutoff date. A separate read-only review reported no findings. Signed-in end-to-end behavior and database writes were not checked. Graphify refresh remains blocked by the previously recorded Windows policy; focused source inspection was used. No qualifying Next.js feedback candidate.
 
 ## Review focus
 

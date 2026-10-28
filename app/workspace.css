@@ -122,6 +122,31 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .overview-page .forecast-review a { color: var(--green-700); text-decoration: underline; }
 .workspace-root .overview-disclosures { border-radius: 18px; }
 .workspace-root .workspace-footer { font-size: 12px; }
+/* Cash reuses SectionView's cards and record rows with real payment history. */
+.workspace-root .cash-page .section-heading { flex-wrap: wrap; gap: 16px; }
+.workspace-root .cash-page .section-heading > div { min-width: 0; }
+.workspace-root .cash-page .eyebrow { overflow-wrap: anywhere; }
+.workspace-root .cash-page .section-primary { min-height: 44px; text-decoration: none; }
+.workspace-root .cash-page .section-metric strong,
+.workspace-root .cash-page .section-feature-copy > strong { max-width: 100%; overflow-wrap: anywhere; }
+.workspace-root .cash-page .cash-report-link { display: inline-flex; align-items: center; min-height: 44px; gap: 6px; padding: 8px 10px; border: 1px solid #ffffff24; border-radius: 9px; background: #ffffff0f; color: #e6f5eb; font-size: 12px; font-weight: 600; text-decoration: none; }
+.workspace-root .cash-page .cash-report-link:hover { background: #ffffff20; gap: 9px; }
+.workspace-root .cash-page .record-list { padding: 0; margin: 16px -14px 0; list-style: none; }
+.workspace-root .cash-page .record-row { grid-template-columns: 32px minmax(0, 1fr) auto auto 32px; padding-inline: 14px 0; }
+.workspace-root .cash-page .cash-record-link { display: grid; min-width: 44px; min-height: 44px; place-items: center; color: var(--ink-faint); transform: rotate(-90deg); }
+.workspace-root .cash-page .cash-record-link:hover { color: var(--section-deep); }
+.workspace-root .cash-page .record-amount { max-width: 170px; overflow-wrap: anywhere; }
+.workspace-root .cash-page .cash-history-note { margin: 14px 0 0; color: var(--ink-faint); font-size: 12px; }
+.workspace-root .cash-page .cash-baseline-body { padding: 20px; }
+.workspace-root .cash-page .cash-plan-link { display: inline-flex; align-items: center; min-height: 44px; gap: 5px; padding: 8px 10px; border: 1px solid var(--section-border); border-radius: 9px; background: #ffffffbf; color: var(--section-deep); font-size: 12px; font-weight: 700; text-decoration: none; }
+.workspace-root .cash-page .cash-plan-link:hover { gap: 9px; }
+@media (max-width: 540px) {
+  .workspace-root .cash-page .record-row { grid-template-columns: 32px minmax(0, 1fr) 44px; gap: 8px; }
+  .workspace-root .cash-page .record-amount { grid-column: 2; grid-row: auto; max-width: none; }
+  .workspace-root .cash-page .cash-record-link { grid-column: 3; grid-row: 1 / 3; }
+  .workspace-root .cash-page .record-row > div span { white-space: normal; overflow-wrap: anywhere; }
+  .workspace-root .cash-page .record-status { display: none; }
+}
 .workspace-root .followup-worklist > details { margin-bottom: 16px; }
 .workspace-root .followup-worklist .followup-panel { border: 0; box-shadow: none; padding: 0; }
 .workspace-root .view-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
