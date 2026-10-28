@@ -275,6 +275,33 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
   .workspace-root .expenses-page .expense-record { grid-template-columns: 32px minmax(0, 1fr); }
   .workspace-root .expenses-page .expense-record .num { grid-column: 2; max-width: none; }
 }
+/* Forecast reuses the working source line chart and original scenario form. */
+.workspace-root .forecast-page > .section-heading { flex-wrap: wrap; gap: 16px; }
+.workspace-root .forecast-page .section-primary { min-height: 44px; text-decoration: none; }
+.workspace-root .forecast-page .eyebrow,
+.workspace-root .forecast-page .section-metric strong,
+.workspace-root .forecast-page .section-feature-copy > strong { max-width: 100%; overflow-wrap: anywhere; }
+.workspace-root .forecast-page .forecast-below-zero { color: #ffcfb3; }
+.workspace-root .forecast-page .forecast-source-link { display: inline-flex; align-items: center; min-height: 44px; gap: 6px; padding: 8px 10px; border: 1px solid var(--section-border); border-radius: 9px; background: #ffffffbf; color: var(--section-deep); font-size: 12px; font-weight: 600; text-decoration: none; }
+.workspace-root .forecast-page .forecast-source-link:hover { gap: 9px; }
+.workspace-root .forecast-page .section-feature-copy .forecast-source-link { color: #e6f5eb; border-color: #ffffff24; background: #ffffff0f; }
+.workspace-root .forecast-page .overview-forecast { min-width: 0; border-radius: 0; }
+.workspace-root .forecast-page .overview-forecast .chart .line { stroke: var(--section-accent); }
+.workspace-root .forecast-page .overview-forecast stop { stop-color: var(--section-accent); }
+.workspace-root .forecast-page .forecast-points button:not(.point-4) { background: var(--section-accent); }
+.workspace-root .forecast-page .legend-line { background: var(--section-accent); }
+.workspace-root .forecast-page .section-lower-grid > * { min-width: 0; }
+.workspace-root .forecast-page .section-ai-card { align-self: start; }
+.workspace-root .forecast-page .forecast-first-shortage { font-weight: 600; color: var(--section-deep); }
+.workspace-root .forecast-page .source-note { flex-wrap: wrap; gap: 8px; color: var(--ink-soft); }
+.workspace-root .forecast-page .forecast-scenario-body { padding: 20px; }
+.workspace-root .forecast-page .scenario-panel { border: 0; box-shadow: none; padding: 0; margin: 0; }
+.workspace-root .forecast-page .scenario-panel > summary { min-height: 44px; }
+.workspace-root .forecast-page > .workspace-footer { order: 4; }
+@media (max-width: 790px) {
+  .workspace-root .forecast-page > .section-feature,
+  .workspace-root .forecast-page > .section-lower-grid { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 540px) {
   .workspace-root .cash-page .record-row { grid-template-columns: 32px minmax(0, 1fr) 44px; gap: 8px; }
   .workspace-root .cash-page .record-amount { grid-column: 2; grid-row: auto; max-width: none; }

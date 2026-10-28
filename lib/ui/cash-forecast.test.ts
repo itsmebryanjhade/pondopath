@@ -19,6 +19,14 @@ function render(overview = false) {
 }
 
 describe("traceable cash forecast presentation", () => {
+  it("namespaces chart references when the chart is reused on another workspace page", () => {
+    const { forecast } = render(true);
+    const html = renderToStaticMarkup(createElement(CashForecast, { forecast, workspace: { invoices: [], expenses: [] } as unknown as WorkspaceSnapshot, overview: true, chartId: "forecast-main" }));
+    expect(html).toContain('id="forecast-main-chart-fill"');
+    expect(html).toContain('aria-labelledby="forecast-main-chart-title forecast-main-chart-description"');
+    expect(html).toContain("url(#forecast-main-chart-fill)");
+    expect(html).not.toContain('id="overview-forecast-heading"');
+  });
   it("labels the end balance as projected without hiding an earlier shortage", () => {
     const { html } = render();
     expect(html).toContain("Projected end balance");

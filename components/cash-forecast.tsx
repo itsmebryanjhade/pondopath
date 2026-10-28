@@ -8,10 +8,12 @@ export function CashForecast({
   forecast,
   workspace,
   overview = false,
+  chartId = "overview",
 }: {
   forecast: ForecastResult;
   workspace: WorkspaceSnapshot;
   overview?: boolean;
+  chartId?: string;
 }) {
   const balances = forecast.days.map((day) => day.closingCents);
   const low = Math.min(0, ...balances);
@@ -84,20 +86,20 @@ export function CashForecast({
   if (overview) {
     const line = forecast.days.map((day, index) => `${index ? "L" : "M"}${x(index)},${y(day.closingCents)}`).join(" ");
     const pointDays = [...new Set([0, 7, 14, 21, 29, shortageIndex].filter((index) => index >= 0))].sort((a, b) => a - b);
-    return <section className="forecast overview-forecast" aria-labelledby="overview-forecast-heading">
+    return <section className="forecast overview-forecast" aria-labelledby={`${chartId}-forecast-heading`}>
       <div className="forecast-head">
-        <div><h2 id="overview-forecast-heading">30-day cash forecast</h2><p>{formatPlanDate(forecast.days[0].date, true)}–{formatPlanDate(end.date)} · PHP</p></div>
+        <div><h2 id={`${chartId}-forecast-heading`}>30-day cash forecast</h2><p>{formatPlanDate(forecast.days[0].date, true)}–{formatPlanDate(end.date)} · PHP</p></div>
         <div className="period-control" aria-label="Forecast window"><span className="active">30d</span></div>
       </div>
       <div className="chart-wrap">
         <div className="chart-labels" aria-hidden="true">{ticks.map((tick) => <span key={tick} style={{ top: `${(y(tick) / 230) * 100}%` }}>{new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", notation: "compact", maximumFractionDigits: 1 }).format(tick / 100)}</span>)}</div>
-        <svg className="chart" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-labelledby="overview-chart-title overview-chart-description">
-          <title id="overview-chart-title">Projected closing cash over 30 days</title>
-          <desc id="overview-chart-description">{forecast.firstShortage ? `First projected shortage ${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(forecast.firstShortage.date)}.` : "No shortage projected from entered records."} The daily cash plan below provides every amount and source record.</desc>
-          <defs><linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#45a874" stopOpacity=".25" /><stop offset="100%" stopColor="#45a874" stopOpacity=".01" /></linearGradient></defs>
+        <svg className="chart" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-labelledby={`${chartId}-chart-title ${chartId}-chart-description`}>
+          <title id={`${chartId}-chart-title`}>Projected closing cash over 30 days</title>
+          <desc id={`${chartId}-chart-description`}>{forecast.firstShortage ? `First projected shortage ${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(forecast.firstShortage.date)}.` : "No shortage projected from entered records."} The daily cash plan below provides every amount and source record.</desc>
+          <defs><linearGradient id={`${chartId}-chart-fill`} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#45a874" stopOpacity=".25" /><stop offset="100%" stopColor="#45a874" stopOpacity=".01" /></linearGradient></defs>
           <g className="grid-lines">{ticks.map((tick) => <line key={tick} x1="0" x2="700" y1={y(tick)} y2={y(tick)} />)}</g>
           <line className="chart-zero" x1="0" x2="700" y1={y(0)} y2={y(0)} vectorEffect="non-scaling-stroke" />
-          <path className="area" d={`${line} L700,${y(0)} L0,${y(0)} Z`} />
+          <path className="area" style={{ fill: `url(#${chartId}-chart-fill)` }} d={`${line} L700,${y(0)} L0,${y(0)} Z`} />
           <path className="line" d={line} pathLength="1200" />
           {shortageIndex >= 0 && <line className="risk-line" x1={x(shortageIndex)} x2={x(shortageIndex)} y1="20" y2="220" vectorEffect="non-scaling-stroke" />}
         </svg>

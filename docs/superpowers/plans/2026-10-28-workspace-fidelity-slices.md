@@ -65,11 +65,19 @@ One focused verification pass: three tests (complete totals/destinations, financ
 
 The user expected an analytics panel from the supplied design. Replaced the action-only feature content with the source's animated bars comparing complete verified receipt and expense-payment totals since the opening cutoff. Kept exact PHP values, accessible hover/focus labels, zero-height bars with full keyboard targets, and the real recording links. This is a category comparison, not an invented historical series. Three focused tests now cover chart totals and zero values; changed-file lint and TypeScript passed. Desktop/390px previews confirmed the 4:1 sample bar proportion, keyboard access and no document overflow or browser warnings. No posting/domain/database change or full-build/authenticated-write rerun.
 
-### Slice 3.4 — Expenses (implemented; awaiting user review)
+### Slice 3.4 — Expenses (approved by user)
 
 Merged the source's purple SectionView hierarchy, metric cards, records/insight layout and animated bars directly into the existing Expenses page. Analytics group the existing 30-day forecast's planned outflows into five periods, including overdue unpaid expenses due now and remaining partial balances. No fabricated categories, approval states or historical spending series. Kept original amounts/dates, IDs, 50-row pagination, existing payment/edit/new-expense forms, and retained payment history. No domain/database/action/dependency change.
 
 One focused pass: three tests cover partial/overdue/out-of-window amounts, whole-snapshot analytics across pagination and empty/zero states; changed-file lint and TypeScript passed. Desktop/390px fictional-data previews confirmed the chart, single-column phone layout, no document overflow or browser warnings, keyboard-focusable worklist and original payment fields (amount/date/reference/verification/duplicate review). No production build or signed-in write rerun. No qualifying Next.js feedback; existing Graphify policy blocker was not retried. Forecast awaits this page's user review.
+
+### Slice 3.5 — Forecast (implemented; awaiting user review)
+
+Merged the source's blue SectionView around the existing 30-day line chart and scenario tool. The actual calculated line, all 30 daily source rows, early/largest shortages, incomplete/stale expectations and overdue due-now counts remain visible. Added receipt/outflow/lowest-balance cards from the same forecast result. Reused the original scenario form; empty workspaces receive a clear scenario notice. Chart headings, descriptions and gradient references are now namespaced so the Overview and Forecast charts can coexist in cached route DOM. No forecast/domain/database/action/dependency change.
+
+The namespace regression failed before implementation. Final eight focused chart/page checks, changed-file lint and TypeScript passed. Verified the signed-in Next.js app at localhost:3000/forecast using its existing demo account, not the separate fixture: correct section order and gradient reference, 30 daily rows, and a real unsaved scenario moving DEMO-001's 50,000 receipt to 2 November. The preview showed a 40,000 shortfall on 30 October; discard removed it and retained the 10,000 baseline end balance. Checked desktop and the available 480px narrow viewport without document overflow. No business records were changed. The browser screenshot API failed and native capture included unused canvas; no separate fixture screenshot is evidence for this slice. No production-build/write rerun. No new Next.js feedback candidate; Graphify's existing policy blocker was not retried. Follow-ups awaits user review.
+
+Verification correction: future screenshots used as proof must come from the actual running Next.js app. Separate fictional-data previews must be labelled as such. The earlier Expenses discrepancy was not reproduced in the fresh signed-in localhost session; the user subsequently confirmed it looked good. No source change was made for that discrepancy, and Brave interaction remains unapproved.
 
 ## Review focus
 
