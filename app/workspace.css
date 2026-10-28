@@ -8,6 +8,9 @@
 }
 /* The original shell classes above now drive geometry, surfaces and motion. */
 .workspace-root .workspace { min-height: calc(100dvh - 54px); background: transparent; }
+/* Keep scrolling without a changing scrollbar gutter between short and long pages. */
+html.pondopath-workspace-document, html.pondopath-workspace-document body, .workspace-root .side-nav, .workspace-root .mobile-nav { scrollbar-width: none; }
+html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-document body::-webkit-scrollbar, .workspace-root .side-nav::-webkit-scrollbar, .workspace-root .mobile-nav::-webkit-scrollbar { display: none; }
 .workspace-root .workspace-content { min-width: 0; }
 .workspace-root .side-brand img { width: 34px; height: 34px; }
 .workspace-root .side-brand .text-xl, .workspace-root .mobile-brand .text-xl { font-family: var(--font-workspace-heading), sans-serif; font-size: 19px; }
@@ -16,8 +19,6 @@
 .workspace-root .side-nav nav ul { display: flex; flex-direction: column; gap: 4px; }
 .workspace-root .side-nav nav li + li { margin: 0; }
 .workspace-root .side-link { min-height: 44px; text-decoration: none; }
-.workspace-root .side-link:has([data-pending="true"]) > .side-link-icon { opacity: 0; }
-.workspace-root .nav-pending { left: 25px; }
 .workspace-root .side-insight a { display: inline-flex; align-items: center; min-height: 44px; gap: 5px; color: var(--green-700); font-size: 12px; font-weight: 700; transition: gap 180ms ease; }
 .workspace-root .side-insight:hover a { gap: 8px; }
 .workspace-root .side-insight > span { font-size: 12px; }
@@ -54,8 +55,6 @@
 .workspace-root .mobile-nav ul { display: flex; gap: 22px; list-style: none; margin: 0; padding: 0; }
 .workspace-root .mobile-nav .mobile-tab { position: relative; display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 0 9px; border-bottom: 2px solid transparent; color: var(--ink-soft); font-size: 12px; white-space: nowrap; text-decoration: none; }
 .workspace-root .mobile-nav .mobile-tab.active { border-color: var(--green-700); color: var(--green-800); font-weight: 600; }
-.workspace-root .mobile-tab .nav-pending { left: auto; right: 0; }
-.workspace-root .mobile-tab:has([data-pending="true"]) > span:first-child { padding-right: 22px; }
 .workspace-root .quick-button:focus-visible, .workspace-root .side-link:focus-visible, .workspace-root .mobile-tab:focus-visible { outline-offset: -3px; }
 .workspace-root .panel { border-radius: 18px; box-shadow: 0 8px 24px #182b1f0b; }
 .workspace-root h1, .workspace-root h2, .hero-value, .dashboard-metrics dd > strong { font-family: var(--font-workspace-heading), sans-serif; }

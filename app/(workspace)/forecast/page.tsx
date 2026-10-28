@@ -1,6 +1,4 @@
-import { Suspense } from "react";
 import Link from "next/link";
-import WorkspaceLoading from "../loading";
 import { getWorkspace } from "@/lib/server/workspace";
 import { calculateForecast } from "@/lib/domain/forecast";
 import { formatPHP } from "@/lib/domain/money";
@@ -10,9 +8,7 @@ import { WorkspacePageHeading } from "@/components/workspace-page-heading";
 import { CashForecast } from "@/components/cash-forecast";
 import { ScenarioPanel } from "@/components/scenario-panel";
 
-export default function ForecastPage() { return <Suspense fallback={<WorkspaceLoading />}><ForecastContent /></Suspense>; }
-
-async function ForecastContent() {
+export default async function ForecastPage() {
   const workspace = await getWorkspace();
   const forecast = calculateForecast(workspace.forecastInput);
   return <WorkspaceShell workspace={workspace} header={<WorkspacePageHeading workspace={workspace} title="Cash forecast" description="Trace the next 30 days to entered receipts and obligations, then compare an unsaved scenario." />}>

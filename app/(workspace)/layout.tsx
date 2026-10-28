@@ -1,5 +1,5 @@
 import { Suspense, type ReactNode } from "react";
-import WorkspaceLoading from "./loading";
+import WorkspaceLoading from "@/components/workspace-loading";
 import { ProductBrand } from "@/components/product-brand";
 import { WorkspaceFrame } from "@/components/workspace-frame";
 import { getWorkspace } from "@/lib/server/workspace";

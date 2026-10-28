@@ -1,14 +1,10 @@
-import { Suspense } from "react";
 import Link from "next/link";
-import WorkspaceLoading from "../loading";
 import { getWorkspace } from "@/lib/server/workspace";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { WorkspacePageHeading } from "@/components/workspace-page-heading";
 import { FollowupPanel } from "@/components/followup-panel";
 
-export default function FollowupsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) { return <Suspense fallback={<WorkspaceLoading />}><FollowupsContent searchParams={searchParams} /></Suspense>; }
-
-async function FollowupsContent({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function FollowupsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const workspace = await getWorkspace();
   const params = await searchParams;
   const open = workspace.followups.filter((task) => task.state === "open");

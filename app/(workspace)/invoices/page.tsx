@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import WorkspaceLoading from "../loading";
 import { getWorkspace } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
 import { WorkspaceShell } from "@/components/workspace-shell";
@@ -14,15 +12,7 @@ import {
 
 type InvoicePageProps = { searchParams: Promise<{ page?: string; filter?: string }> };
 
-export default function Invoices(props: InvoicePageProps) {
-  return (
-    <Suspense fallback={<WorkspaceLoading />}>
-      <InvoicesContent {...props} />
-    </Suspense>
-  );
-}
-
-async function InvoicesContent({ searchParams }: InvoicePageProps) {
+export default async function Invoices({ searchParams }: InvoicePageProps) {
   const workspace = await getWorkspace();
   const params = await searchParams;
   const requestedPage =

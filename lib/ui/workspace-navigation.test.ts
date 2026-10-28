@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { WorkspaceFrame } from "@/components/workspace-frame";
 import { WorkspaceNavigation } from "@/components/workspace-navigation";
-import WorkspaceLoading from "@/app/(workspace)/loading";
+import WorkspaceLoading from "@/components/workspace-loading";
 import WorkspaceError from "@/app/(workspace)/error";
 import PageError from "@/app/error";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
@@ -35,6 +35,7 @@ describe("persistent workspace navigation", () => {
     expect(html).not.toContain("<aside");
     expect(html).not.toContain("<nav");
     expect(html).not.toContain("<main");
+    expect(html).toContain('class="page-enter"');
   });
 
   it("loads only the content area without replacing the brand or navigation", () => {
@@ -91,11 +92,13 @@ describe("persistent workspace navigation", () => {
     expect(selected![0]).toContain(`href="${pathname}"`);
   });
 
-  it("announces pending navigation and clears the feedback when it settles", () => {
+  it("announces pending navigation without replacing its icons with spinning circles", () => {
     navigationState.pending = true;
     const html = renderToStaticMarkup(createElement(WorkspaceNavigation));
     expect(html).toContain('data-pending="true"');
     expect(html).toContain("Opening Invoices…");
+    expect(html).not.toContain('class="nav-pending"');
+    expect(html).not.toContain("refresh-cw.svg");
     navigationState.pending = false;
     const settled = renderToStaticMarkup(createElement(WorkspaceNavigation));
     expect(settled).not.toContain('data-pending="true"');

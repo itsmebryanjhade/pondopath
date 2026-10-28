@@ -18,10 +18,7 @@ const destinations = [
 
 function NavigationFeedback({ label }: { label: string }) {
   const { pending } = useLinkStatus();
-  return <>
-    <span className="nav-pending" data-pending={pending} aria-hidden="true"><AppIcon name="refresh-cw" /></span>
-    <span className="sr-only" role="status">{pending ? `Opening ${label}…` : ""}</span>
-  </>;
+  return <span className="sr-only" role="status" data-pending={pending}>{pending ? `Opening ${label}…` : ""}</span>;
 }
 
 export function WorkspaceNavigation({ mobile = false, followupCount = 0 }: { mobile?: boolean; followupCount?: number }) {

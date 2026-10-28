@@ -18,6 +18,11 @@ export function WorkspaceTools({ rows, name, role, businessName, followupCount, 
   const searchInput = useRef<HTMLInputElement>(null);
   const searchToggle = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
+  useEffect(() => {
+    // Hidden cached routes keep their DOM; Activity cleans up this active-workspace effect.
+    document.documentElement.classList.add("pondopath-workspace-document");
+    return () => document.documentElement.classList.remove("pondopath-workspace-document");
+  }, []);
   const closeMenus = () => toolbar.current?.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((menu) => { menu.open = false; });
   useEffect(() => { toolbar.current?.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((menu) => { menu.open = false; }); }, [pathname]);
   useEffect(() => {

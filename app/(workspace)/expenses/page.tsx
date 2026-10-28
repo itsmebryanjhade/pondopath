@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import WorkspaceLoading from "../loading";
 import { getCashMovements, getWorkspace } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
 import { WorkspaceShell } from "@/components/workspace-shell";
@@ -11,15 +9,7 @@ import { CashMovements } from "@/components/cash-movements";
 
 type ExpensePageProps = { searchParams: Promise<{ page?: string }> };
 
-export default function Expenses(props: ExpensePageProps) {
-  return (
-    <Suspense fallback={<WorkspaceLoading />}>
-      <ExpensesContent {...props} />
-    </Suspense>
-  );
-}
-
-async function ExpensesContent({ searchParams }: ExpensePageProps) {
+export default async function Expenses({ searchParams }: ExpensePageProps) {
   const workspace = await getWorkspace();
   const params = await searchParams;
   const requestedPage =

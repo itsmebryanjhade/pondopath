@@ -1,14 +1,10 @@
-import { Suspense } from "react";
 import Link from "next/link";
-import WorkspaceLoading from "../loading";
 import { getCashMovements, getWorkspace } from "@/lib/server/workspace";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { WorkspacePageHeading } from "@/components/workspace-page-heading";
 import { CashMovements } from "@/components/cash-movements";
 
-export default function PaymentsPage() { return <Suspense fallback={<WorkspaceLoading />}><PaymentsContent /></Suspense>; }
-
-async function PaymentsContent() {
+export default async function PaymentsPage() {
   const workspace = await getWorkspace();
   const [receipts, payments] = await Promise.all([getCashMovements("receipt", workspace.revision), getCashMovements("expense_payment", workspace.revision)]);
   return <WorkspaceShell workspace={workspace} header={<WorkspacePageHeading workspace={workspace} title="Payments" description="Verified cash movements and their retained correction history." actions={<Link className="button" href="/invoices?filter=unpaid">Record a receipt</Link>} />}>

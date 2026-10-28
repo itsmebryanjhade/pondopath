@@ -1,6 +1,4 @@
-import { Suspense } from "react";
 import { headers } from "next/headers";
-import WorkspaceLoading from "../loading";
 import { getWorkspace } from "@/lib/server/workspace";
 import { LOGIN_NOTICE_HEADER } from "@/lib/auth-notice";
 import { AuthToast } from "@/components/auth-toast";
@@ -11,11 +9,7 @@ import { AppIcon } from "@/components/app-icon";
 import { formatPHP } from "@/lib/domain/money";
 import { formatPlanDate } from "@/lib/display";
 
-export default function Overview() {
-  return <Suspense fallback={<WorkspaceLoading />}><OverviewContent /></Suspense>;
-}
-
-async function OverviewContent() {
+export default async function Overview() {
   const workspace = await getWorkspace();
   const showLoginToast = (await headers()).get(LOGIN_NOTICE_HEADER) === "signed-in";
   return <>

@@ -12,7 +12,7 @@ export function WorkspaceShell({
   header?: ReactNode;
 }) {
   return (
-    <>
+    <div className="page-enter">
         {header ?? <div className="workspace-stamp">
           <div>
             <p className="workspace-date">
@@ -37,6 +37,6 @@ export function WorkspaceShell({
           (Asia/Manila) · Revision {workspace.revision} · Opening cutoff {workspace.business.opening_date}. Forecasts reflect entered records and reviewed assumptions; expected
           receipts are not available cash.
         </footer>
-    </>
+    </div>
   );
 }
