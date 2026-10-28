@@ -140,6 +140,52 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .cash-page .cash-baseline-body { padding: 20px; }
 .workspace-root .cash-page .cash-plan-link { display: inline-flex; align-items: center; min-height: 44px; gap: 5px; padding: 8px 10px; border: 1px solid var(--section-border); border-radius: 9px; background: #ffffffbf; color: var(--section-deep); font-size: 12px; font-weight: 700; text-decoration: none; }
 .workspace-root .cash-page .cash-plan-link:hover { gap: 9px; }
+/* Invoice hierarchy, palette and surfaces come from the supplied SectionView. */
+.workspace-root .invoices-page .section-heading { flex-wrap: wrap; gap: 16px; }
+.workspace-root .invoices-page .section-primary { min-height: 44px; text-decoration: none; }
+.workspace-root .invoices-page .eyebrow,
+.workspace-root .invoices-page .section-metric strong,
+.workspace-root .invoices-page .section-feature-copy > strong { max-width: 100%; overflow-wrap: anywhere; }
+.workspace-root .invoices-page .section-lower-grid > * { min-width: 0; }
+.workspace-root .invoices-page .section-ai-card { align-self: start; }
+.workspace-root .invoices-page .collection-filter { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; padding: 14px 19px; margin: 0; }
+.workspace-root .invoices-page .collection-filter .form-field { min-width: 0; flex: 1; max-width: 290px; margin: 0; }
+.workspace-root .invoices-page .table-scroll { max-height: clamp(260px, 30vh, 360px); }
+.workspace-root .invoices-page .invoice-table thead th { position: sticky; top: 0; z-index: 1; }
+.workspace-root .invoices-page .invoice-table { min-width: 1080px; }
+.workspace-root .invoices-page .invoice-table tbody th { min-width: 160px; max-width: 240px; background: transparent; text-transform: none; letter-spacing: normal; font-weight: 400; }
+.workspace-root .invoices-page .invoice-table td { min-width: 0; max-width: 270px; vertical-align: top; white-space: normal; overflow-wrap: anywhere; }
+.workspace-root .invoices-page .invoice-number { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; text-decoration: none; }
+.workspace-root .invoices-page .invoice-table td a { display: inline-flex; align-items: center; min-height: 44px; color: var(--section-deep); }
+.workspace-root .invoices-page .invoice-table p { margin: 2px 0; }
+.workspace-root .invoices-page .invoice-table .invoice-expectation { align-items: flex-start; flex-direction: column; gap: 3px; text-decoration: none; }
+.workspace-root .invoices-page .invoice-review-label { text-decoration: underline; text-underline-offset: 3px; }
+.workspace-root .invoices-page .status { display: inline-flex; white-space: normal; }
+.workspace-root .invoices-page .status.review { color: var(--amber-700); background: var(--amber-100); }
+.workspace-root .invoices-page .records-panel > .empty-state { padding: 12px 19px 22px; }
+.workspace-root .invoices-page .table-foot { gap: 12px; flex-wrap: wrap; }
+.workspace-root .invoices-page .table-foot a { display: inline-flex; align-items: center; min-height: 44px; color: var(--section-deep); }
+.workspace-root .invoices-page .invoice-source-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--section-border); border-radius: 9px; background: #ffffffbf; color: var(--section-deep); font-size: 12px; font-weight: 600; text-decoration: none; }
+.workspace-root .invoices-page .invoice-source-link:hover { gap: 9px; }
+.workspace-root .invoices-page .section-feature-copy .invoice-source-link { color: #e6f5eb; border-color: #ffffff24; background: #ffffff0f; }
+.workspace-root .invoices-page .invoice-chart-note { margin: 16px 0 0; color: var(--ink-soft); font-size: 12px; }
+.workspace-root .invoices-page .invoice-week-labels,
+.workspace-root .invoices-page .mini-chart-head > div > span,
+.workspace-root .invoices-page .invoice-expectation .cell-sub { color: var(--ink-soft); }
+/* Full-height targets keep zero-value periods focusable without inventing a bar height. */
+.workspace-root .invoices-page .invoice-bars > button { height: 100%; display: flex; align-items: flex-end; background: transparent; animation: none; opacity: 1; }
+.workspace-root .invoices-page .invoice-bars > button > span { display: block; width: 100%; border-radius: 5px 5px 1px 1px; background: linear-gradient(to top, var(--section-deep), var(--section-accent)); transform-origin: bottom; animation: bar-rise 420ms cubic-bezier(.2,.8,.2,1) backwards; }
+.workspace-root .invoices-page .invoice-bars > button:nth-child(2n) > span { animation-delay: 35ms; background: linear-gradient(to top, #4f769f, #91b1cd); }
+.workspace-root .invoices-page .invoice-bars > button:nth-child(3n) > span { animation-delay: 70ms; }
+.workspace-root .invoices-page .invoice-bars > button::after { max-width: min(210px, 65vw); white-space: normal; }
+.workspace-root .invoices-page .invoice-week-labels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; text-align: center; }
+.workspace-root .invoices-page .invoice-week-labels small { display: block; font-size: 11px; overflow-wrap: anywhere; }
+.workspace-root .invoices-page .invoice-forms { order: 4; align-items: start; }
+.workspace-root .invoices-page .invoice-form-body { padding: 20px; }
+.workspace-root .invoices-page > .workspace-footer { order: 5; }
+@media (max-width: 790px) {
+  .workspace-root .invoices-page > .section-lower-grid { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 540px) {
   .workspace-root .cash-page .record-row { grid-template-columns: 32px minmax(0, 1fr) 44px; gap: 8px; }
   .workspace-root .cash-page .record-amount { grid-column: 2; grid-row: auto; max-width: none; }

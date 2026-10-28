@@ -37,7 +37,7 @@ Final wide-chart correction: the source's fixed 1200px SVG dash pattern left par
 
 Port each source tab's layout, analytics surfaces, tables, controls and transitions onto the matching existing page. Arrange current working forms into the source's presentation without replacing validation, approvals or actions. Review each page in manageable sub-slices if needed.
 
-### Slice 3.1 — Cash (implemented; awaiting user review)
+### Slice 3.1 — Cash (approved by user)
 
 - [x] Reuse the source SectionView heading, three metric cards, dark feature panel, record rows, lower grid, insight card and existing animations/hover styles.
 - [x] Show saved available cash, opening baseline, verified receipt/payment totals and the five latest retained movements. Use complete snapshot totals rather than the limited history query for money totals. Preserve void labels, links to actual records and the original owner-only/locked opening-cash controls.
@@ -46,6 +46,14 @@ Port each source tab's layout, analytics surfaces, tables, controls and transiti
 The source's fictional bank balances, transfer button and hard-coded historical series were replaced with the existing recorded-cash workflows. The recent list uses the existing authenticated, revision-checked receipt and expense-payment readers in parallel. Calculations, posting actions, database policies, landing and onboarding were unchanged; no dependency was added.
 
 Verification: three focused checks passed for complete saved totals, newest-five ordering/retained voids, empty/negative balances and baseline access. Lint and production build (including TypeScript) passed. The real presentation and original opening form were checked with fictional records at 1920px, 1366px and 390px; no document overflow or browser warnings/errors. Keyboard navigation from the opening amount reaches the cutoff date. A separate read-only review reported no findings. Signed-in end-to-end behavior and database writes were not checked. Graphify refresh remains blocked by the previously recorded Windows policy; focused source inspection was used. No qualifying Next.js feedback candidate.
+
+### Slice 3.2 — Invoices (implemented; awaiting user review)
+
+Reused the source's blue SectionView palette, table-first hierarchy, metric cards, dark feature panel, bar reveal and hover styles. Retained existing collection filters, stable 50-row pagination, original due dates, partial/unplanned balances, stale expectation exclusions, follow-up/source links and both original forms. The collection chart groups the existing 30-day forecast inflows into five periods (the final period has two days); no sample financial series or new backend was imported. The table has a bounded, keyboard-scrollable region with sticky headers, and its insight card keeps its natural height.
+
+Verification: five focused tests cover partial expectations, forecast exclusions/window boundaries, seven-day original-due-date totals, filtering/pagination and first-customer setup. Final build and changed-file lint passed; full lint also passed before the last presentation edits. Fictional-data browser checks confirmed desktop/390px fit, native Overdue filtering (two matching rows with the complete outstanding total retained), source links/form fields, zero-value chart targets and keyboard table scrolling. A fresh review found low-contrast planning text; scoped colours were corrected and verified in the browser. Screenshot saved in the task's visualizations folder. Signed-in end-to-end behavior/database writes were not checked; no qualifying Next.js feedback issue. Existing Graphify policy blocker remains; no retry.
+
+Execution adjustment: the user reported this slice was too slow. Keep the next slice to direct source reuse and one final focused verification pass; avoid repeated full builds for presentation-only edits.
 
 ## Review focus
 
