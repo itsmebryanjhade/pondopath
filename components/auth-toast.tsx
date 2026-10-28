@@ -15,7 +15,7 @@ export function AuthToast({ kind, message }: { kind: "success" | "error"; messag
   if (dismissed) return null;
   return (
     <aside role={kind === "error" ? "alert" : "status"} aria-atomic="true" className="auth-toast">
-      <Image src="/brand/pondopath-mark.png" alt="" width={28} height={28} className="mt-1 shrink-0" />
+      <Image src="/brand/pondopath-icon.png" alt="" width={28} height={28} className="mt-1 shrink-0" />
       <div className="min-w-0 flex-1 py-1">
         <p className="text-sm font-semibold">{kind === "success" ? "Welcome to PondoPath" : "PondoPath sign-in failed"}</p>
         <p className="mt-1 text-sm text-neutral-600">{message}</p>

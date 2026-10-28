@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PondoPath by SoloForge | Cash-Flow Action Planner",
   description: "Plan around customer collections and upcoming business obligations.",
-  icons: { icon: { url: "/brand/pondopath-mark.png", type: "image/png" } },
+  icons: { icon: { url: "/brand/pondopath-icon.png", type: "image/png" } },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
