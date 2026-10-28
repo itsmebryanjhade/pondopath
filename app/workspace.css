@@ -15,7 +15,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .side-brand img { width: 34px; height: 34px; }
 .workspace-root .side-brand .text-xl, .workspace-root .mobile-brand .text-xl { font-family: var(--font-workspace-heading), sans-serif; font-size: 19px; }
 .workspace-root .side-brand > div { gap: 10px; }
-.workspace-root .side-nav { gap: 0; top: 16px; margin-top: -38px; min-height: calc(100dvh - 32px); }
+.workspace-root .side-nav { gap: 0; top: 16px; margin-top: -45px; min-height: calc(100dvh - 32px); }
 .workspace-root .side-nav nav ul { display: flex; flex-direction: column; gap: 4px; }
 .workspace-root .side-nav nav li + li { margin: 0; }
 .workspace-root .side-link { min-height: 44px; text-decoration: none; }
@@ -23,7 +23,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .side-insight:hover a { gap: 8px; }
 .workspace-root .side-insight > span { font-size: 12px; }
 .workspace-root .topbar { isolation: isolate; }
-.workspace-root .nav-wrap { height: auto; min-height: 54px; }
+.workspace-root .nav-wrap { height: auto; min-height: 54px; padding-block: 8px; }
 .workspace-root .nav-actions { min-width: 0; }
 .workspace-root .nav-actions summary { cursor: pointer; list-style: none; }
 .workspace-root .nav-actions summary::-webkit-details-marker { display: none; }
