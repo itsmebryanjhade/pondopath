@@ -121,9 +121,6 @@ body {
   color: var(--primary);
   font-weight: 600;
 }
-.workspace nav a:hover {
-  text-decoration: underline;
-}
 .account-controls {
   margin-top: auto;
   display: grid;
