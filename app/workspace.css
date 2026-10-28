@@ -15,7 +15,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .side-brand img { width: 34px; height: 34px; }
 .workspace-root .side-brand .text-xl, .workspace-root .mobile-brand .text-xl { font-family: var(--font-workspace-heading), sans-serif; font-size: 19px; }
 .workspace-root .side-brand > div { gap: 10px; }
-.workspace-root .side-nav { gap: 0; }
+.workspace-root .side-nav { gap: 0; top: 16px; margin-top: -38px; min-height: calc(100dvh - 32px); }
 .workspace-root .side-nav nav ul { display: flex; flex-direction: column; gap: 4px; }
 .workspace-root .side-nav nav li + li { margin: 0; }
 .workspace-root .side-link { min-height: 44px; text-decoration: none; }
