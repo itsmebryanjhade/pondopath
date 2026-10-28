@@ -1,6 +1,6 @@
 # PondoPath main workspace design
 
-Status: rounded SaaS direction approved on 28 October 2026; visual variant selection pending. This is a design brief, not an implementation approval or a new PRD.
+Status: rounded SaaS direction and hybrid section choices approved on 28 October 2026; combined mockup ready for feedback. This is a design brief, not a new PRD. Application implementation of the combined design has not started.
 
 ## Intent
 
@@ -32,12 +32,12 @@ The selected direction evolves the provisional four-pixel panels. Existing uncom
 
 ## Cash overview composition
 
-- Labelled sidebar: Cash overview, Customer invoices, Expenses & payments. Show business context, current role, sign out, and owner-only invitation access. No invented navigation destinations or business switching.
+- Labelled sidebar: Cash overview, Customer invoices, Expenses & payments. The logo sits at the top; business context and current role sit near the bottom above owner-only invitation access and sign out. No invented navigation destinations or business switching.
 - Page heading and date/refresh strip: keep the fictional demo label, explicit financial reference date and Asia/Manila context. One primary action: Review customer invoices.
 - Three summaries: recorded available cash; expected receipts in 30 days; unpaid obligations in 30 days. Expected receipts explicitly remain planning assumptions.
 - Main row: a wide, traceable 30-day forecast alongside a narrower shortage and next-action panel. Chart uses straight dashed future segments, a visible zero line and readable axes. Retain access to the daily cash plan and source records.
 - Below: customer payments to check and upcoming obligations as aligned, readable rows with visible amounts and working record links. Color indicates meaning, not decoration.
-- Keep the existing temporary scenario and opening-cash baseline disclosures available without crowding the main decision.
+- Keep the existing temporary scenario and opening-cash baseline disclosures in one full-width white container below the lists, with two vertically stacked rows, left icons and right chevrons. Retain full-width stacked rows on desktop as well as mobile.
 
 ## Responsive behavior
 
@@ -62,6 +62,21 @@ Three independent imagegen mockups were displayed in this order:
 The preview-only images remain in the task's standard generated-images folder. References actually supplied to all three generations were the approved PP asset and a captured screenshot of the user's published `color-route-74905091.figma.site/dashboard` design. Only palette/workflow grounding was taken from the older reference; its figures and dates were replaced with the fictional walkthrough.
 
 Visual limitations to correct after selection: generated chart point placement is illustrative and does not precisely match the dated records; rebuild the chart from the existing domain forecast and never trace its coordinates from the image. The recovery belongs on 2 November. Remove the first variant's unsupported “real-time” wording, and remove business/role switcher chevrons where present. Current application data, permissions and available actions remain authoritative. Keep the approved PP source asset rather than tracing its generated appearance.
+
+## Selected hybrid
+
+The user supplied four crops to resolve the combination unambiguously:
+
+- **Attached Image 1:** compact header from the first mockup — title/subtitle left, demo/date/timezone upper right, refresh/review buttons beneath them.
+- **Attached Image 2:** body from the second mockup — dark-green available-cash card, two white summaries, wide chart with an end-balance label, amber gap/next-action panel, and the two lower record lists.
+- **Attached Image 3:** full-width stacked scenario and opening-baseline disclosure rows.
+- **Attached Image 4:** sidebar arrangement — brand/navigation above, business and Owner near the bottom, then invitation/sign-out links.
+
+The combined review image is [the combined workspace mockup](2026-10-28-workspace-combined-mockup.png), generated with built-in imagegen using all four actual user crops plus a deterministic calculated plot reference. Its original output is `exec-556759f4-0219-49da-ab2e-db0c895120c0.png`. A high-resolution PP source was not added as a sixth reference because the tool allows five inputs; the user's sidebar crop already includes the approved mark. Implementation must use the existing real PP asset.
+
+The combined header uses “A clear view of recorded cash, expected receipts, and upcoming bills.” It avoids claiming bank connectivity or automatic real-time synchronization. A separate data-plot reference checked the values 40,000 → -40,000 → 10,000 and the 2 November recovery before generation. Generated geometry remains illustrative; the implemented chart must come from the existing forecast engine. All numbers stay explicitly fictional.
+
+No application code was modified for this composition step. Existing provisional workspace edits remain untouched. Backend tests were not rerun for a static design artifact.
 
 ## Validation to perform after selection
 
