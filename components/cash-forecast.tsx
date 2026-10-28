@@ -2,7 +2,7 @@ import Link from "next/link";
 import { formatPHP } from "@/lib/domain/money";
 import type { ForecastResult } from "@/lib/domain/types";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
-import { formatPlanDate } from "@/lib/display";
+import { expenseLinks, formatPlanDate } from "@/lib/display";
 
 export function CashForecast({
   forecast,
@@ -27,6 +27,7 @@ export function CashForecast({
     (_, index) => min + index * step,
   );
   const end = forecast.days[29];
+  const expenseHrefs = expenseLinks(workspace.expenses);
   const shortageIndex = forecast.firstShortage ? forecast.days.findIndex((day) => day.date === forecast.firstShortage!.date) : -1;
   return (
     <section className="panel forecast-panel" aria-labelledby="forecast-heading">
@@ -63,6 +64,7 @@ export function CashForecast({
           </g>
         ))}
         <line x1="82" x2="588" y1={y(0)} y2={y(0)} className="chart-zero" />
+        <polygon points={`${x(0)},${y(0)} ${points} ${x(29)},${y(0)}`} className="chart-area" />
         <polyline
           points={points}
           fill="none"
@@ -125,7 +127,7 @@ export function CashForecast({
                       </Link>
                     ))}
                     {day.expenseIds.map((id) => (
-                      <Link className="source-link" href={`/expenses#expense-${id}`} key={id}>
+                      <Link className="source-link" href={expenseHrefs.get(id) ?? "/expenses"} key={id}>
                         {workspace.expenses.find((row) => row.id === id)?.label}
                       </Link>
                     ))}

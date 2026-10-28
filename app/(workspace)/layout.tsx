@@ -3,6 +3,7 @@ import WorkspaceLoading from "./loading";
 import { ProductBrand } from "@/components/product-brand";
 import { WorkspaceFrame } from "@/components/workspace-frame";
 import { getWorkspace } from "@/lib/server/workspace";
+import "../workspace.css";
 
 export default function WorkspaceLayout({ children }: { children: ReactNode }) {
   return <Suspense fallback={<main className="loading-workspace"><ProductBrand /><WorkspaceLoading /></main>}>

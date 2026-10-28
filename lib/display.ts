@@ -14,3 +14,10 @@ export function expectedReceiptLabel(invoice: ForecastInvoice | undefined, refer
   const partial = expectation.remainingCents < invoice.outstandingCents;
   return `${formatPlanDate(expectation.date)}${partial ? ` · ${formatPHP(expectation.remainingCents)} expected; remainder unplanned` : ""}`;
 }
+
+export function expenseLinks(expenses: readonly { id: string; due_date: LocalDate }[]): Map<string, string> {
+  return new Map([...expenses].sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id.localeCompare(b.id)).map((expense, index) => {
+    const page = Math.floor(index / 50) + 1;
+    return [expense.id, `/expenses${page > 1 ? `?page=${page}` : ""}#expense-${expense.id}`];
+  }));
+}

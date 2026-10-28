@@ -6,14 +6,16 @@ export function CashMovements({
   movements,
   workspace,
   selected = false,
+  kind,
 }: {
   movements: Awaited<ReturnType<typeof getCashMovements>>;
   workspace: WorkspaceSnapshot;
   selected?: boolean;
+  kind?: "receipt" | "expense_payment";
 }) {
   return (
-    <section className="panel" id="payment-history">
-      <h2>{selected ? "Retained payment record" : "Recent actual payments"}</h2>
+    <section className="panel" id={kind === "receipt" ? "receipt-history" : "payment-history"}>
+      <h2>{selected ? "Retained payment record" : kind === "receipt" ? "Verified customer receipts" : kind === "expense_payment" ? "Verified expense payments" : "Recent actual payments"}</h2>
       <p className="muted">
         {selected ? "Selected from invoice history." : "Latest 50 entries in this view."} A void
         retains the original record and reference.

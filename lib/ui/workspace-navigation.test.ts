@@ -9,7 +9,7 @@ import WorkspaceError from "@/app/(workspace)/error";
 import PageError from "@/app/error";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 
-vi.mock("next/font/google", () => ({ DM_Sans: () => ({ className: "dm-sans" }) }));
+vi.mock("next/font/google", () => ({ DM_Sans: () => ({ className: "dm-sans" }), Manrope: () => ({ variable: "manrope" }) }));
 const navigationState = vi.hoisted(() => ({ pathname: "/overview", pending: false }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), usePathname: () => navigationState.pathname }));
 vi.mock("next/link", async (importOriginal) => ({
@@ -18,12 +18,14 @@ vi.mock("next/link", async (importOriginal) => ({
 }));
 vi.mock("@/app/login/actions", () => ({ signOut: async () => {} }));
 
-const workspace = {
-  actor: { role: "owner" },
-  business: { name: "Fictional services", opening_date: "2026-10-29", is_demo: true },
-  forecastInput: { referenceDate: "2026-10-29" },
+const workspace: WorkspaceSnapshot = {
+  actor: { role: "owner", userId: "owner-1", businessId: "business-1" },
+  business: { id: "business-1", name: "Fictional services", opening_date: "2026-10-29", opening_cash_cents: 0, opening_locked_at: null, is_demo: true, ai_daily_limit: 1, created_at: "2026-10-29T00:00:00Z", currency: "PHP", demo_reference_date: "2026-10-29", revision: 1 },
+  forecastInput: { referenceDate: "2026-10-29", availableCents: 0, invoices: [], expenses: [] },
+  members: [], invoices: [], expenses: [], customers: [],
+  expectations: [], followups: [], reminders: [], automation: { stale: false, lastSuccessAt: null },
   revision: 1,
-} as WorkspaceSnapshot;
+};
 
 describe("persistent workspace navigation", () => {
   beforeEach(() => { navigationState.pathname = "/overview"; navigationState.pending = false; });
@@ -47,7 +49,7 @@ describe("persistent workspace navigation", () => {
     const html = renderToStaticMarkup(WorkspaceFrame({ workspace, children: createElement(WorkspaceLoading) }));
     expect(html.match(/<main\b/g)).toHaveLength(1);
     expect(html).toContain("<aside");
-    expect(html).toContain("Customer invoices");
+    expect(html).toContain("Invoices");
     expect(html).toContain("Invite a teammate");
     const finance = { ...workspace, actor: { ...workspace.actor, role: "finance" as const } };
     const financeHtml = renderToStaticMarkup(WorkspaceFrame({ workspace: finance, children: "Current page" }));
@@ -64,15 +66,23 @@ describe("persistent workspace navigation", () => {
     expect(renderToStaticMarkup(createElement(WorkspaceNavigation))).not.toContain('aria-current="page"');
   });
 
+  it.each(["/cash", "/payments", "/forecast", "/followups"])("selects the dedicated %s page", (pathname) => {
+    navigationState.pathname = pathname;
+    const html = renderToStaticMarkup(createElement(WorkspaceNavigation));
+    const selected = html.match(/<a[^>]*aria-current="page"[^>]*>/g);
+    expect(selected).toHaveLength(1);
+    expect(selected![0]).toContain(`href="${pathname}"`);
+  });
+
   it("announces pending navigation and clears the feedback when it settles", () => {
     navigationState.pending = true;
     const html = renderToStaticMarkup(createElement(WorkspaceNavigation));
     expect(html).toContain('data-pending="true"');
-    expect(html).toContain("Opening Customer invoices…");
+    expect(html).toContain("Opening Invoices…");
     navigationState.pending = false;
     const settled = renderToStaticMarkup(createElement(WorkspaceNavigation));
     expect(settled).not.toContain('data-pending="true"');
-    expect(settled).not.toContain("Opening Customer invoices…");
+    expect(settled).not.toContain("Opening Invoices…");
   });
 
   it("retries a failed server load with fresh records through both error boundaries", () => {

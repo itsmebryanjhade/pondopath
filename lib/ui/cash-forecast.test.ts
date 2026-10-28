@@ -9,10 +9,10 @@ import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 function render() {
   const input = delayedCase();
   input.referenceDate = "2026-10-29";
-  // This read-only chart uses only record identities/labels from the snapshot.
+  // The chart uses identities, labels and due dates for traceable source links.
   const workspace = {
     invoices: [{ id: input.invoices[0].id, number: "DEMO-001" }],
-    expenses: input.expenses.map((expense, index) => ({ id: expense.id, label: ["Payroll", "Supplier bill", "Rent"][index] })),
+    expenses: input.expenses.map((expense, index) => ({ id: expense.id, due_date: expense.dueDate, label: ["Payroll", "Supplier bill", "Rent"][index] })),
   } as WorkspaceSnapshot;
   const forecast = calculateForecast(input);
   return { html: renderToStaticMarkup(createElement(CashForecast, { forecast, workspace })), forecast, input };

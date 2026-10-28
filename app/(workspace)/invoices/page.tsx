@@ -4,6 +4,7 @@ import WorkspaceLoading from "../loading";
 import { getWorkspace } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
 import { WorkspaceShell } from "@/components/workspace-shell";
+import { WorkspacePageHeading } from "@/components/workspace-page-heading";
 import { CustomerForm, InvoiceForm } from "@/components/record-forms";
 import {
   collectionFilters,
@@ -60,18 +61,7 @@ async function InvoicesContent({ searchParams }: InvoicePageProps) {
     .sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id.localeCompare(b.id))
     .slice((page - 1) * 50, page * 50);
   return (
-    <WorkspaceShell workspace={workspace}>
-      <div className="page-heading">
-        <div>
-          <h1>Customer invoices</h1>
-          <p className="muted">
-            Keep the original due date, expected receipt and verified payment distinct.
-          </p>
-        </div>
-        <a className="button" href="#new-invoice">
-          Add an invoice
-        </a>
-      </div>
+    <WorkspaceShell workspace={workspace} header={<WorkspacePageHeading workspace={workspace} title="Customer invoices" description="Keep original due dates, expected receipts and verified payments distinct." actions={<Link className="button" href="#new-invoice">Add an invoice</Link>} />}>
       <section className="panel">
         <div className="section-heading">
           <h2>

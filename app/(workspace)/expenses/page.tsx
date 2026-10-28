@@ -4,6 +4,7 @@ import WorkspaceLoading from "../loading";
 import { getCashMovements, getWorkspace } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
 import { WorkspaceShell } from "@/components/workspace-shell";
+import { WorkspacePageHeading } from "@/components/workspace-page-heading";
 import { ExpenseForm } from "@/components/record-forms";
 import { PaymentForm } from "@/components/payment-form";
 import { CashMovements } from "@/components/cash-movements";
@@ -30,18 +31,7 @@ async function ExpensesContent({ searchParams }: ExpensePageProps) {
     .slice((page - 1) * 50, page * 50);
   const movements = await getCashMovements("expense_payment", workspace.revision);
   return (
-    <WorkspaceShell workspace={workspace}>
-      <div className="page-heading">
-        <div>
-          <h1>Expenses & payments</h1>
-          <p className="muted">
-            Record payroll, supplier bills and other obligations, then verify actual payments.
-          </p>
-        </div>
-        <a className="button" href="#new-expense">
-          Add an expense
-        </a>
-      </div>
+    <WorkspaceShell workspace={workspace} header={<WorkspacePageHeading workspace={workspace} title="Expenses" description="Manage payroll, supplier bills and upcoming obligations, then verify outgoing payments." actions={<Link className="button" href="#new-expense">Add an expense</Link>} />}>
       <section className="panel">
         <div className="section-heading">
           <h2>

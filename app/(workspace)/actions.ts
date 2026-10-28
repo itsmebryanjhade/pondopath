@@ -28,10 +28,7 @@ export async function executeWorkspaceAction(
     };
   try {
     const data = await runCommand(parsed.data);
-    revalidatePath("/overview");
-    revalidatePath("/invoices");
-    revalidatePath("/expenses");
-    revalidatePath("/invoices/[id]", "page");
+    revalidatePath("/(workspace)", "layout");
     return { ok: true, data };
   } catch (error) {
     unstable_rethrow(error);
