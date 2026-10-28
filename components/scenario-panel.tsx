@@ -5,6 +5,7 @@ import { compareScenario as previewExpectation } from "@/lib/domain/forecast";
 import { parseMoney } from "@/lib/domain/money";
 import { Field } from "./command-form";
 import { CashImpact } from "./cash-impact";
+import { AppIcon } from "./app-icon";
 
 export function ScenarioPanel({
   workspace,
@@ -30,7 +31,7 @@ export function ScenarioPanel({
   if (!invoices.length) return null;
   return (
     <details className="panel disclosure scenario-panel">
-      <summary>What if a customer pays later or only part of an invoice?</summary>
+      <summary><AppIcon name="help-circle" /><span>What if a customer pays later or partially?</span><AppIcon name="chevron-down" /></summary>
       <form
         ref={form}
         className="record-form"

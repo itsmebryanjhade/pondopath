@@ -1,24 +1,30 @@
 import Link from "next/link";
+import { DM_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { signOut } from "@/app/login/actions";
 import { ProductBrand } from "./product-brand";
 import { RefreshRecords } from "./refresh-records";
+import { AppIcon } from "./app-icon";
+
+const font = DM_Sans({ subsets: ["latin"], display: "swap" });
 
 const destinations = [
-  { href: "/overview", label: "Cash overview" },
-  { href: "/invoices", label: "Customer invoices" },
-  { href: "/expenses", label: "Expenses & payments" },
-];
+  { href: "/overview", label: "Cash overview", icon: "bar-chart-2" },
+  { href: "/invoices", label: "Customer invoices", icon: "file-text" },
+  { href: "/expenses", label: "Expenses & payments", icon: "credit-card" },
+] as const;
 
 export function WorkspaceShell({
   workspace,
   active,
   children,
+  header,
 }: {
   workspace: WorkspaceSnapshot;
   active: string;
   children: ReactNode;
+  header?: ReactNode;
 }) {
   const navigation = (
     <nav aria-label="Cash planning">
@@ -26,7 +32,7 @@ export function WorkspaceShell({
         {destinations.map((item) => (
           <li key={item.href}>
             <Link href={item.href} aria-current={active === item.href ? "page" : undefined}>
-              {item.label}
+              <AppIcon name={item.icon} />{item.label}
             </Link>
           </li>
         ))}
@@ -35,19 +41,18 @@ export function WorkspaceShell({
   );
   const role = workspace.actor.role === "owner" ? "Owner" : "Finance staff";
   return (
-    <div data-ui className="workspace">
+    <div data-ui className={`${font.className} workspace`}>
       <a className="skip-link" href="#workspace-main">
         Skip to cash plan
       </a>
       <aside className="workspace-sidebar">
         <ProductBrand />
-        <p className="workspace-business">{workspace.business.name}</p>
         {navigation}
         <div className="account-controls">
-          <p>{role}</p>
-          {workspace.actor.role === "owner" && <Link className="button secondary" href="/team">Invite a teammate</Link>}
+          <div className="workspace-business"><p>{workspace.business.name}</p><span>{role}</span></div>
+          {workspace.actor.role === "owner" && <Link className="account-action" href="/team"><AppIcon name="users" />Invite a teammate</Link>}
           <form action={signOut}>
-            <button className="button secondary">Sign out</button>
+            <button className="account-action"><AppIcon name="log-out" />Sign out</button>
           </form>
         </div>
       </aside>
@@ -60,19 +65,19 @@ export function WorkspaceShell({
               {workspace.business.name} · {role}
             </p>
             {navigation}
-            {workspace.actor.role === "owner" && <Link className="button secondary" href="/team">Invite a teammate</Link>}
+            {workspace.actor.role === "owner" && <Link className="account-action" href="/team"><AppIcon name="users" />Invite a teammate</Link>}
             <form action={signOut}>
-              <button className="button secondary">Sign out</button>
+              <button className="account-action"><AppIcon name="log-out" />Sign out</button>
             </form>
           </div>
         </details>
       </header>
       <main id="workspace-main" tabIndex={-1} className="workspace-main">
-        <div className="workspace-stamp">
+        {header ?? <div className="workspace-stamp">
           <div>
-            <p>
-              {workspace.business.is_demo ? "Fictional demo" : workspace.business.name} · Financial
-              date <strong>{workspace.forecastInput.referenceDate}</strong>
+            <p className="workspace-date">
+              <span className="workspace-context">{workspace.business.is_demo ? "Fictional demo" : workspace.business.name}</span>
+              Cash plan as of <strong>{workspace.forecastInput.referenceDate}</strong>
             </p>
             <p className="muted">
               Opening cutoff {workspace.business.opening_date} · Asia/Manila · Revision{" "}
@@ -80,7 +85,7 @@ export function WorkspaceShell({
             </p>
           </div>
           <RefreshRecords />
-        </div>
+        </div>}
         {children}
         <footer className="workspace-footer">
           Records loaded{" "}
@@ -89,7 +94,7 @@ export function WorkspaceShell({
             dateStyle: "medium",
             timeStyle: "short",
           })}{" "}
-          (Asia/Manila). Forecasts reflect entered records and reviewed assumptions; expected
+          (Asia/Manila) · Revision {workspace.revision} · Opening cutoff {workspace.business.opening_date}. Forecasts reflect entered records and reviewed assumptions; expected
           receipts are not available cash.
         </footer>
       </main>

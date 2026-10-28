@@ -1,6 +1,7 @@
 "use client";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { AppIcon } from "./app-icon";
 
 export function RefreshRecords() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export function RefreshRecords() {
       disabled={pending}
       onClick={() => startTransition(() => router.refresh())}
     >
+      <AppIcon name="refresh-cw" />
       {pending ? "Refreshing…" : "Refresh records"}
     </button>
   );

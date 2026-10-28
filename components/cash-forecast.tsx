@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatPHP } from "@/lib/domain/money";
 import type { ForecastResult } from "@/lib/domain/types";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
+import { formatPlanDate } from "@/lib/display";
 
 export function CashForecast({
   forecast,
@@ -25,16 +26,18 @@ export function CashForecast({
     { length: Math.round((max - min) / step) + 1 },
     (_, index) => min + index * step,
   );
+  const end = forecast.days[29];
+  const shortageIndex = forecast.firstShortage ? forecast.days.findIndex((day) => day.date === forecast.firstShortage!.date) : -1;
   return (
     <section className="panel forecast-panel" aria-labelledby="forecast-heading">
-      <div className="section-heading">
-        <h2 id="forecast-heading">30-day projected closing cash</h2>
-        <span className="muted">PHP</span>
+      <div className="forecast-top">
+        <h2 id="forecast-heading">30-day cash forecast</h2>
+        <p className="muted">{formatPlanDate(forecast.days[0].date, true)}–{formatPlanDate(end.date)} · PHP</p>
       </div>
-      <p className="muted">
-        {forecast.days[0].date} to {forecast.days[29].date}. Future amounts depend on recorded
-        expectations.
-      </p>
+      <div className={`forecast-end${end.closingCents < 0 ? " is-negative" : ""}`}>
+        <span>Projected end balance</span><strong className="num">{formatPHP(end.closingCents)}</strong><span>{formatPlanDate(end.date)}</span>
+      </div>
+      <div className="chart-scroll" tabIndex={0} role="region" aria-label="Projected closing cash chart">
       <svg
         viewBox="0 0 620 210"
         className="cash-chart"
@@ -44,7 +47,7 @@ export function CashForecast({
         <title id="forecast-chart-title">Projected closing cash over 30 days</title>
         <desc id="forecast-chart-description">
           {forecast.firstShortage
-            ? `First projected shortage ${formatPHP(forecast.firstShortage.shortfallCents)} on ${forecast.firstShortage.date}.`
+            ? `First projected shortage ${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(forecast.firstShortage.date)}.`
             : "No shortage projected from entered records."}{" "}
           The daily cash plan below provides every amount and its source records.
         </desc>
@@ -67,6 +70,11 @@ export function CashForecast({
           strokeWidth="2"
           strokeDasharray="5 4"
         />
+        {shortageIndex >= 0 && (
+          <circle cx={x(shortageIndex)} cy={y(forecast.days[shortageIndex].closingCents)} r="3.5" className="chart-shortage">
+            <title>{formatPlanDate(forecast.days[shortageIndex].date)}: {formatPHP(forecast.days[shortageIndex].closingCents)}</title>
+          </circle>
+        )}
         {[0, 7, 14, 21, 28].map((index) => (
           <text
             key={index}
@@ -74,16 +82,15 @@ export function CashForecast({
             y="199"
             textAnchor={index === 0 ? "start" : index === 28 ? "end" : "middle"}
           >
-            {forecast.days[index].date.slice(5)}
+            {formatPlanDate(forecast.days[index].date, true)}
           </text>
         ))}
       </svg>
-      <p className="muted">
-        Dashed line: calculated plan, including future assumptions. End balance:{" "}
-        <span className="num">{formatPHP(forecast.days[29].closingCents)}</span>.
-      </p>
+      </div>
+      <p className="chart-scroll-hint muted">Scroll the chart horizontally to see the whole period.</p>
+      <p className="forecast-caption muted">Dashed line: calculated plan. Expected payments are planning assumptions.</p>
       <details className="daily-plan">
-        <summary>Daily cash plan · 30 days</summary>
+        <summary>View daily cash plan</summary>
         <div className="table-scroll" tabIndex={0} role="region" aria-label="Daily cash forecast">
           <table>
             <caption className="sr-only">Daily projected cash and contributing records</caption>
@@ -105,7 +112,7 @@ export function CashForecast({
             <tbody>
               {forecast.days.map((day) => (
                 <tr key={day.date}>
-                  <th scope="row">{day.date}</th>
+                  <th scope="row">{formatPlanDate(day.date)}</th>
                   <td className="num">{formatPHP(day.expectedInCents)}</td>
                   <td className="num">{formatPHP(day.plannedOutCents)}</td>
                   <td className={`num ${day.closingCents < 0 ? "negative" : ""}`}>

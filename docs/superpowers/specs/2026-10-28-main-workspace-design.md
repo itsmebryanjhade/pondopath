@@ -1,6 +1,6 @@
 # PondoPath main workspace design
 
-Status: rounded SaaS direction and hybrid section choices approved on 28 October 2026; combined mockup ready for feedback. This is a design brief, not a new PRD. Application implementation of the combined design has not started.
+Status: combined mockup and implementation refinements approved on 28 October 2026. The user explicitly requested implementation. This is a design brief, not a new PRD.
 
 ## Intent
 
@@ -77,6 +77,10 @@ The combined review image is [the combined workspace mockup](2026-10-28-workspac
 The combined header uses “A clear view of recorded cash, expected receipts, and upcoming bills.” It avoids claiming bank connectivity or automatic real-time synchronization. A separate data-plot reference checked the values 40,000 → -40,000 → 10,000 and the 2 November recovery before generation. Generated geometry remains illustrative; the implemented chart must come from the existing forecast engine. All numbers stay explicitly fictional.
 
 No application code was modified for this composition step. Existing provisional workspace edits remain untouched. Backend tests were not rerun for a static design artifact.
+
+## Approved implementation refinements
+
+Keep one amber warning surface, with its caution note as plain secondary text. Make the immediate projected gap more prominent than a later positive end balance. Show the gap before the chart in the mobile reading order. Build chart geometry from the existing calculation, and use working native disclosures for the daily plan, scenario and baseline.
 
 ## Validation to perform after selection
 
