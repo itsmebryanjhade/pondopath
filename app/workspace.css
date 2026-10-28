@@ -81,6 +81,12 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .hero-incomplete, .hero-caution { margin-top: 14px; color: #e2f1e6; font-size: 12px; }
 .hero-incomplete a { text-decoration: underline; text-underline-offset: 3px; }
 .workspace-root .overview-page .overview-forecast { align-self: stretch; position: relative; }
+/* Fixed SVG dash lengths truncate wide plots; retain the source timing with a full-width reveal. */
+.workspace-root .overview-page .chart .line { stroke-dasharray: none; stroke-dashoffset: 0; animation-name: overview-line-reveal; }
+@keyframes overview-line-reveal {
+  from { clip-path: inset(-4px 100% -4px -4px); }
+  to { clip-path: inset(-4px); }
+}
 .workspace-root .overview-page .forecast-head { gap: 16px; }
 .workspace-root .overview-page .period-control > span { display: block; padding: 4px 8px; border-radius: 8px; background: var(--surface); color: var(--green-800); font-size: 12px; font-weight: 600; }
 .workspace-root .overview-page .chart-labels { top: 0; bottom: 28px; display: block; width: 39px; }
