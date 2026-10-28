@@ -40,7 +40,6 @@ export function CashForecast({
       </div>
       <div className="chart-scroll" tabIndex={0} role="region" aria-label="Projected closing cash chart">
       <svg
-        viewBox="0 0 620 210"
         className="cash-chart"
         role="img"
         aria-labelledby="forecast-chart-title forecast-chart-description"
@@ -52,17 +51,9 @@ export function CashForecast({
             : "No shortage projected from entered records."}{" "}
           The daily cash plan below provides every amount and its source records.
         </desc>
-        {ticks.map((tick) => (
-          <g key={tick}>
-            <line x1="82" x2="588" y1={y(tick)} y2={y(tick)} className="chart-grid" />
-            <text x="73" y={y(tick) + 4} textAnchor="end">
-              {(tick / 100).toLocaleString("en-PH", {
-                notation: Math.abs(tick) >= 100_000_000 ? "compact" : "standard",
-                maximumFractionDigits: max - min < 10_000 ? 2 : 0,
-              })}
-            </text>
-          </g>
-        ))}
+        {/* Scale the plot separately so a wider monitor does not stretch axis text. */}
+        <svg viewBox="0 0 620 210" width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true">
+        {ticks.map((tick) => <line key={tick} x1="82" x2="588" y1={y(tick)} y2={y(tick)} className="chart-grid" />)}
         <line x1="82" x2="588" y1={y(0)} y2={y(0)} className="chart-zero" />
         <polygon points={`${x(0)},${y(0)} ${points} ${x(29)},${y(0)}`} className="chart-area" />
         <polyline
@@ -71,17 +62,27 @@ export function CashForecast({
           className="chart-forecast"
           strokeWidth="2"
           strokeDasharray="5 4"
+          vectorEffect="non-scaling-stroke"
         />
+        </svg>
+        {ticks.map((tick) => (
+          <text key={tick} x={`${(73 / 620) * 100}%`} y={`${(y(tick) / 210) * 100}%`} dy="4" textAnchor="end">
+            {(tick / 100).toLocaleString("en-PH", {
+              notation: Math.abs(tick) >= 100_000_000 ? "compact" : "standard",
+              maximumFractionDigits: max - min < 10_000 ? 2 : 0,
+            })}
+          </text>
+        ))}
         {shortageIndex >= 0 && (
-          <circle cx={x(shortageIndex)} cy={y(forecast.days[shortageIndex].closingCents)} r="3.5" className="chart-shortage">
+          <circle cx={`${(x(shortageIndex) / 620) * 100}%`} cy={`${(y(forecast.days[shortageIndex].closingCents) / 210) * 100}%`} r="3.5" className="chart-shortage">
             <title>{formatPlanDate(forecast.days[shortageIndex].date)}: {formatPHP(forecast.days[shortageIndex].closingCents)}</title>
           </circle>
         )}
         {[0, 7, 14, 21, 28].map((index) => (
           <text
             key={index}
-            x={x(index)}
-            y="199"
+            x={`${(x(index) / 620) * 100}%`}
+            y={`${(199 / 210) * 100}%`}
             textAnchor={index === 0 ? "start" : index === 28 ? "end" : "middle"}
           >
             {formatPlanDate(forecast.days[index].date, true)}

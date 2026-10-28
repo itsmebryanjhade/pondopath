@@ -88,6 +88,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .overview-hero .forecast-end { display: none; }
 .workspace-root .overview-hero .forecast-top { padding-right: 125px; }
 .workspace-root .overview-hero .cash-chart { margin-top: 26px; min-width: 500px; }
+.workspace-root .cash-chart { aspect-ratio: 620 / 210; }
 .workspace-root .chart-area { fill: #45a8741f; }
 .workspace-root .overview-hero .daily-plan > summary { position: absolute; top: 20px; right: 24px; margin: 0; }
 .workspace-root .forecast-caption { font-size: 12px; }
@@ -146,6 +147,12 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .view-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
 .view-metrics dt { font-size: 13px; color: var(--muted); }
 .view-metrics dd { font-size: 26px; font-weight: 600; margin-top: 8px; overflow-wrap: anywhere; }
+@media (min-width: 1600px) {
+  .workspace-root .workspace { width: calc(100% - 48px); margin-top: -8px; }
+  .workspace-root .workspace-content { padding-top: 0; }
+  .workspace-root .overview-hero { grid-template-columns: 380px minmax(0, 1fr); }
+  .workspace-root .overview-hero .cash-chart { height: clamp(240px, 24vh, 260px); margin-top: 16px; }
+}
 @media (max-width: 1250px) {
   .dashboard-metrics > div { padding: 16px; column-gap: 8px; }
   .hero-summary { padding: 26px 24px; }
