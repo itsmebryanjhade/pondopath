@@ -60,7 +60,7 @@ async function InvoicesContent({ searchParams }: InvoicePageProps) {
     .sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id.localeCompare(b.id))
     .slice((page - 1) * 50, page * 50);
   return (
-    <WorkspaceShell workspace={workspace} active="/invoices">
+    <WorkspaceShell workspace={workspace}>
       <div className="page-heading">
         <div>
           <h1>Customer invoices</h1>

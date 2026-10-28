@@ -30,3 +30,15 @@ Preserve actual/expected cash distinctions, all source links, permissions and hi
 - Authenticated desktop/tablet/mobile, keyboard and scenario interaction checks remain pending: user chose to review the signed-in screen later. No credentials were requested again or sign-in bypass added. See [visual QA status](../reviews/cash-overview/design-qa.md).
 - Graph refresh remains unavailable because the supported executable was blocked by Windows Application Control earlier in this session. Did not retry or bypass that policy; checked the changed source/callers directly. The local map may be stale.
 - No meaningful Next.js feedback candidate arose from this implementation; no feedback submission was needed. No database integration suite, deployment or unrelated feature work was performed.
+
+## Navigation correction
+
+User reports both flashing and slow/unresponsive page switching. The sidebar currently belongs to each page, and the loading fallback replaces the whole workspace.
+
+- [x] Keep the navigation/frame in the shared layout and page-specific content inside it. Deduplicate the layout/page snapshot only within a React server render; preserve every request's membership check, business validation and live reads. Keep friendly error/not-found recovery with the new layout boundary.
+- [x] Add pathname-driven active links, built-in pending feedback and close the mobile menu on in-app navigation. Keep framework prefetching; no timers, animation dependency or cross-request financial caching.
+- [x] Verify focused rendering/state tests, lint/typecheck and production build. Authenticated browser review remains user-deferred unless an accessible signed-in preview is available. Record actual evidence and commit the correction.
+
+Navigation verification: observed two intended failing render assertions before implementation. Final focused run passed 11 tests (including six navigation/error-recovery tests), lint passed, and the final production build passed with TypeScript checks. One fresh review found two regressions, both fixed: use installed Next's `retry()` to re-fetch failed server payloads, and close the persistent mobile menu for the owner invitation link as well as the three main destinations. The retry test failed before its correction and passed afterward.
+
+The in-app browser visit to `/overview` redirected to `/login?reason=session`, confirming the sign-in gate still applies. Authenticated flash/latency, keyboard, back/forward, mobile-menu closing and visual interactions remain unverified; user previously selected self-review. No measured latency improvement is claimed. Graph refresh remains subject to the already recorded Windows policy block. No meaningful Next.js feedback candidate arose; the retry API is documented correctly in the installed guide. No database policies, financial calculations, dependencies or external services changed.

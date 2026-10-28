@@ -107,6 +107,7 @@ body {
   margin: 0;
 }
 .workspace nav a {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -122,6 +123,15 @@ body {
 }
 .workspace nav a:hover {
   text-decoration: underline;
+}
+.workspace nav a:has([data-pending="true"]) { background: #edf3ed; cursor: progress; }
+.workspace nav a:has([data-pending="true"]) > .app-icon { opacity: 0; }
+.nav-pending { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; opacity: 0; }
+.nav-pending[data-pending="true"] { opacity: 1; }
+.nav-pending[data-pending="true"] .app-icon { animation: nav-spin 1s linear infinite; }
+@keyframes nav-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .nav-pending[data-pending="true"] .app-icon { animation: none; }
 }
 .account-controls {
   margin-top: auto;
@@ -784,6 +794,8 @@ th.num,
   gap: 16px;
   margin-top: 24px;
 }
+.workspace-content-loading { min-height: 360px; }
+.workspace-content-loading > p { margin-top: 8px; color: var(--muted, #596b62); }
 .loading-bars > div {
   height: 48px;
   background: #e9e9e9;

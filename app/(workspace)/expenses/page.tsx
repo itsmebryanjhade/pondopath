@@ -30,7 +30,7 @@ async function ExpensesContent({ searchParams }: ExpensePageProps) {
     .slice((page - 1) * 50, page * 50);
   const movements = await getCashMovements("expense_payment", workspace.revision);
   return (
-    <WorkspaceShell workspace={workspace} active="/expenses">
+    <WorkspaceShell workspace={workspace}>
       <div className="page-heading">
         <div>
           <h1>Expenses & payments</h1>

@@ -50,7 +50,7 @@ async function InvoiceDetailContent({ params, searchParams }: InvoiceDetailProps
   ]);
   if (query.movement && !movements.length) notFound();
   return (
-    <WorkspaceShell workspace={workspace} active="/invoices">
+    <WorkspaceShell workspace={workspace}>
       <Link className="back-link" href="/invoices">
         ← Customer invoices
       </Link>

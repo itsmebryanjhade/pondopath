@@ -39,7 +39,7 @@ async function OverviewContent() {
   const compactMetrics = expectedReceipts < 10_000_000 && plannedExpenses < 10_000_000;
   const nextInvoice = unpaid[0];
   return (
-    <WorkspaceShell workspace={workspace} active="/overview" header={
+    <WorkspaceShell workspace={workspace} header={
       <header className="overview-header">
         <div className="overview-title">
           <h1>Cash overview</h1>

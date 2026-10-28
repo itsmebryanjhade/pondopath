@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Database } from "@/lib/database.types";
 import type { ForecastInput } from "@/lib/domain/types";
@@ -28,7 +29,8 @@ function readError(message: string): never {
   throw new Error("Workspace records could not be loaded. Please try again.");
 }
 
-export async function getWorkspace(): Promise<WorkspaceSnapshot> {
+// Share a snapshot only within this server render, never between users or requests.
+export const getWorkspace = cache(async (): Promise<WorkspaceSnapshot> => {
   const actor = await requireActor();
   const client = await createClient();
   const { data, error } = await client.rpc("workspace_snapshot");
@@ -39,7 +41,7 @@ export async function getWorkspace(): Promise<WorkspaceSnapshot> {
     readError("");
   calculateForecast(snapshot.forecastInput);
   return snapshot;
-}
+});
 
 export async function getRecordHistory(
   kind: "invoice" | "expense",

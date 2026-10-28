@@ -31,6 +31,12 @@ Code review found a hidden incomplete-data notice and unwrapped sticky table hea
 - [ ] Check empty, no-gap, negative-balance, partial/stale expectation and finance-role states.
 - [ ] Capture post-fix evidence and check the browser console before passing visual QA.
 
+## Navigation correction
+
+After the user reported flashing and unresponsive page switches, navigation moved into the persistent shared layout. Content-only loading, pathname-driven selection and built-in pending feedback were added. The mobile menu also closes when opening the owner invitation page. Error recovery now uses the installed framework's fresh-data retry API.
+
+Eleven focused tests, lint and the final production build (including TypeScript) passed after both review findings were corrected. The available preview redirected to sign-in, so authenticated navigation timing and rendered behavior still have not been verified. This does not change the blocked visual result below.
+
 final result: blocked
 
 Blocker: authenticated visual review was deferred by the user; no rendered comparison evidence is available.
