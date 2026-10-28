@@ -47,13 +47,19 @@ The source's fictional bank balances, transfer button and hard-coded historical 
 
 Verification: three focused checks passed for complete saved totals, newest-five ordering/retained voids, empty/negative balances and baseline access. Lint and production build (including TypeScript) passed. The real presentation and original opening form were checked with fictional records at 1920px, 1366px and 390px; no document overflow or browser warnings/errors. Keyboard navigation from the opening amount reaches the cutoff date. A separate read-only review reported no findings. Signed-in end-to-end behavior and database writes were not checked. Graphify refresh remains blocked by the previously recorded Windows policy; focused source inspection was used. No qualifying Next.js feedback candidate.
 
-### Slice 3.2 — Invoices (implemented; awaiting user review)
+### Slice 3.2 — Invoices (approved to proceed)
 
 Reused the source's blue SectionView palette, table-first hierarchy, metric cards, dark feature panel, bar reveal and hover styles. Retained existing collection filters, stable 50-row pagination, original due dates, partial/unplanned balances, stale expectation exclusions, follow-up/source links and both original forms. The collection chart groups the existing 30-day forecast inflows into five periods (the final period has two days); no sample financial series or new backend was imported. The table has a bounded, keyboard-scrollable region with sticky headers, and its insight card keeps its natural height.
 
 Verification: five focused tests cover partial expectations, forecast exclusions/window boundaries, seven-day original-due-date totals, filtering/pagination and first-customer setup. Final build and changed-file lint passed; full lint also passed before the last presentation edits. Fictional-data browser checks confirmed desktop/390px fit, native Overdue filtering (two matching rows with the complete outstanding total retained), source links/form fields, zero-value chart targets and keyboard table scrolling. A fresh review found low-contrast planning text; scoped colours were corrected and verified in the browser. Screenshot saved in the task's visualizations folder. Signed-in end-to-end behavior/database writes were not checked; no qualifying Next.js feedback issue. Existing Graphify policy blocker remains; no retry.
 
 Execution adjustment: the user reported this slice was too slow. Keep the next slice to direct source reuse and one final focused verification pass; avoid repeated full builds for presentation-only edits.
+
+### Slice 3.3 — Payments (implemented; awaiting user review)
+
+Merged the source's teal SectionView, asymmetric feature surface, rounded metric cards, record-row links and original hover/motion rules directly into the existing Payments page. Kept the original CashMovements/owner correction controls unchanged. Payment totals use the complete snapshot, not the limited recent-entry queries; history remains labelled latest 50 and retains void reasons. Source sample bank matches and historical payment velocity were replaced with real recording destinations. No new component layer, dependency, backend or financial rule.
+
+One focused verification pass: three tests (complete totals/destinations, finance versus owner controls/retained voids, empty histories), changed-file lint and TypeScript passed. Desktop/390px fictional-data browser checks showed no document overflow; existing correction disclosure and reason field remained available, and both history regions are keyboard focusable. No browser warnings/errors. No full production build or authenticated write rerun for this presentation-only slice. Graphify's existing policy blocker remains; no new Next.js feedback candidate.
 
 ## Review focus
 

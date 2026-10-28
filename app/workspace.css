@@ -186,6 +186,39 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 @media (max-width: 790px) {
   .workspace-root .invoices-page > .section-lower-grid { grid-template-columns: minmax(0, 1fr); }
 }
+/* Reuse the source Payments surfaces around the existing retained-entry controls. */
+.workspace-root .payments-page .section-heading { flex-wrap: wrap; gap: 16px; }
+.workspace-root .payments-page .section-primary { min-height: 44px; text-decoration: none; }
+.workspace-root .payments-page .eyebrow,
+.workspace-root .payments-page .section-metric strong,
+.workspace-root .payments-page .section-feature-copy > strong { max-width: 100%; overflow-wrap: anywhere; }
+.workspace-root .payments-page .payment-source-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 10px; border: 1px solid #ffffff24; border-radius: 9px; background: #ffffff0f; color: #e6f5eb; font-size: 12px; font-weight: 600; text-decoration: none; }
+.workspace-root .payments-page .payment-source-link:hover { gap: 9px; }
+.workspace-root .payments-page .mini-chart-head span,
+.workspace-root .payments-page .payment-note { color: var(--ink-soft); font-size: 12px; }
+.workspace-root .payments-page .payment-action-list { margin-top: 14px; }
+.workspace-root .payments-page .payment-action-list .record-row { grid-template-columns: 34px minmax(0, 1fr) 20px; padding-inline: 0; text-decoration: none; }
+.workspace-root .payments-page .payment-action-list .record-row > div span { white-space: normal; color: var(--ink-soft); }
+.workspace-root .payments-page .payment-note { margin: 14px 0 0; }
+.workspace-root .payments-page > .section-lower-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.workspace-root .payments-page .payment-history-card { max-height: 480px; overflow: auto; }
+.workspace-root .payments-page .payment-history-card > .panel { border: 0; border-radius: 0; padding: 0; margin: 0; box-shadow: none; }
+.workspace-root .payments-page .payment-history-card h2 { margin: 0; padding: 17px 19px 4px; font-size: 14px; letter-spacing: -.25px; }
+.workspace-root .payments-page .payment-history-card > .panel > p { margin: 0; padding: 0 19px 16px; color: var(--ink-soft); font-size: 12px; }
+.workspace-root .payments-page .movement-list { margin: 0; padding: 0; list-style: none; }
+.workspace-root .payments-page .movement-list > li { padding: 14px 19px; border-top: 1px solid var(--line); transition: background-color 180ms ease; }
+.workspace-root .payments-page .movement-list > li:hover { background: #fafcf9; }
+.workspace-root .payments-page .movement-list .section-heading { min-height: 0; align-items: center; padding: 0; gap: 8px; }
+.workspace-root .payments-page .movement-list .section-heading > div { min-width: 0; overflow-wrap: anywhere; }
+.workspace-root .payments-page .movement-list .section-heading > div > p { color: var(--ink-soft); font-size: 12px; }
+.workspace-root .payments-page .movement-list .num { font-weight: 600; overflow-wrap: anywhere; }
+.workspace-root .payments-page .movement-list .disclosure { margin-top: 10px; border-radius: 10px; }
+.workspace-root .payments-page .movement-list summary { min-height: 44px; align-content: center; font-size: 12px; }
+.workspace-root .payments-page > .workspace-footer { order: 4; }
+@media (max-width: 790px) {
+  .workspace-root .payments-page > .section-feature,
+  .workspace-root .payments-page > .section-lower-grid { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 540px) {
   .workspace-root .cash-page .record-row { grid-template-columns: 32px minmax(0, 1fr) 44px; gap: 8px; }
   .workspace-root .cash-page .record-amount { grid-column: 2; grid-row: auto; max-width: none; }
