@@ -24,17 +24,19 @@ function NavigationFeedback({ label }: { label: string }) {
   </>;
 }
 
-export function WorkspaceNavigation() {
+export function WorkspaceNavigation({ mobile = false, followupCount = 0 }: { mobile?: boolean; followupCount?: number }) {
   const pathname = usePathname();
   const navigation = useRef<HTMLElement>(null);
   return (
-    <nav ref={navigation} aria-label="Cash planning">
+    <nav ref={navigation} aria-label={mobile ? "Mobile cash planning" : "Cash planning"} className={mobile ? "mobile-nav" : undefined}>
       <ul>{destinations.map((item) => (
         <li key={item.href}>
           <Link href={item.href}
+            className={`${mobile ? "mobile-tab" : "side-link"}${pathname === item.href || pathname.startsWith(`${item.href}/`) ? " active" : ""}`}
             aria-current={pathname === item.href || pathname.startsWith(`${item.href}/`) ? "page" : undefined}
             onNavigate={() => navigation.current?.closest("details")?.removeAttribute("open")}>
-            <span className="side-link-icon"><DashboardIcon name={item.icon} size={17} /></span><span>{item.label}</span>
+            {!mobile && <span className="side-link-icon"><DashboardIcon name={item.icon} size={17} /></span>}<span>{item.label}</span>
+            {item.href === "/followups" && followupCount > 0 && <span className="side-count" aria-label={`${followupCount} open follow-ups`}>{followupCount}</span>}
             <NavigationFeedback label={item.label} />
           </Link>
         </li>

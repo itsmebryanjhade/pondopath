@@ -57,6 +57,23 @@ describe("persistent workspace navigation", () => {
     expect(financeHtml).toContain("Sign out");
   });
 
+  it("reuses the source shell with in-bar mobile branding and no second mobile header", () => {
+    const html = renderToStaticMarkup(WorkspaceFrame({ workspace, children: "Current page" }));
+    for (const className of ["app-shell", "side-nav", "nav-wrap", "nav-actions", "mobile-brand", "mobile-nav", "quick-button", "notification-panel", "profile-menu"]) expect(html).toContain(className);
+    expect(html).not.toContain('class="mobile-header"');
+    expect(html).toContain('aria-label="Search records"');
+    expect(html).toContain(workspace.business.name);
+  });
+
+  it("uses actual open follow-up totals and keeps mobile routes available", () => {
+    navigationState.pathname = "/followups";
+    const html = renderToStaticMarkup(createElement(WorkspaceNavigation, { mobile: true, followupCount: 2 }));
+    expect(html).toContain('aria-label="2 open follow-ups"');
+    expect(html.match(/href="\/(overview|cash|invoices|payments|expenses|forecast|followups)"/g)).toHaveLength(7);
+    expect(html).toMatch(/class="mobile-tab active"[^>]*aria-current="page"[^>]*href="\/followups"/);
+    expect(renderToStaticMarkup(createElement(WorkspaceNavigation))).not.toContain('class="side-count"');
+  });
+
   it("selects the invoice tab for detail routes without selecting unrelated prefixes", () => {
     navigationState.pathname = "/invoices/demo-id";
     const html = renderToStaticMarkup(createElement(WorkspaceNavigation));
