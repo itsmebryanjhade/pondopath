@@ -55,7 +55,7 @@ Verification: five focused tests cover partial expectations, forecast exclusions
 
 Execution adjustment: the user reported this slice was too slow. Keep the next slice to direct source reuse and one final focused verification pass; avoid repeated full builds for presentation-only edits.
 
-### Slice 3.3 — Payments (implemented; awaiting user review)
+### Slice 3.3 — Payments (approved to proceed after analytics correction)
 
 Merged the source's teal SectionView, asymmetric feature surface, rounded metric cards, record-row links and original hover/motion rules directly into the existing Payments page. Kept the original CashMovements/owner correction controls unchanged. Payment totals use the complete snapshot, not the limited recent-entry queries; history remains labelled latest 50 and retains void reasons. Source sample bank matches and historical payment velocity were replaced with real recording destinations. No new component layer, dependency, backend or financial rule.
 
@@ -64,6 +64,12 @@ One focused verification pass: three tests (complete totals/destinations, financ
 ### Payments analytics correction
 
 The user expected an analytics panel from the supplied design. Replaced the action-only feature content with the source's animated bars comparing complete verified receipt and expense-payment totals since the opening cutoff. Kept exact PHP values, accessible hover/focus labels, zero-height bars with full keyboard targets, and the real recording links. This is a category comparison, not an invented historical series. Three focused tests now cover chart totals and zero values; changed-file lint and TypeScript passed. Desktop/390px previews confirmed the 4:1 sample bar proportion, keyboard access and no document overflow or browser warnings. No posting/domain/database change or full-build/authenticated-write rerun.
+
+### Slice 3.4 — Expenses (implemented; awaiting user review)
+
+Merged the source's purple SectionView hierarchy, metric cards, records/insight layout and animated bars directly into the existing Expenses page. Analytics group the existing 30-day forecast's planned outflows into five periods, including overdue unpaid expenses due now and remaining partial balances. No fabricated categories, approval states or historical spending series. Kept original amounts/dates, IDs, 50-row pagination, existing payment/edit/new-expense forms, and retained payment history. No domain/database/action/dependency change.
+
+One focused pass: three tests cover partial/overdue/out-of-window amounts, whole-snapshot analytics across pagination and empty/zero states; changed-file lint and TypeScript passed. Desktop/390px fictional-data previews confirmed the chart, single-column phone layout, no document overflow or browser warnings, keyboard-focusable worklist and original payment fields (amount/date/reference/verification/duplicate review). No production build or signed-in write rerun. No qualifying Next.js feedback; existing Graphify policy blocker was not retried. Forecast awaits this page's user review.
 
 ## Review focus
 
