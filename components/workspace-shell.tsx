@@ -6,13 +6,15 @@ export function WorkspaceShell({
   workspace,
   children,
   header,
+  className,
 }: {
   workspace: WorkspaceSnapshot;
   children: ReactNode;
   header?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="page-enter">
+    <div className={`page-enter${className ? ` ${className}` : ""}`}>
         {header ?? <div className="workspace-stamp">
           <div>
             <p className="workspace-date">

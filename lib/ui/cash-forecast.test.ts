@@ -6,7 +6,7 @@ import { calculateForecast } from "@/lib/domain/forecast";
 import { delayedCase } from "../../tests/fixtures/business";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 
-function render() {
+function render(overview = false) {
   const input = delayedCase();
   input.referenceDate = "2026-10-29";
   // The chart uses identities, labels and due dates for traceable source links.
@@ -15,7 +15,7 @@ function render() {
     expenses: input.expenses.map((expense, index) => ({ id: expense.id, due_date: expense.dueDate, label: ["Payroll", "Supplier bill", "Rent"][index] })),
   } as WorkspaceSnapshot;
   const forecast = calculateForecast(input);
-  return { html: renderToStaticMarkup(createElement(CashForecast, { forecast, workspace })), forecast, input };
+  return { html: renderToStaticMarkup(createElement(CashForecast, { forecast, workspace, overview })), forecast, input };
 }
 
 describe("traceable cash forecast presentation", () => {
@@ -47,5 +47,21 @@ describe("traceable cash forecast presentation", () => {
     expect(html).toContain(`/invoices/${input.invoices[0].id}`);
     expect(html).toContain(`/expenses#expense-${input.expenses[0].id}`);
     expect(html).toContain('class="num negative"');
+  });
+
+  it("uses all 30 calculated days in the source overview chart, including the early gap", () => {
+    const { html, forecast } = render(true);
+    expect(html).toContain('class="forecast overview-forecast"');
+    const path = html.match(/class="line"[^>]*d="([^"]+)"/)?.[1];
+    expect(path).toBeTruthy();
+    const points = path!.trim().split(/[ML]/).filter(Boolean).map((pair) => pair.trim().split(/[ ,]+/).map(Number));
+    expect(points).toHaveLength(30);
+    expect(points.every(([x], index) => index === 0 || x > points[index - 1][0])).toBe(true);
+    expect(points[1][1]).toBeGreaterThan(points[4][1]);
+    expect(forecast.days[1].closingCents).toBe(-4_000_000);
+    expect(html).toContain('data-tooltip="30 Oct 2026 · -₱40,000.00"');
+    expect(html).toContain('data-tooltip="27 Nov 2026 · ₱10,000.00"');
+    expect(html).toContain('aria-label="Daily cash forecast"');
+    expect(html).not.toContain('60d');
   });
 });

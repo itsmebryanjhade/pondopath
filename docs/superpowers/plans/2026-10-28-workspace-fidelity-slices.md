@@ -18,9 +18,18 @@
 - [x] Activate the source's icon slides, insight hover, button/profile feedback, dropdown entry and page entry, respecting reduced motion. No animation library.
 - [x] Verify focused shell contracts, lint/typecheck, and desktop/phone presentation with fictional records if no authenticated browser is accessible. Hand off for user review.
 
-## Slice 2 — Overview analytics (awaits slice 1 approval)
+## Slice 2 — Overview analytics
 
 Port the original overview heading, dark summary/chart composition, metric cards, activity table and associated reveal/hover/chart interactions. Populate from existing forecast/record calculations. Retain original due dates, partial-payment states and accessible daily sources. Do not invent historical series or trends.
+
+- [x] Reuse the original hero/forecast, summary-card, entity/status table and filter markup and existing source CSS. Replace old overview compatibility overrides; retain the approved shell and wide-screen spacing.
+- [x] Connect the chart's gradient, line reveal, risk guide and hover/focus points to all 30 actual calculated daily balances. Retain the daily source table and the standalone Forecast presentation.
+- [x] Verify actual amounts, early shortages, partial/unplanned receipts, source links and filtering; check desktop/mobile rendering and obtain one focused review.
+- [ ] User review before slice 3.
+
+Slice 2 result: the provided source structure now drives the overview panel, animated chart, lift/shadow cards, initials, status pills and active filter states. Fake sample balances, bank connections, growth percentages and 60/90-day options were not imported. Card source controls and table actions lead to existing record workflows. The source colour/animation rules are reused; only real-data semantics, readable labels, keyboard access and the previously approved responsive layout are adapted.
+
+Verification: the new overview-chart regression failed before implementation; final 22 focused tests, lint and production build passed. Browser fixture checks confirmed the actual shortage tooltip, its source 1.2× focus/hover scale, source card -2px lift/shadow, 3 expense rows, 1 attention row and all 30 daily-source rows. Checked 1920px, 1366px and 390px widths without document overflow. Phone markers align with the plot; the 24px canvas gutter and 16px sidebar gap remain. No browser warnings/errors. One fresh review caught a shared standalone-chart fill removed during CSS cleanup; restored it and retained shared text-link styling. No dependency or financial/authentication change. Signed-in end-to-end and backend writes remain untested; previews use fictional records. No qualifying Next.js feedback candidate; Graphify refresh remains blocked by the recorded Windows policy.
 
 ## Slice 3 — Workspace pages and forms (awaits slice 2 approval)
 
