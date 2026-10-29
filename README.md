@@ -12,7 +12,9 @@ Owners can choose **Invite a teammate** in the workspace, enter the recipient's 
 
 Set `APP_URL` to the application's trusted origin (for example `http://localhost:3000` in development, an HTTPS origin in production). Invitation links use this address, so a localhost link works only on the same computer. Supabase Auth controls invitation expiry and one-use verification. The token is kept in the URL fragment, consumed only by the password setup POST, and never written to application logs. If setup is interrupted after verification, the same authenticated invited session can retry setting its password. Missing workspace membership still blocks access.
 
-Tasks 1–7 provide a persistent cash overview and 30-day forecast, customer/invoice/expense forms, verified payments, owner-only corrections, reviewed receipt commitments, assigned follow-ups, collection filters, invoice history and unsaved what-if previews. Reminder review, AI assistance and automation remain in Tasks 8–12.
+The core includes persistent financial records, verified partial payments, a 30-day forecast, reviewed commitments/reminders, follow-ups, history, what-if previews, English/Tagalog/Taglish AI assistance and the Node-RED missed-commitment flow. Some reminder UI checks and final MVP verification remain outstanding; full verification and demo/deployment preparation are paused at the owner's request.
+
+[PRD revision 1.1](docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md) and implementation tasks 13–21 now track the approved next-action worklist, shared Review Inbox, CSV/XLSX import, planned n8n spreadsheet/file connections, receipt-image extraction, supported inbound business messages and a conditional named accounting/POS adapter. These additions are not implemented. Deliver one reviewed slice at a time; keep manual operation and human confirmation before financial changes.
 
 ## Local setup
 

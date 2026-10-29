@@ -2,23 +2,25 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver SoloForge's one-business MVP that connects verified payments, customer commitments, a correct 30-day forecast, reviewed reminders, and a working missed-commitment automation.
+**Goal:** Deliver SoloForge's one-business cash-flow workflow, then add the approved source-intake expansion in small reviewed slices while preserving financial correctness and manual operation.
 
-**Architecture:** Keep the existing Next.js application. Use pure TypeScript for the forecast, Supabase Auth and PostgreSQL for durable records and atomic business commands, and authenticated Server Actions for application writes. Add one bounded OpenRouter adapter and one Node-RED flow after the manual workflow works. Financial rules and authorization remain independent of AI.
+**Architecture:** Keep the existing Next.js application, pure TypeScript forecast, Supabase Auth/PostgreSQL and authorized atomic commands. Extend the current text assistant/Node-RED workflow with a shared Review Inbox and planned n8n source adapters. Stage imported data before human confirmation; financial rules and authorization remain independent of AI and external connectors.
 
-**Tech Stack:** Next.js 16.4.3, React 19.3.0, TypeScript 5, Tailwind CSS 4, Supabase, OpenRouter, Node-RED, Vercel. Proposed development additions: Vitest, Zod, the two Supabase JavaScript packages, and the Supabase CLI. Use Node.js 24.x consistently for development and deployment.
+**Tech Stack:** Next.js 16.4.3, React 19.3.0, TypeScript 5, Tailwind CSS 4, Supabase, OpenRouter, Node-RED, Vercel; n8n is approved but not installed for the new intake work. Use Node.js 24.x for the application; verify the chosen n8n release's runtime separately before installation.
 
-**Spec:** [SoloForge PRD v1.0](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). Read both alongside this plan.
+**Spec:** [SoloForge PRD — current revision 1.1](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). The original spec filename is retained for link stability.
 
-**Status:** Native execution started October 27, 2026, Asia/Manila. Tasks 1–7 are implemented and verified in the dedicated development environment. Tasks 8–12 remain pending. Actual verification results are recorded in the execution ledger; examples below define required outcomes.
+**Status — 29 October:** Tasks 1–7 and 9–10 are implemented with development evidence. Task 8's reminder implementation is present; its unchecked clipboard-denied/separate-session UI step remains outstanding. Task 11 is partially verified and paused at Bryan's request; Task 12 is pending. Tasks 13–21 below record the approved, unimplemented intake/worklist expansion. Prior verification results must be reused rather than rerun as routine setup. Current UI conflict/build changes and acceptance artifacts remain uncommitted; preserve them separately from this documentation update.
+
+**Execution instruction:** Keep native execution, one small slice at a time, with Bryan reviewing it before proceeding. Do not resume full Task 11 checks, demo preparation or deployment unless he requests it. The suggested feature order is 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21; provider-specific work can be blocked independently by access. Resume 11/12 only after the release scope is settled and Bryan resumes those phases. This update changes documents only.
 
 **Identity update (October 27; implemented):** PondoPath is the product name; SoloForge remains the builder brand. Added the approved P-shaped path logo, consistent sign-in/workspace branding and accessible login notifications. Verified one-time success feedback, repeatable error feedback and browser behavior. This does not advance Task 4 or change financial/authorization rules.
 
 ## Global Constraints
 
 - One preconfigured business, Philippine pesos only, Asia/Manila dates, and English interface text.
-- An owner login and a finance/admin login in that same business. No public registration, business onboarding, invitation flow, or multi-business switching.
-- Manual forms and fictional seed records first. CSV/XLSX import is deferred.
+- An owner login and finance/admin users in the same business, including the subsequently approved owner invitation flow. No public business registration or multi-business switching.
+- Manual forms and fictional records stay supported. Reviewed CSV/XLSX, selected source connections, inbound messages and receipt images are approved expansion tasks 14–21, with individual acceptance gates.
 - Reminders are reviewed copyable drafts for manual sending through the business's existing channel.
 - One temporary what-if scenario at a time, changing one invoice's expected receipt date and/or amount.
 - Store and calculate PHP amounts in integer centavos. The per-record limit is PHP 999,999,999.99; aggregate calculations must also remain within safe integer bounds.
@@ -314,6 +316,8 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 ### Task 11: Verify the complete MVP against the PRD
 
+**Paused — 29 October:** core verification already produced 249 passing unit tests, 103 passing database tests, successful lint/typecheck and a Webpack production build, real HTTP/session checks, and loaded-page observations at 480/768/1440px. A dirty-draft refresh bug was fixed with a failing-then-passing test and live two-tab confirmation. Exact 390px remains unchecked because the preview clamped to 480px; Node-RED dependency findings remain unresolved. This is partial evidence, not completion of every checkbox. Do not restart these broad checks while working on individual feature slices. Later include AC-14–AC-20 only for actually delivered expansion features.
+
 **Dependencies:** Tasks 1–10. **Files:** `tests/integration/acceptance.test.ts`, relevant owning tests, `docs/demo-and-verification.md`; change product files only for a demonstrated failure.
 
 **Interfaces:** Reuses all prior contracts. Add `verifyAcceptanceFixture()` in the acceptance test file rather than another application abstraction. Test fixtures are isolated from the interactive demo business.
@@ -326,6 +330,8 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 ### Task 12: Prepare the reproducible demo and hosting handoff
 
+**Pending/on hold:** Bryan explicitly said the app is not ready for demo or deployment. No hosting, rehearsal or provider purchase is authorized by the new feature roadmap.
+
 **Dependencies:** Task 11. **Files:** `README.md`, `.env.example`, `docs/demo-and-verification.md`, demo seed script, optional small deployment configuration changes justified by verification.
 
 **Interfaces:** `node --env-file=.env.local scripts/seed-demo.mjs` provisions fictional users/data only when an explicit demo marker and intended environment are present; it refuses live/unknown environments. User-provided passwords come from uncommitted environment values, never committed defaults. Seed reset is not a public HTTP feature.
@@ -335,6 +341,91 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 - [ ] Prepare the demonstration: original due-date assumption → customer promises Monday → Friday gap → owner-reviewed reminder → verified partial payment → smaller gap → missed-commitment check. Identify what remains uncertain and what the owner still decides. Use independent seed cases or explicitly advance the fictional date; never show a future actual receipt as current real cash.
 - [ ] Prepare the Vercel configuration and an exact deployment procedure. Run it only after the intended destination/environment is authorized. Then smoke-test login, saved payment, forecast, approved-copy flow, real AI request and Node-RED connectivity against the deployed build. If authorization or a provider is unavailable, retain the working local demo and label the unverified remote component; do not call it deployed.
 - [ ] Commit `docs: prepare the verified demo and deployment handoff`. Before any real-data pilot, separately verify backup/export/restore, continuous automation hosting, data handling and operating costs. These are launch gates, not completed hackathon capabilities.
+
+## 4A. Approved remaining feature slices — PRD revision 1.1
+
+These tasks extend the existing implementation; their numbers preserve completed task history. All are pending. Each ends with targeted tests and a reviewable local result. Do not run the whole MVP suite for each adapter or imply unavailable providers are working. Expand a provider's implementation brief only when that slice is selected and its actual access is known.
+
+### Task 13: Make the next action clear
+
+**Dependencies:** existing collections/reminders. **Files:** planned `lib/ui/next-actions.ts`, `components/next-actions.tsx`, Overview/Follow-ups callers and owning UI tests. **Contract:** `buildNextActions(workspace: WorkspaceSnapshot): NextAction[]`; each result has a stable ID, kind, source link, assignee or explicit unassigned state, due date or missing-date state, and owner-review requirement. No AI ranking or financial writes.
+
+- [ ] Add focused cases for a missed promise, missing expectation, pending owner reminder review, completed action and empty workspace. Confirm the relevant assertions fail before adding the derived worklist.
+- [ ] Reuse existing record/task states and source links. Show why the item appears and open the existing action; do not create a second task system or mark an action complete just because its link was opened.
+- [ ] Verify keyboard access and one narrow layout in the real app; run the owning tests/typecheck. Add pending intake reviews after Task 14 exists. Review this slice with Bryan before proceeding.
+
+### Task 14: Build the shared Review Inbox
+
+**Dependencies:** core commands/auth. **Files:** CLI-generated intake migration, planned `lib/domain/intake.ts`, `lib/server/intake.ts`, `app/(workspace)/imports/page.tsx`, review controls, source-scoped intake endpoint and owning domain/integration tests. **Contracts:** `stageIntake(sourceId, externalId, sourceVersion, payload)` validates a source-scoped candidate; `apply_intake(p_item_id, p_review_version, p_expected_revision)` applies a reviewed item through the existing authorized command rules. Define strict record-kind payload schemas before adding an external adapter.
+
+- [ ] Test two businesses, finance/owner boundaries, duplicate source events, conflicting matches, changed source versions and stale review. Include a failure after command execution: retry must return the same applied result and never repost cash.
+- [ ] Add private source metadata and staged items with provenance, original content/reference, proposed/current values, match/review status, reviewer and retained outcome. Expose safe metadata only; do not expose connector credentials or private source files to other businesses.
+- [ ] Make application of a proposal and its intake outcome transactional/idempotent. Reuse core validation, role checks, correction/approval invalidation and audit; integrations must not write financial tables with administrative credentials.
+- [ ] Allow edit, reject, clarify and explicit confirm. Support partially applied batches with per-item results. A deleted/missing external row is not a delete/void instruction. Include intake reviews in Task 13's worklist.
+- [ ] Run targeted money/access/retry tests and one review-confirm browser journey. No real provider or paid AI is required for this foundation.
+
+### Task 15: Add manual CSV import
+
+**Dependencies:** 14. **Files:** planned `lib/domain/imports.ts`, upload/mapping/preview components, inbox callers and import tests. **Contract:** a bounded CSV parser produces normalized candidate rows and row-specific errors for Task 14; it never saves financial records directly.
+
+- [ ] Use a fictional file with new, changed, unchanged, invalid and duplicate rows. Cover quoted commas, UTF-8/BOM, missing IDs/headers, invalid dates/precision/currency, unsafe totals and a repeat upload/apply.
+- [ ] Select a small maintained parser only if existing/native facilities do not correctly cover CSV quoting. Check its license first. Set and document file/row limits within the existing workspace capacity; reject oversized input before expensive processing.
+- [ ] Add explicit column mapping and record kind. Compare by stable IDs and programmed values; hold ambiguous matches. Show current/proposed values, row errors and per-item outcomes. Missing rows never remove records.
+- [ ] Verify a CSV-to-reviewed-invoice journey, repeat import without duplication, and manual forms still working. Run focused import/inbox tests; review with Bryan before XLSX.
+
+### Task 16: Add Excel XLSX import
+
+**Dependencies:** 15. **Files:** XLSX parser adapter, sheet selection/preview, same normalized candidate contract and owning tests. Reuse the CSV mapping, comparison, Review Inbox and application path.
+
+- [ ] Test a workbook with multiple sheets, date cells, leading-zero IDs, empty rows, formulas/cached values, duplicate records, invalid/corrupt content and compressed-file resource limits.
+- [ ] Evaluate a maintained, compatible XLSX reader and its license before installation. Support XLSX only initially; do not execute macros, formulas or external workbook links. Unsupported/unevaluated values remain errors for review.
+- [ ] Verify the same fictional dataset gives equivalent candidates through CSV and XLSX, with repeat-apply protection across formats. Run only the owning parser/intake checks and one browser upload review.
+
+### Task 17: Connect one Google Sheet through n8n
+
+**Dependencies:** 14–16. **Files:** separate n8n workflow/runtime documentation, source-scoped authenticated intake endpoint, selected-sheet configuration/status UI and connector tests. n8n sends candidates into Task 14; it receives no direct financial-table access.
+
+- [ ] Before installation, verify the exact n8n version/runtime/license, local hosting needs, Google account/API access and requested scopes. Record whether Node-RED keeps its distinct missed-commitment job or a separately tested migration is selected; never run both schedulers for the same job.
+- [ ] Test stable row IDs, new/changed/unchanged rows, row reordering, missing rows, overlapping CSV imports, duplicate callbacks, rate limits, revoked access and interrupted/resumed reads. Keep change comparison deterministic and independent of AI.
+- [ ] Implement scheduled reads of one explicitly selected sheet. Prefer read-only scopes and compare snapshots locally; do not silently request edit access for the native update trigger. Persist successful checkpoints only after candidates are safely staged.
+- [ ] Keep tokens in the approved credential store, redact workflow exports/logs, and show last success/error/pending state. Source authorization/disconnection is owner-only; finance can review permitted items.
+- [ ] Demonstrate one real authorized read and one edited row reaching the Review Inbox, with no source write-back, no financial write before review and no duplicate on retry. If access is unavailable, label the connector blocked; a fixture is not integration proof.
+
+### Task 18: Connect selected files in Google Drive and OneDrive
+
+**Dependencies:** 15–17. **Files:** provider-specific n8n read workflows/source configuration and tests; shared CSV/XLSX normalization remains unchanged.
+
+- [ ] Deliver Google Drive and OneDrive as separate sub-slices, reviewing each before the next. Verify each provider's actual authorization/scopes and a specific selected CSV/XLSX file; no whole-drive scan by default.
+- [ ] Reuse source/file/version IDs and the shared parser. Cover same-name files, renamed/moved/replaced/deleted files, replay, expired access and files already imported through another route. Hold conflicts instead of silently choosing an authoritative source.
+- [ ] Show a real changed file producing a reviewed update without source write-back. A missing or inaccessible file must surface an error/status and preserve saved business records. Test and report each provider independently.
+
+### Task 19: Add receipt-image upload and extraction
+
+**Dependencies:** 14. **Files:** private upload/storage policies, planned image-intake validation/provider adapter, side-by-side source/draft review, mobile capture control and owning tests/evaluation evidence.
+
+- [ ] Select the initial supported document types and fields: visible party, reference, amount, currency and date. Staff selects the intended invoice/expense and movement direction; an image alone cannot establish either payment authenticity or bank settlement.
+- [ ] Test actual file type/size, unauthorized reads, malformed/non-image content, unreadable/cropped/rotated images, ambiguous date/amount, foreign currency, prompt injection in document text and possible duplicate uploads/references. Preserve manual entry and do not publish private image URLs.
+- [ ] Evaluate an image-capable provider using fictional documents before selecting it; keep existing text assistance independent. Use strict extraction schemas, source evidence, null for missing/unreadable fields, bounded usage/timeouts and a clear retry/manual path. Never use an AI confidence score as proof of correctness.
+- [ ] Upload/drag/drop one image, optionally capture one on a supported mobile browser, show the original beside editable proposed fields, then use normal verified-payment confirmation. No draft becomes posted cash before staff checks it; owner-only correction and opening/date/allocation rules still apply.
+- [ ] Evaluate at least ten clear and five difficult fictional images: target correct critical fields on at least nine of ten clear images, all difficult/ambiguous cases held for review, and zero automatic financial writes. Record field accuracy, errors, correction effort, latency and supplied cost; failed targets block claiming the scanner ready.
+
+### Task 20: Add supported business-message intake
+
+**Dependencies:** 14 and 17. **Files:** selected provider event adapter/workflow, sender/invoice matching, source-linked reply review and owning replay/signature/extraction tests. Reuse the existing English/Tagalog/Taglish extraction and review forms.
+
+- [ ] Check access separately for Messenger Page, approved Viber bot/business and business SMS. Record the actual business account/number, inbound API availability, permissions/review, commercial terms and retention limits. Choose the first accessible channel; the others remain individually pending or blocked.
+- [ ] Implement one channel per reviewed sub-slice. Validate provider event authenticity and replay identifiers; do not expose internal intake tokens. Request only the required source data. Personal Messenger inboxes, unrestricted Viber groups and existing handset SMS histories are not assumed accessible.
+- [ ] Test unknown/ambiguous senders and invoices, supplier updates, conflicting dates/amounts, “paid” claims, duplicate/out-of-order/edited events and prompt injection. Stage a proposal or verification task; never let an incoming message post cash, approve a reminder or defer an obligation.
+- [ ] Show the original message, matched record and proposed change. A customer promise requires confirmation; a supplier payment claim requires normal verification. Preserve contractual due dates and existing data when the meaning is uncertain.
+- [ ] Prove one real inbound event per advertised channel through n8n into the Review Inbox, then explicit confirmation and forecast refresh. Keep manual paste available when the channel/provider is unavailable. Record unimplemented or blocked channels honestly.
+
+### Task 21: Add a named accounting/POS source only when identified
+
+**Dependencies:** 14–18; a named product and actual authorized API/export access. **Files:** product-specific mapping/adapter and fixtures, connector documentation and owning tests. Existing supported CSV/XLSX exports should use Tasks 15–16 without another adapter.
+
+- [ ] Identify the actual product, export/API schema, stable invoice/payment IDs, access rights and costs with the target business. Until that is known, keep this task pending rather than invent a universal connector.
+- [ ] For an available API, define one read-only source adapter into the existing inbox. Test pagination, record corrections, overlap with imported files, historical cutoff, already-recorded payments, revocation and replay before applying financial changes.
+- [ ] Demonstrate an authorized real read and reviewed update, or document that the product's supported export is the delivery path. Claim support only for the product/version/path actually verified.
 
 ## 5. Coverage and delivery sequence
 
@@ -350,10 +441,18 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 | FR-09 / AC-08–09 | 9, 11 | Mocked failures plus recorded real-model evaluation |
 | FR-10 / AC-11 | 10–11 | Imported working Node-RED flow, repeat/catch-up and stale-state evidence |
 | FR-11 / AC-12 | 3–5, 7–8, 11 | Transactional audit, correction history and stale-confirmation handling |
+| FR-12 / AC-14, AC-20 | 14–21 | Shared review, provenance, authorization, stale confirmation and idempotent application |
+| FR-13 / AC-15 | 15–16 | CSV/XLSX mapping, row validation, conflicting/duplicate and repeated import |
+| FR-14 / AC-16, AC-20 | 17–18, 21 | Actual authorized source reads, checkpoints, expired access and recovery |
+| FR-15 / AC-17 | 20 | Provider-specific real inbound events and reviewed customer/supplier updates |
+| FR-16 / AC-18 | 19 | Private image intake, source-linked extraction and measured clear/difficult-image evaluation |
+| FR-17 / AC-19 | 13–14 | Source-linked next actions, owner/staff roles and actual completion states |
 | AC-13 / usability | 6–11 | Production-build browser checks, keyboard/mobile/error states |
 | Sustainability/practicality/feasibility | 9–12 | Measured operation/model usage, supported manual fallback, reproducible setup and clearly unverified commercial claims |
 
 Target checkpoints use consecutive calendar days within the remaining two-week budget, not fourteen working days. Record the organizer's actual deadline before execution and shorten this schedule if fewer days remain; preparing a plan does not restart the user's countdown. These are targets, not a guarantee of completion:
+
+The original calendar below does not include the new expansion. Do not imply all new connectors fit the original schedule. Select and deliver one small slice at a time, reuse the evidence already obtained, and resume full verification/demo work only on Bryan's instruction.
 
 | Calendar build days | Target |
 | --- | --- |
@@ -364,7 +463,7 @@ Target checkpoints use consecutive calendar days within the remaining two-week b
 | 11–12 | Task 11: integrated correctness/security/usability checks |
 | 13–14 | Task 12: fixes, rehearsal, evidence and authorized hosting handoff |
 
-Tasks are dependent: execute in order; individual tests within a task can run concurrently where isolated. If access is unavailable, continue independent pure-domain work and report the precise integration gate. If the first complete financial slice slips beyond day 5, surface the schedule risk before adding polish. Do not silently drop a PRD P0 feature, replace real integrations with unlabeled mocks, or remove money/security tests to fit the deadline. Scope changes belong in an explicit PRD decision.
+Follow the explicit revised execution order and dependencies above; task numbering preserves history and does not override the pause on 11/12. Individual checks can run concurrently where isolated. If provider access is unavailable, record the blocked connector and choose independent work with Bryan. Do not silently drop a PRD P0 feature, replace real integrations with unlabeled mocks, or remove money/security tests to fit the deadline. Scope changes belong in an explicit PRD decision.
 
 ## 6. Verification references and plan self-review
 

@@ -6,9 +6,10 @@
 | Project | SoloForge |
 | Product name | PondoPath by SoloForge |
 | Product owner and solo builder | Bryan |
-| Version | 1.0 |
+| Version | 1.1 |
 | Date | October 26, 2026 — Asia/Manila |
-| Status | Approved MVP scope; implementation in progress |
+| Updated | October 29, 2026 — Asia/Manila |
+| Status | Core implemented with verification outstanding; approved intake expansion remains unimplemented |
 | Primary challenge category | Finance & Operations |
 | Supporting categories | Business Process Automation; Data Analytics and Reporting |
 | Delivery target | One-business hackathon MVP within approximately two weeks |
@@ -18,6 +19,8 @@
 The AI-Assisted Cash-Flow Action Planner helps small Philippine B2B businesses see possible cash shortages early and coordinate a response. It connects customer collections, a 30-day cash forecast, and planning around upcoming payroll, supplier bills, and other expenses.
 
 Finance/admin staff maintain records, follow up on invoices, and confirm customer payment commitments. Owners review cash gaps and proposed communications. A focused AI assistant explains calculated results and prepares proposed updates or reminder drafts. Programmed rules, not the language model, calculate balances and control record changes.
+
+Version 1.1 adds an approved, phased intake expansion: manual CSV/Excel import, read access to selected spreadsheet/file sources through n8n, supported business messaging channels, and receipt-image extraction. All sources feed a shared Review Inbox before financial changes are confirmed. A clearer next-action worklist connects existing collection tasks and pending reviews. These additions are requirements for remaining work, not claims of working integrations. The canonical filename is retained so existing links continue to work.
 
 The intended value is less repeated updating, clearer follow-ups, and more time to prepare. The software cannot create missing funds, compel payment, or guarantee that an owner can resolve every shortage.
 
@@ -52,6 +55,7 @@ Customers are external contacts, not application users in this MVP. There is no 
 3. Keep actual cash, outstanding invoices, and expected receipts consistent after partial or full payments.
 4. Support owner-reviewed scenarios while preserving real records and contractual due dates.
 5. Make AI and low-code automation useful parts of a functioning workflow while preserving manual operation.
+6. Reduce repeated encoding by receiving supported files, source updates, messages, and images through one traceable review process. Measure preparation, review and correction effort as well as entry time.
 
 ### What is supported and what remains a hypothesis
 
@@ -69,22 +73,23 @@ The selected product combines **A: collections**, **B: cash forecasting**, and *
 | --- | --- | --- |
 | Focused application using the existing Next.js project | Direct control over the selected task and a small interface | Requires our own tested money and workflow rules. Selected through the agreed product direction and technology stack. |
 | Extend an existing invoicing application such as InvoiceShelf | Provides broad invoicing functionality | Different application stack, licensing obligations, version choices, and extra surface area. Retain as a reference rather than the MVP foundation. |
-| Connect to an external invoicing/payment platform | Could reduce future data entry | Adds provider access, synchronization, operational and availability dependencies. Defer until a buyer's existing system and need are known. |
+| Read supported external records | Could reduce repeated data entry | Approved for phased expansion through selected sources; each connector requires provider access, clear record matching and its own acceptance evidence. Payment execution remains excluded. |
 
 The following details are **author-selected MVP defaults**, made to keep the document concrete. They were not separately specified by Bryan and remain reviewable:
 
 - One preconfigured business, Philippine pesos only, Asia/Manila dates, and English interface text.
-- An owner login and a finance/admin login in that same business; an owner may perform both jobs. No public registration, business onboarding, invitation flow, or multi-business switching.
-- Manual forms and fictional seed records first. CSV/XLSX import is deferred rather than required for the first demo.
-- Reminders are reviewed copyable drafts for manual sending through the business's existing channel. No email, SMS, or messaging-provider integration is included.
+- An owner login and a finance/admin login in that same business; an owner may perform both jobs. The subsequently approved private invitation flow can add finance teammates to that business. Public business registration and multi-business switching remain excluded.
+- Manual forms and fictional seed records remain available. Version 1.1 schedules reviewed CSV/XLSX imports and selected source connections as separate remaining slices.
+- Reminders remain reviewed copyable drafts for manual sending through the business's existing channel. Approved message-intake connections are inbound only; automatic external sending remains excluded.
 - One temporary what-if scenario at a time, changing one invoice's expected receipt date and/or amount.
 - One Node-RED workflow for missed-commitment follow-ups. Node-RED runs separately from the Vercel application and may run on the demo laptop.
+- n8n is approved as the planned integration layer for supported external intake. Decide its operating/licensing setup and relationship to Node-RED before installation or migration. Keep one scheduler responsible for each job; do not silently replace the working follow-up flow or run duplicate schedulers.
 
 These choices define a hackathon MVP, not a production-ready accounting service.
 
 ## 6. MVP requirements
 
-All items in this section are P0: required for the intended complete demonstration. The exclusions in section 7 must not be added at their expense.
+FR-01–FR-11 remain the P0 core. FR-12–FR-17 are approved expansion work, delivered in independently reviewed slices. A connector is supported only after its real access and acceptance checks pass. Adding this roadmap does not promise that every provider will be available within the original hackathon window or authorize dropping core correctness.
 
 | ID | Requirement | Required behavior |
 | --- | --- | --- |
@@ -99,6 +104,12 @@ All items in this section are P0: required for the intended complete demonstrati
 | FR-09 | Focused AI assistant | Explain a selected forecast result using retrieved data; extract proposed details from replies and help draft reminders. Show supporting records, require confirmation, and offer manual fallback. |
 | FR-10 | Low-code follow-up flow | Use a real Node-RED flow to find passed customer commitments without enough recorded receipts, create one follow-up task per unresolved commitment, and report run success/failure. |
 | FR-11 | History and recovery | Preserve who changed a record, what changed, when, and why where a correction is involved. Failed saves leave existing records consistent and present a clear retry option. |
+| FR-12 | Shared Review Inbox | Stage source data and proposed changes with provenance, record match, current/proposed values, review state and relevant cash impact. Staff can edit, reject or confirm a permitted proposal; unresolved matches and stale proposals cannot post. |
+| FR-13 | Reviewed file import | Accept CSV and XLSX through separate delivered slices. Preview mappings and row errors; distinguish new, changed, unchanged and possible duplicate records. Preserve manual forms and route accepted rows through normal authorized commands. |
+| FR-14 | Connected records through n8n | Read a selected Google Sheet first, then selected CSV/XLSX files in Google Drive/OneDrive. Detect changes using stable source IDs and programmed comparisons, with cursors, retry protection and visible connection/run status. Add a named accounting/POS adapter only after its actual API/export access is established. |
+| FR-15 | Supported message intake | Receive authorized business-channel events, preserve the original message and propose a customer commitment, supplier-record review or payment-verification task. Evaluate Messenger Page, approved Viber bot/business, and business SMS channels separately. No claim of general personal-inbox/group-history access or automatic obligation deferral. |
+| FR-16 | Reviewed receipt-image extraction | Provide drag-and-drop/file upload and a supported mobile capture option. Display the original image beside editable extracted fields. Unreadable/missing fields require correction or clarification; staff verifies actual movement before posting a receipt/payment. |
+| FR-17 | Clear next-action worklist | Show actionable existing follow-ups and pending intake/reminder reviews with source record, responsible person, due date or an explicit missing-date state, and a link to the relevant action. Use programmed state/date rules; completion follows the actual saved workflow. |
 
 ### Permissions
 
@@ -114,16 +125,44 @@ States are Draft, Awaiting review, Approved, and optionally Reported sent manual
 
 Copying does not mean delivery. "Reported sent manually" records the staff member, channel, and time they entered; it is not verified delivery or customer acknowledgement. The product never displays a provider-confirmed sent/delivered status in this MVP. A normal text template remains available when AI fails.
 
+### Version 1.1 intake and connection boundaries
+
+The common flow is **receive → validate and match → stage a proposal → human review → authorized command → refresh balances/forecast/history**. Manual forms remain a direct, AI-independent path. n8n moves supported information; it does not calculate authoritative balances or hold a Supabase service-role key to write financial tables directly.
+
+- Owners configure/disconnect sources. Finance staff review and apply only operations their existing role permits. Grant the narrowest read access the provider supports and disclose the actual requested scope. Source authorization is not permission to scan every file or conversation.
+- Start with one selected sheet/file/channel per connector. Preserve the provider/source ID, row/message/file identifier, source version or fingerprint, observed time and reviewer. Match by stable external/invoice IDs within the business, not row position or a customer's name alone.
+- Programmed parsing, comparison, money/date validation and duplicate detection handle structured rows. AI may suggest column mappings or interpret unstructured content; neither its confidence score nor its prose authorizes a write.
+- Stage new/changed records automatically; unchanged/replayed input must not create additional entries. Ambiguous matches, conflicting sources, already-posted records and possible duplicate receipts require explicit review. Missing/deleted source rows never silently delete or void PondoPath records.
+- Show an existing value beside a proposed change. Recheck membership, permission and current revision when applying it. Preserve a stale draft and require renewed review. Retrying an applied item returns its result instead of creating another receipt. A batch shows per-item outcomes and can retry failed items without reposting successful ones.
+- Imported promises are expectations. Imported or photographed claims of payment remain unverified proposals until staff checks the movement through the business's normal process. Preserve opening-cutoff, future-date, allocation, locked-baseline, owner-only correction and reminder-approval rules.
+- Source state and PondoPath state are separate: reading an external file does not update that file, and an approved local correction is not written back. Show last successful read, last error, pending items and disconnected/expired-access states. Existing local records remain usable during outages.
+- Messages/images and connection credentials require private storage, business-scoped access and a defined retention/deletion policy before real-data use. Keep content and credentials out of public URLs, exported workflows and logs. Use fictional data for trials; send only the selected content to an evaluated AI provider.
+- Receipt extraction must preserve source evidence, leave unsupported fields empty, flag suspicious/duplicate input and offer manual entry when extraction fails. Check allowed type, size and image readability before processing. A clearer camera image reduces errors but cannot guarantee zero hallucinations or establish authenticity/bank settlement.
+
+### Connection feasibility and delivery scope
+
+| Source | Planned path | Access/acceptance boundary |
+| --- | --- | --- |
+| CSV/XLSX upload | Manual import into the Review Inbox | Mapping, row validation, stable IDs and repeat-import protection must work before applying changes. Legacy XLS, macro execution and arbitrary formats are not included. |
+| Google Sheets | Scheduled read of a selected sheet through n8n | Use read-only access where feasible. The current native row-update trigger may require edit access; prefer scheduled read-and-compare rather than silently broadening permissions. |
+| Google Drive / OneDrive | Read a selected CSV/XLSX file | These are file hosts, not invoice schemas. Reuse the file parser; verify each provider's scopes, file/version events and revocation behavior separately. |
+| Messenger | Eligible conversations with an authorized Facebook Page | Requires the actual Page/app permissions and applicable review/access. Personal employee inboxes are not a promised source. |
+| Viber | Approved bot/business-channel events | Verify commercial onboarding, account capabilities and costs. Do not promise reading existing personal/company group histories through a bot token. |
+| SMS | Incoming messages through a supported business number/provider | Confirm inbound capability and regional availability. Existing handset SMS histories are not automatically accessible. |
+| Accounting/POS | A named product's supported API or CSV/XLSX export | No universal accounting connector is claimed. Record the product, sample schema, IDs, access and terms before implementation; supported exports use the existing import route. |
+
+Capability references checked on 29 October 2026: [n8n file extraction](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.extractfromfile/), [n8n Google Sheets trigger implementation](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Sheet/GoogleSheetsTrigger.node.ts), [Google read-access scopes](https://developers.google.com/workspace/sheets/api/scopes), [Viber bot API](https://developers.viber.com/docs/api/rest-bot-api/), [Meta Messenger API collection](https://www.postman.com/meta/messenger-platform-api/collection/iyp204x/messenger-platform-api), [Twilio incoming messages](https://www.twilio.com/docs/usage/webhooks/messaging-webhooks), and [OpenRouter image inputs](https://openrouter.ai/blog/tutorials/send-image-to-llm/). These describe possible interfaces, not completed account authorization or integration tests. Record unavailable access honestly; do not present simulated connectors as connected.
+
 ## 7. Explicitly out of scope
 
 - Full accounting, tax calculation, payroll processing, inventory, bank reconciliation, lending, credit scoring, or payment execution.
 - New compliant invoice issuance, EN 16931/Factur-X/ZUGFeRD exports, or claims of BIR certification. The MVP records existing invoices.
-- Customer portals, direct inbox/chat synchronization, OCR/PDF extraction, and automatic external messages.
+- Customer portals, unrestricted personal inbox/group-chat synchronization, PDF/OCR document pipelines beyond the approved receipt-image slice, and automatic external messages. Supported inbound business channels and receipt-image extraction are now covered by FR-15–FR-16.
 - Multi-business SaaS onboarding, subscriptions, currencies, or exchange rates.
 - Automatic allocation of one receipt across several invoices, overpayment credit, refunds, and recurring installment-plan generation.
 - Predicting payment probability from customer history, training models, or running a local LLM.
 - A general-purpose financial chatbot, autonomous record changes, or AI deciding which obligations to defer.
-- Bulk file import, persistent scenario libraries, configurable approval chains, and additional workflow platforms.
+- Persistent scenario libraries and configurable approval chains. Reviewed CSV/XLSX import and n8n intake are now included in the approved expansion; additional automation platforms beyond Node-RED/n8n remain excluded.
 
 ## 8. Financial definitions and calculation rules
 
@@ -210,6 +249,8 @@ AI has no direct database access and no tools to post payments, change records, 
 
 Use one OpenRouter model and provider endpoint that supports the required structured output/tool behavior. The exact model remains a builder selection after a small accuracy, latency, and cost check. Do not automatically route sensitive records to an unreviewed alternative provider. Send only the fields needed for the selected task, keep keys on the server, and disclose that AI processing is external. Use fictional data for the hackathon.
 
+The current text assistant is separately evaluated. FR-16 adds a planned image-extraction task that requires an image-capable model/provider and its own document evaluation before use. Do not assume that the text evaluation establishes receipt accuracy. Structured spreadsheet comparisons remain programmed operations, and image/message proposals still use the same human review and financial command boundaries. Keep image usage bounded and record its contribution to the business's AI allowance and costs.
+
 Apply a configurable daily request limit (initial demo default: 50 requests per business) and a 20-second request timeout. Display a recoverable failure and retain the user's draft; do not retry indefinitely. Manual entry, templates, calculations, and saved records work when AI is unavailable. Provider logging/privacy settings and the spending limit must be checked before using real business data.
 
 Evaluate at least ten unambiguous sample replies and five ambiguous/adversarial replies, covering English, Tagalog, and Taglish and reporting outcomes by language. Proposed release targets are at least nine of ten correct unambiguous field extractions, explicit review for every ambiguous case, and zero unauthorized writes or invented values accepted automatically. Record model/provider, outcomes, and failures. These are acceptance targets, not results already achieved.
@@ -221,11 +262,12 @@ Evaluate at least ten unambiguous sample replies and five ambiguous/adversarial 
 | Application | Next.js, React, TypeScript | Interface, authenticated server operations, business rules, and AI orchestration |
 | Styling | Tailwind CSS | Responsive, accessible visual interface |
 | Data and authentication | Supabase PostgreSQL and Auth | Durable records, relationships, sign-in, and access policies |
-| AI provider access | OpenRouter | One evaluated hosted model for the two bounded assistant tasks |
+| AI provider access | OpenRouter | Evaluated text assistance; image extraction requires a separately evaluated image-capable model/provider in the approved expansion |
 | Low-code automation | Node-RED | Scheduled missed-commitment detection and follow-up-task workflow |
+| Source integration — planned | n8n | Read supported external sources and submit scoped intake items to the application Review Inbox; no direct financial writes |
 | Web deployment | Vercel | Host the Next.js application and its server operations |
 
-The repository already declares Next.js 16.4.3, React 19.3.0, TypeScript 5, and Tailwind 4. Their presence is not proof that the full application works. Supabase, OpenRouter, Node-RED, and deployment are not yet configured. Read the installed Next.js guides and current integration documentation before implementation. No separate Python service, vector database, or additional workflow platform is required.
+The repository uses Next.js 16.4.3, React 19.3.0, TypeScript 5, and Tailwind 4. Core Supabase/OpenRouter/Node-RED development integrations have recorded evidence; full verification and deployment remain outstanding. n8n and the version 1.1 intake connectors are not installed or verified. Read current integration guidance before each connector slice. No separate Python service or vector database is selected.
 
 ### Node-RED flow
 
@@ -269,6 +311,13 @@ Use the [sample business walkthrough](../../c01-sample-business-walkthrough.md) 
 | AC-11 | A real Node-RED run creates the expected follow-up, repeated runs do not duplicate it, and downtime/catch-up status is visible. Manual checking uses the same duplicate-safe server rules. |
 | AC-12 | Voiding the 20,000 sample receipt restores 40,000 available cash and 50,000 outstanding, marks the current expectation for review, and exposes the correction follow-up without duplicate tasks. It does not revive an old promise. Post-payment total/date corrections enforce owner permission and cannot reduce a total below valid payments. Reload/re-login preserves data; conflicting simultaneous updates require renewed review. |
 | AC-13 | The main task can be completed with keyboard navigation; labels, focus, error states, and small-screen access are usable. |
+| AC-14 | Receiving a file, message or image creates a business-scoped review item without changing posted cash. Original source and current/proposed values are visible. Other-business, stale and unauthorized applications fail. |
+| AC-15 | Import a file with one new invoice, one changed invoice, one unchanged row and one invalid row. Show each outcome; repeat import/apply creates no duplicate. Conflicting matches, overlapping sources and missing/deleted rows never silently overwrite or delete records. |
+| AC-16 | A real n8n read of a selected source stages its supported changes. An unchanged/repeated run adds nothing; failed/expired access is visible and recoverable. Source deletion does not delete financial records. No source write-back or privileged financial-table access occurs. Each advertised provider has its own real evidence. |
+| AC-17 | A real supported messaging event produces a source-linked proposed commitment or verification task. Replayed events are duplicate-safe; uncertain sender/invoice/date/amount and “paid” claims remain held for review. Unsupported channels are labelled unavailable. |
+| AC-18 | A clear receipt image produces editable fields with source evidence; blurred/cropped/missing/conflicting fields require clarification. A re-upload/possible duplicate is flagged, and no actual payment posts before staff verification. Evaluate representative clear and difficult fictional images; publish observed field accuracy and correction effort rather than claiming perfect OCR. |
+| AC-19 | The next-action worklist routes missed commitments, missing expectations, pending owner reminder reviews and pending intake reviews to the appropriate source action. Permissions and completion state match the underlying records, including empty and stale states. |
+| AC-20 | With AI or n8n unavailable, manual records, calculations, reminder templates and existing history still work. Resuming a connector retries safely; partially applied batches never reapply successful financial writes. |
 
 The demo must show a working application, real saved changes, one real low-code workflow, and a real AI request using fictional data. Recorded or simulated sending must be explicitly labelled. Successful arithmetic or a staged video alone is not completion of the integrated MVP.
 
@@ -289,11 +338,11 @@ A short walkthrough with a reachable finance/admin worker is useful but a broad 
 
 | Characteristic | Product rationale | What must be checked |
 | --- | --- | --- |
-| Sustainability | Collection updates and upcoming obligations are recurring tasks. A bounded AI role, reusable records, and one automation flow aim to keep operation and support manageable. | Measure ongoing usefulness, support effort, hosting/runtime expense, and AI usage. A subscription or service price is a later hypothesis. Environmental benefits are not claimed. |
+| Sustainability | Collection updates and upcoming obligations are recurring tasks. Bounded AI, reusable records, shared intake and explicitly owned automation jobs aim to keep operation and support manageable. | Measure ongoing usefulness, support effort, hosting/runtime expense, connector maintenance and AI usage. A subscription or service price is a later hypothesis. Environmental benefits are not claimed. |
 | Practicality | Uses familiar invoices, payment updates, and expense records. Staff review changes; owners retain decisions. Manual entry and existing communication channels avoid requiring customer adoption. | Observe real entry/update habits, preparation time, missing data, and whether a spreadsheet already handles the task adequately. Repeated data maintenance may outweigh the benefit. |
-| Feasibility | One business, one currency, one scenario, one low-code flow, and two AI tasks use the selected existing technologies. | Prove the connected workflow, monetary correctness, access control, model behavior, and deployment early. Alpha application code or numerous copied features are not shortcuts to reliability. |
+| Feasibility | Retain one business, one currency and one scenario. Deliver imports, source adapters and image extraction separately through shared review, using programmed rules for structured data. | Prove each supported connection and extraction path, monetary correctness, access control, runtime costs and manual fallback. Provider availability and approvals can block a connector independently; expansion is not assumed to fit the original schedule. |
 
-Operating-cost review must include application hosting, database/auth limits, Node-RED runtime, AI tokens/requests, and maintenance/support time. Use measured usage and current provider terms; no promise of a permanently free service is made. Paid services or plan upgrades require a separate budget decision before purchase.
+Operating-cost review must include application hosting, database/auth and private-file storage, Node-RED/n8n hosting and licensing, connector onboarding/messaging fees, AI text/image usage, and maintenance/support time. Measure intake, review and correction effort. Check n8n's applicable terms before embedding customer-owned connections in a paid product. Use current provider terms; no promise of permanently free operation is made. Paid services or plan upgrades require a separate budget decision before purchase.
 
 ## 16. Hackathon rubric alignment
 
@@ -309,6 +358,8 @@ These weights are provided by the user. The slide repeats impact wording under U
 ## 17. Delivery targets, risks, and remaining decisions
 
 These are product checkpoints for the two-week target, not a code-level implementation plan.
+
+**29 October scope update:** the original dates below remain historical targets, not a restarted countdown. Tasks 13–21 in the implementation plan now track the approved expansion. Deliver one reviewed slice at a time; account approvals and provider feasibility can block individual connectors. Task 11 is partially verified and paused at Bryan's request, and Task 12/demo/deployment work must wait until he resumes it. This document update authorizes no installation, connection, purchase, real-data intake or deployment.
 
 | Period | Demonstrable checkpoint |
 | --- | --- |
@@ -332,6 +383,11 @@ These are product checkpoints for the two-week target, not a code-level implemen
 Before implementation, review the author-selected defaults in section 5. The builder may choose the exact schema, components, test tooling, and a supported OpenRouter model within these requirements. Exact AI provider/model settings and service-plan costs must be recorded before enabling the integrations. A real-data pilot additionally requires operational ownership, data handling, backup/restore, and deployment readiness review. These open deployment details do not change the selected business problem.
 
 The final product review should confirm this scope before a separate implementation plan is written. Preparing this PRD does not approve deployment, service purchases, live customer messaging, or collection of real customer financial data.
+
+### Version history
+
+- **1.0 — 26 October 2026:** core collections, forecast, reviewed reminders, AI assistance and Node-RED MVP.
+- **1.1 — 29 October 2026:** records the previously approved private invitations and the newly approved shared intake, CSV/XLSX, n8n source connections, supported business messages, receipt images and clearer next actions. Retains human financial review, manual fallback, one-business scope and explicit provider gates. Expansion delivery is pending.
 
 ## 18. Supporting documents
 
