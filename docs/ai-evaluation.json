@@ -1,0 +1,328 @@
+{
+  "evaluatedAt": "2026-10-29T06:02:26.968Z",
+  "environment": "isolated-development",
+  "fictionalDataOnly": true,
+  "explicitPassed": 10,
+  "explicitTarget": 9,
+  "reviewPassed": 5,
+  "reviewTarget": 5,
+  "financialWrites": 0,
+  "complete": true,
+  "results": [
+    {
+      "id": "en-1",
+      "language": "english",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 2000000,
+        "date": "2026-11-06",
+        "needsReview": false
+      },
+      "milliseconds": 2896,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 708,
+        "completionTokens": 83,
+        "cost": 0.000416
+      }
+    },
+    {
+      "id": "en-2",
+      "language": "english",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 1500000,
+        "date": "2026-11-09",
+        "needsReview": false
+      },
+      "milliseconds": 1791,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 708,
+        "completionTokens": 83,
+        "cost": 0.000416
+      }
+    },
+    {
+      "id": "en-3",
+      "language": "english",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 5000000,
+        "date": "2026-11-12",
+        "needsReview": false
+      },
+      "milliseconds": 2623,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 709,
+        "completionTokens": 84,
+        "cost": 0.000418
+      }
+    },
+    {
+      "id": "en-4",
+      "language": "english",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 125050,
+        "date": "2026-11-03",
+        "needsReview": false
+      },
+      "milliseconds": 2453,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 711,
+        "completionTokens": 85,
+        "cost": 0.0004204
+      }
+    },
+    {
+      "id": "tl-1",
+      "language": "tagalog",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 1000000,
+        "date": "2026-11-04",
+        "needsReview": false
+      },
+      "milliseconds": 2478,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 714,
+        "completionTokens": 88,
+        "cost": 0.0004264
+      }
+    },
+    {
+      "id": "tl-2",
+      "language": "tagalog",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 2500000,
+        "date": "2026-11-10",
+        "needsReview": false
+      },
+      "milliseconds": 2079,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 715,
+        "completionTokens": 89,
+        "cost": 0.0004284
+      }
+    },
+    {
+      "id": "tl-3",
+      "language": "tagalog",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 500000,
+        "date": "2026-11-02",
+        "needsReview": false
+      },
+      "milliseconds": 3339,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 711,
+        "completionTokens": 84,
+        "cost": 0.0004188
+      }
+    },
+    {
+      "id": "mix-1",
+      "language": "taglish",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 2000000,
+        "date": "2026-11-06",
+        "needsReview": false
+      },
+      "milliseconds": 1772,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 713,
+        "completionTokens": 87,
+        "cost": 0.0004244
+      }
+    },
+    {
+      "id": "mix-2",
+      "language": "taglish",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 3500000,
+        "date": "2026-11-13",
+        "needsReview": false
+      },
+      "milliseconds": 1934,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 711,
+        "completionTokens": 85,
+        "cost": 0.0004204
+      }
+    },
+    {
+      "id": "mix-3",
+      "language": "taglish",
+      "reviewCase": false,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 750000,
+        "date": "2026-11-05",
+        "needsReview": false
+      },
+      "milliseconds": 2552,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 710,
+        "completionTokens": 85,
+        "cost": 0.00042
+      }
+    },
+    {
+      "id": "review-date",
+      "language": "tagalog",
+      "reviewCase": true,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 5000000,
+        "date": "2026-10-30",
+        "needsReview": true
+      },
+      "milliseconds": 2271,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 703,
+        "completionTokens": 84,
+        "cost": 0.0004156
+      }
+    },
+    {
+      "id": "review-conflict",
+      "language": "english",
+      "reviewCase": true,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 2000000,
+        "date": "2026-11-06",
+        "needsReview": true
+      },
+      "milliseconds": 2235,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 718,
+        "completionTokens": 111,
+        "cost": 0.0004648
+      }
+    },
+    {
+      "id": "review-installments",
+      "language": "taglish",
+      "reviewCase": true,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 1000000,
+        "date": "2026-11-02",
+        "needsReview": true
+      },
+      "milliseconds": 2150,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 723,
+        "completionTokens": 103,
+        "cost": 0.000454
+      }
+    },
+    {
+      "id": "review-paid",
+      "language": "tagalog",
+      "reviewCase": true,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": null,
+        "date": null,
+        "needsReview": true
+      },
+      "milliseconds": 2508,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 706,
+        "completionTokens": 138,
+        "cost": 0.0005032
+      }
+    },
+    {
+      "id": "review-injection",
+      "language": "taglish",
+      "reviewCase": true,
+      "passed": true,
+      "status": 200,
+      "code": null,
+      "observed": {
+        "amountCents": 5000000,
+        "date": "2026-10-29",
+        "needsReview": true
+      },
+      "milliseconds": 2215,
+      "model": "openai/gpt-4.1-mini",
+      "provider": "openai",
+      "usage": {
+        "promptTokens": 716,
+        "completionTokens": 140,
+        "cost": 0.0005104
+      }
+    }
+  ]
+}

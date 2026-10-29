@@ -203,8 +203,8 @@ The interface needs three main work areas: cash overview/forecast, customer invo
 
 The assistant has two bounded capabilities:
 
-1. **Explain a selected result.** Read the relevant forecast output, invoice, expense, and assumptions through authorized application functions. Present a plain-English explanation with links to those records. The application displays calculated amounts directly; the model must not supply authoritative arithmetic.
-2. **Prepare a proposed update or draft.** Interpret a pasted customer reply into invoice reference, amount, date, and stated reason where present. Show the source alongside the proposal, then use the normal validated confirmation path. Draft reminders using the current outstanding amount and selected tone.
+1. **Explain a selected result.** Read the relevant forecast output, invoice, expense, and assumptions through authorized application functions. Present a clear explanation in English, Tagalog, or Taglish, matching the user's language unless they request another, with links to those records. The application displays calculated amounts directly; the model must not supply authoritative arithmetic.
+2. **Prepare a proposed update or draft.** Interpret a pasted customer reply in English, Tagalog, or Taglish into invoice reference, amount, date, and stated reason where present. Show the original source alongside the proposal, then use the normal validated confirmation path. Draft reminders using the current outstanding amount, selected tone, and requested language. Language detection must not invent missing dates or amounts; a statement such as "bayad na" still requires payment verification.
 
 AI has no direct database access and no tools to post payments, change records, approve actions, or send messages. Its response is untrusted input: validate fields and re-fetch current records before confirmation. Customer text is data, never an instruction to override application rules. Ambiguous dates, conflicting amounts, or uncertain invoice matches require clarification. A customer statement such as "we paid yesterday" creates a verification prompt, not a cash receipt.
 
@@ -212,7 +212,7 @@ Use one OpenRouter model and provider endpoint that supports the required struct
 
 Apply a configurable daily request limit (initial demo default: 50 requests per business) and a 20-second request timeout. Display a recoverable failure and retain the user's draft; do not retry indefinitely. Manual entry, templates, calculations, and saved records work when AI is unavailable. Provider logging/privacy settings and the spending limit must be checked before using real business data.
 
-Evaluate at least ten unambiguous sample replies and five ambiguous/adversarial replies. Proposed release targets are at least nine of ten correct unambiguous field extractions, explicit review for every ambiguous case, and zero unauthorized writes or invented values accepted automatically. Record model/provider, outcomes, and failures. These are acceptance targets, not results already achieved.
+Evaluate at least ten unambiguous sample replies and five ambiguous/adversarial replies, covering English, Tagalog, and Taglish and reporting outcomes by language. Proposed release targets are at least nine of ten correct unambiguous field extractions, explicit review for every ambiguous case, and zero unauthorized writes or invented values accepted automatically. Record model/provider, outcomes, and failures. These are acceptance targets, not results already achieved.
 
 ## 11. Technology and low-code workflow
 

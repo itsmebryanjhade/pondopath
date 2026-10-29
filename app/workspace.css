@@ -1,4 +1,38 @@
 @import "./figma-dashboard.css";
+.workspace-root .assistant-launch { position: fixed; right: 24px; bottom: 24px; z-index: 55; display: inline-flex; align-items: center; gap: 9px; min-height: 46px; padding: 12px 18px; border: 1px solid #ffffff30; border-radius: 14px; background: var(--primary); color: #fff; font-weight: 700; box-shadow: 0 6px 20px #173e2d26; cursor: pointer; transition: background-color 180ms ease; }
+.workspace-root .assistant-launch:hover { background: #23543e; }
+.workspace-root .assistant-dialog { position: fixed; inset: 0; width: min(560px, calc(100vw - 32px)); height: calc(100dvh - 32px); max-height: none; max-width: none; margin: 16px 16px 16px auto; padding: 0; border: 1px solid var(--edge); border-radius: 22px; background: #fff; color: var(--ink); box-shadow: 0 16px 60px #17211b26; }
+.workspace-root .assistant-dialog[open] { display: flex; flex-direction: column; }
+.workspace-root .assistant-dialog::backdrop { background: #17211b38; }
+.workspace-root .assistant-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 22px 24px 18px; border-bottom: 1px solid var(--edge); }
+.workspace-root .assistant-heading h2 { margin: 6px 0 3px; font-family: var(--font-workspace-heading), sans-serif; font-size: 21px; font-weight: 700; }
+.workspace-root .assistant-heading p { margin: 0; color: var(--muted); font-size: 12px; }
+.workspace-root .assistant-content { overflow-y: auto; min-height: 0; padding: 20px 24px; }
+.workspace-root .assistant-content > * + * { margin-top: 18px; }
+.workspace-root .assistant-form fieldset { display: grid; gap: 16px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.workspace-root .assistant-form fieldset:disabled { opacity: .7; }
+.workspace-root .assistant-form .form-grid { margin: 0; }
+.workspace-root .assistant-form .section-primary, .workspace-root .assistant-answer .section-primary { width: fit-content; min-height: 44px; padding: 11px 16px; border: 0; border-radius: 10px; background: var(--primary); color: white; font-weight: 700; cursor: pointer; }
+.workspace-root .assistant-notice { padding: 12px 14px; border: 1px solid var(--edge); border-radius: 12px; background: #f1f7f2; font-size: 12px; line-height: 1.6; }
+.workspace-root .assistant-answer { padding: 16px; border: 1px solid var(--edge); border-radius: 14px; background: #fafcf9; }
+.workspace-root .assistant-answer > * + * { margin-top: 14px; }
+.workspace-root .assistant-answer-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.workspace-root .assistant-response { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+.workspace-root .assistant-answer nav { display: flex; flex-wrap: wrap; gap: 10px; }
+.workspace-root .assistant-answer blockquote { padding: 12px; border-left: 3px solid var(--data-accent); background: #fff; }
+.workspace-root .assistant-answer .text-link { min-height: 32px; display: inline-flex; align-items: center; }
+.workspace-root .assistant-extracted { display: grid; gap: 10px; }
+.workspace-root .assistant-extracted dt { color: var(--muted); font-size: 12px; }
+.workspace-root .assistant-extracted dd { margin: 2px 0 0; font-weight: 700; }
+.workspace-root .assistant-answer .panel { padding: 12px; border: 1px solid var(--edge); border-radius: 12px; background: #fff; }
+.workspace-root .assistant-answer .form-grid { grid-template-columns: minmax(0, 1fr); }
+.workspace-root .assistant-answer ul { padding-left: 20px; }
+@media (max-width: 600px) {
+  .workspace-root .assistant-launch { right: 16px; bottom: 16px; }
+  .workspace-root .assistant-dialog { width: 100%; height: 100dvh; margin: 0; border-radius: 0; }
+  .workspace-root .assistant-heading { padding: 18px; }
+  .workspace-root .assistant-content { padding: 18px; }
+}
 /* Compatibility rules for PondoPath's saved forms, tables and real forecast. */
 .workspace-root, .workspace-root .workspace {
   --ground: #f5f6f2; --surface: #fff; --ink: #17211b; --muted: #526057;

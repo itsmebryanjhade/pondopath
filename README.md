@@ -59,3 +59,11 @@ Money uses safe integer centavos; promises are distinct from actual cash. Foreca
 Confirming a receipt plan supersedes its previous expectation, retains the full customer message, and reuses or creates an assigned follow-up. Only one remaining amount/date is selected; a partial promise leaves the remainder visibly unplanned. Past dates need review and contribute no future cash. Completing an unpaid invoice's follow-up requires an outcome and a next assigned action/date. Invoice history retains the changes and links to actual payment records, including voids. What-if previews make no writes and clear when discarded or when leaving the page.
 
 The production build downloads Google Fonts and needs network access. Next.js Cache Components and Partial Prefetching remain enabled. Node-RED will run separately from Next.js/Vercel. Read [AGENTS.md](AGENTS.md) before implementation.
+
+## AI assistant
+
+The workspace's **AI assistant** button opens English/Tagalog/Taglish explanations, customer-reply proposals and editable reminder drafts. It uses the server-only OpenRouter settings in `.env.example`, with `APP_URL` matching the browser origin (locally, `http://localhost:3000`). The current evaluated configuration is GPT-4.1 mini through the `openai` provider, with fallback routing disabled. Only fictional demo businesses are enabled; real-data use requires a separate privacy/operations review.
+
+The assistant never posts payments, changes records, approves reminders or sends messages. Reviewed proposals use the existing receipt-plan/draft forms. A shared database allowance limits requests to the business's configured daily cap (at most 50), including failed attempts; upstream requests time out after 20 seconds. Manual forms and templates remain available without an AI key.
+
+Run `node --env-file=.env.test.local scripts/evaluate-ai.mjs` against the local running app for the guarded live evaluation. It creates and removes its own isolated fictional fixture, signs in through normal session cookies, checks that no financial records changed, and writes `docs/ai-evaluation.json`. It makes real requests using the server's configured provider and may incur provider charges. See [AI verification](docs/ai-verification.md) for scope, results and limitations.

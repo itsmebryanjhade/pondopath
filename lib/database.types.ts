@@ -696,6 +696,10 @@ export type Database = {
     }
     Functions: {
       get_approved_reminder_text: { Args: { p_id: string }; Returns: Json }
+      reserve_ai_request: {
+        Args: { p_expected_revision: number; p_model: string; p_provider: string }
+        Returns: number
+      }
       workspace_command: { Args: { p_command: Json }; Returns: Json }
       workspace_history: {
         Args: { p_cursor?: string; p_id: string; p_kind: string }

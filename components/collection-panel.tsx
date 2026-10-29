@@ -7,15 +7,15 @@ import { assertLocalDate } from "@/lib/domain/dates";
 import { CommandForm, Field, TextAreaField, AssigneeField } from "./command-form";
 import { CashImpact } from "./cash-impact";
 
-type Props = { workspace: WorkspaceSnapshot; invoice: WorkspaceSnapshot["invoices"][number] };
-function ExpectationFields({ workspace, invoice }: Props) {
+type Props = { workspace: WorkspaceSnapshot; invoice: WorkspaceSnapshot["invoices"][number]; proposed?: { amountCents: number; date: string; sourceNote: string } };
+function ExpectationFields({ workspace, invoice, proposed }: Props) {
   const current = workspace.expectations.find((row) => row.invoice_id === invoice.id);
   const next = workspace.followups
     .filter(
       (row) => row.invoice_id === invoice.id && row.state === "open" && row.automatic_type === null,
     )
     .sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
-  const [proposal, setProposal] = useState<{ date: string; amountCents: number } | null>(null);
+  const [proposal, setProposal] = useState<{ date: string; amountCents: number } | null>(proposed ?? null);
   function updatePreview(event: FormEvent<HTMLDivElement>) {
     const form = event.currentTarget.closest("form");
     if (!form) return;
@@ -54,7 +54,7 @@ function ExpectationFields({ workspace, invoice }: Props) {
           name="amount"
           inputMode="decimal"
           defaultValue={
-            current && current.remaining_cents > 0 ? (current.remaining_cents / 100).toFixed(2) : ""
+            proposed ? (proposed.amountCents / 100).toFixed(2) : current && current.remaining_cents > 0 ? (current.remaining_cents / 100).toFixed(2) : ""
           }
           required
         />
@@ -63,11 +63,11 @@ function ExpectationFields({ workspace, invoice }: Props) {
           name="date"
           type="date"
           defaultValue={
-            current &&
+            proposed?.date ?? (current &&
             current.state === "active" &&
             current.expected_date >= workspace.forecastInput.referenceDate
               ? current.expected_date
-              : ""
+              : "")
           }
           required
         />
@@ -86,7 +86,7 @@ function ExpectationFields({ workspace, invoice }: Props) {
         label="Customer message or planning source"
         name="sourceNote"
         maxLength={4000}
-        defaultValue={current?.source_note ?? ""}
+        defaultValue={proposed?.sourceNote ?? current?.source_note ?? ""}
         required
       />
       <p className="muted">
@@ -132,7 +132,7 @@ function ExpectationFields({ workspace, invoice }: Props) {
   );
 }
 
-export function CollectionPanel({ workspace, invoice }: Props) {
+export function CollectionPanel({ workspace, invoice, proposed }: Props) {
   const current = workspace.expectations.find((row) => row.invoice_id === invoice.id);
   const review =
     current &&
@@ -172,7 +172,7 @@ export function CollectionPanel({ workspace, invoice }: Props) {
         <span className="num">{formatPHP(Math.max(0, invoice.outstanding_cents - planned))}</span>.
       </p>
       {invoice.outstanding_cents > 0 && (
-        <details className="disclosure">
+        <details className="disclosure" open={!!proposed}>
           <summary>Review or confirm a receipt plan</summary>
           <CommandForm
             revision={workspace.revision}
@@ -190,7 +190,7 @@ export function CollectionPanel({ workspace, invoice }: Props) {
               },
             })}
           >
-            <ExpectationFields workspace={workspace} invoice={invoice} />
+            <ExpectationFields workspace={workspace} invoice={invoice} proposed={proposed} />
           </CommandForm>
         </details>
       )}

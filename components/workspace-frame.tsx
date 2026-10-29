@@ -9,6 +9,7 @@ import { DashboardIcon } from "./dashboard-icon";
 import { WorkspaceInvitationLink, WorkspaceNavigation } from "./workspace-navigation";
 import { WorkspaceTools } from "./workspace-tools";
 import { buildActivityRows } from "@/lib/ui/cash-overview";
+import { AiAssistant } from "./ai-assistant";
 
 const font = DM_Sans({ subsets: ["latin"], display: "swap" });
 const headingFont = Manrope({ subsets: ["latin"], display: "swap", variable: "--font-workspace-heading" });
@@ -39,6 +40,7 @@ export function WorkspaceFrame({ workspace, children }: {
       </aside>
       <main id="workspace-main" tabIndex={-1} className="workspace-content">{children}</main>
       </div>
+      <AiAssistant workspace={workspace} />
     </div>
   );
 }

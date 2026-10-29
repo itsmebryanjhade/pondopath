@@ -11,6 +11,7 @@ type Props = {
   invoice: WorkspaceSnapshot["invoices"][number];
   customer: WorkspaceSnapshot["customers"][number];
   template: string;
+  suggestedBody?: string;
 };
 
 function localDateTimeValue() {
@@ -18,7 +19,7 @@ function localDateTimeValue() {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
-export function ReminderPanel({ workspace, invoice, customer, template }: Props) {
+export function ReminderPanel({ workspace, invoice, customer, template, suggestedBody }: Props) {
   const reminder = [...workspace.reminders]
     .filter((row) => row.invoice_id === invoice.id && row.state !== "reported_sent")
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.id.localeCompare(a.id))[0] ?? null;
@@ -144,7 +145,7 @@ export function ReminderPanel({ workspace, invoice, customer, template }: Props)
       )}
 
       {invoice.outstanding_cents > 0 && (
-        <details className="disclosure" open={!reminder}>
+        <details className="disclosure" open={!reminder || !!suggestedBody}>
           <summary>{reminder ? "Edit reminder draft" : "Prepare a reminder draft"}</summary>
           <CommandForm
             key={`save-${reminder?.id ?? "new"}-${reminder?.version ?? 0}`}
@@ -162,7 +163,7 @@ export function ReminderPanel({ workspace, invoice, customer, template }: Props)
           >
             <p className="muted">The template starts with the outstanding balance, never the original invoice total.</p>
             <Field label="Recipient snapshot" name="recipient" defaultValue={reminder?.recipient ?? initialRecipient} maxLength={200} required />
-            <TextAreaField label="Reminder message" name="body" defaultValue={reminder?.body ?? template} maxLength={2000} required />
+            <TextAreaField label="Reminder message" name="body" defaultValue={suggestedBody ?? reminder?.body ?? template} maxLength={2000} required />
           </CommandForm>
         </details>
       )}

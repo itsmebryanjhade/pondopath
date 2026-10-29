@@ -17,6 +17,7 @@ vi.mock("next/link", async (importOriginal) => ({
   useLinkStatus: () => ({ pending: navigationState.pending }),
 }));
 vi.mock("@/app/login/actions", () => ({ signOut: async () => {} }));
+vi.mock("@/components/ai-assistant", () => ({ AiAssistant: () => createElement("button", null, "AI assistant") }));
 
 const workspace: WorkspaceSnapshot = {
   actor: { role: "owner", userId: "owner-1", businessId: "business-1" },
