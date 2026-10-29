@@ -70,3 +70,20 @@ export async function getApprovedReminderText(id: string): Promise<ActionResult<
     return { ok: false, code: failure.code, message: failure.message };
   }
 }
+
+export async function checkMissedCommitments(): Promise<ActionResult<{ created: number; existing: number; skipped: number }>> {
+  try {
+    await requireActor();
+    const client = await createClient();
+    const { data, error } = await client.rpc("check_missed_commitments");
+    if (error) throw CommandError.fromDatabase(error.message);
+    if (data && typeof data === "object" && !Array.isArray(data) && data.errorCode) throw new CommandError("LIMIT_REACHED");
+    const result = z.strictObject({ created: z.number().int().min(0), existing: z.number().int().min(0), skipped: z.number().int().min(0) }).parse(data);
+    revalidatePath("/(workspace)", "layout");
+    return { ok: true, data: result };
+  } catch (error) {
+    unstable_rethrow(error);
+    const failure = error instanceof CommandError ? error : new CommandError("SERVICE_UNAVAILABLE");
+    return { ok: false, code: failure.code, message: failure.code === "LIMIT_REACHED" ? failure.message : "The follow-up check could not be confirmed. Try again; duplicate tasks will not be created." };
+  }
+}

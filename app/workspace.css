@@ -360,6 +360,13 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .followups-page .table-foot a { display: inline-flex; align-items: center; min-height: 44px; color: var(--section-deep); }
 .workspace-root .followups-page .followup-source-link { display: inline-flex; align-items: center; min-height: 44px; gap: 6px; padding: 8px 10px; border: 1px solid var(--section-border); border-radius: 9px; background: #ffffffbf; color: var(--section-deep); font-size: 12px; font-weight: 600; text-decoration: none; }
 .workspace-root .followups-page .followup-source-link:hover { gap: 9px; }
+.workspace-root .followups-page .section-ai-card { grid-template-columns: minmax(110px, .5fr) minmax(0, 2fr) auto; gap: 14px; }
+.workspace-root .followups-page .automation-status-copy p { margin: 0 0 6px; font-size: 12px; line-height: 1.6; }
+.workspace-root .followups-page .automation-status-copy small { display: block; font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
+.workspace-root .followups-page .automation-check { min-width: 0; }
+.workspace-root .followups-page .automation-check p { max-width: 250px; margin: 6px 0 0; font-size: 12px; line-height: 1.6; }
+.workspace-root .followups-page .automation-check p:empty { display: none; }
+.workspace-root .followups-page .section-ai-card > .followup-source-link { grid-column: 2 / -1; justify-self: start; }
 .workspace-root .followups-page .section-feature-copy .followup-source-link { color: #e6f5eb; border-color: #ffffff24; background: #ffffff0f; }
 .workspace-root .followups-page .mini-chart-head > div > span,
 .workspace-root .followups-page .followup-bar-labels { color: var(--ink-soft); }
@@ -379,6 +386,8 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
   .workspace-root .followups-page > .section-feature { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 540px) {
+  .workspace-root .followups-page .section-ai-card { grid-template-columns: minmax(0, 1fr); }
+  .workspace-root .followups-page .section-ai-card > .followup-source-link { grid-column: auto; }
   .workspace-root .cash-page .record-row { grid-template-columns: 32px minmax(0, 1fr) 44px; gap: 8px; }
   .workspace-root .cash-page .record-amount { grid-column: 2; grid-row: auto; max-width: none; }
   .workspace-root .cash-page .cash-record-link { grid-column: 3; grid-row: 1 / 3; }

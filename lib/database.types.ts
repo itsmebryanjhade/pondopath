@@ -93,25 +93,34 @@ export type Database = {
       automation_runs: {
         Row: {
           business_id: string
+          candidate_ids: string[]
           error_code: string | null
           finished_at: string | null
+          pending_ids: string[]
           run_id: string
+          source: string
           started_at: string
           status: string
         }
         Insert: {
           business_id: string
+          candidate_ids?: string[]
           error_code?: string | null
           finished_at?: string | null
+          pending_ids?: string[]
           run_id: string
+          source?: string
           started_at?: string
           status: string
         }
         Update: {
           business_id?: string
+          candidate_ids?: string[]
           error_code?: string | null
           finished_at?: string | null
+          pending_ids?: string[]
           run_id?: string
+          source?: string
           started_at?: string
           status?: string
         }
@@ -695,6 +704,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      automation_followups: {
+        Args: { p_business_id: string; p_request: Json }
+        Returns: Json
+      }
+      check_missed_commitments: { Args: never; Returns: Json }
       get_approved_reminder_text: { Args: { p_id: string }; Returns: Json }
       reserve_ai_request: {
         Args: { p_expected_revision: number; p_model: string; p_provider: string }

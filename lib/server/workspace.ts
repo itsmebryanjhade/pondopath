@@ -20,7 +20,7 @@ export type WorkspaceSnapshot = {
   expectations: Row<"expectations">[];
   followups: Row<"followups">[];
   reminders: Row<"reminders">[];
-  automation: { lastSuccessAt: string | null; stale: boolean };
+  automation: { lastSuccessAt: string | null; stale: boolean; lastAttemptAt?: string | null; lastStatus?: string | null; lastErrorCode?: string | null; lastManualAt?: string | null };
   forecastInput: ForecastInput;
 };
 

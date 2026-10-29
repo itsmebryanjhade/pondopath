@@ -1,0 +1,122 @@
+[
+  {
+    "id": "pondopath-followups",
+    "type": "tab",
+    "label": "PondoPath follow-up checks",
+    "disabled": false,
+    "info": "Every 15 minutes and on startup. Token and app URL come from runtime environment; no customer contact data or payment operations."
+  },
+  {
+    "id": "pondopath-inject",
+    "type": "inject",
+    "z": "pondopath-followups",
+    "name": "Every 15 min / check now",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "900",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "3",
+    "payload": "",
+    "payloadType": "date",
+    "x": 170,
+    "y": 100,
+    "wires": [
+      [
+        "pondopath-begin"
+      ]
+    ]
+  },
+  {
+    "id": "pondopath-begin",
+    "type": "function",
+    "z": "pondopath-followups",
+    "name": "Prepare scoped scan",
+    "func": "msg.phase = \"scan\";\nmsg.url = new URL(\"/api/automation/followups\", env.get(\"APP_URL\")).href;\nmsg.headers = { Authorization: \"Bearer \" + env.get(\"AUTOMATION_TOKEN\"), \"Content-Type\": \"application/json\" };\nmsg.payload = { operation: \"scan\" };\nmsg.requestTimeout = 15000;\nmsg.followRedirects = false;\nreturn msg;",
+    "outputs": 1,
+    "x": 410,
+    "y": 100,
+    "wires": [
+      [
+        "pondopath-http"
+      ]
+    ]
+  },
+  {
+    "id": "pondopath-http",
+    "type": "http request",
+    "z": "pondopath-followups",
+    "name": "PondoPath limited API",
+    "method": "POST",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": true,
+    "headers": [],
+    "x": 650,
+    "y": 100,
+    "wires": [
+      [
+        "pondopath-advance"
+      ]
+    ]
+  },
+  {
+    "id": "pondopath-advance",
+    "type": "function",
+    "z": "pondopath-followups",
+    "name": "Scan → create → finish",
+    "func": "if (msg.statusCode !== 200 || !msg.payload || msg.payload.ok !== true) return [null, msg];\nconst reply = msg.payload;\nif (msg.phase === \"finish\") {\n    delete msg.headers;\n    if (msg.finishingFailure) {\n        node.status({ fill: \"yellow\", shape: \"ring\", text: \"Check failed; status recorded\" });\n        node.warn(\"Follow-up check failed; failure recorded in PondoPath.\");\n    } else {\n        const counts = msg.counts || { created: 0, existing: 0, skipped: 0 };\n        node.status({ fill: \"green\", shape: \"dot\", text: counts.created + \" new tasks\" });\n        node.log(\"Follow-up check complete: created=\" + counts.created + \" existing=\" + counts.existing + \" skipped=\" + counts.skipped);\n    }\n    return null;\n}\nif (msg.phase === \"scan\") {\n    msg.runId = reply.runId;\n    if (!msg.runId || !Array.isArray(reply.candidates) || reply.candidates.length > 1000) return [null, msg];\n    const ids = reply.candidates.filter(item => item.remainingCents > 0 && item.date < reply.referenceDate).map(item => item.expectationId);\n    msg.phase = ids.length ? \"create\" : \"finish\";\n    msg.payload = ids.length ? { operation: \"create\", runId: msg.runId, expectationIds: ids } : { operation: \"finish\", runId: msg.runId, success: true };\n} else {\n    msg.counts = { created: reply.created, existing: reply.existing, skipped: reply.skipped };\n    msg.phase = \"finish\";\n    msg.payload = { operation: \"finish\", runId: msg.runId, success: true };\n}\nmsg.headers = { Authorization: \"Bearer \" + env.get(\"AUTOMATION_TOKEN\"), \"Content-Type\": \"application/json\" };\nreturn [msg, null];",
+    "outputs": 2,
+    "x": 910,
+    "y": 100,
+    "wires": [
+      [
+        "pondopath-http"
+      ],
+      [
+        "pondopath-failure"
+      ]
+    ]
+  },
+  {
+    "id": "pondopath-catch",
+    "type": "catch",
+    "z": "pondopath-followups",
+    "name": "Connection failure",
+    "scope": [
+      "pondopath-http"
+    ],
+    "uncaught": false,
+    "x": 650,
+    "y": 220,
+    "wires": [
+      [
+        "pondopath-failure"
+      ]
+    ]
+  },
+  {
+    "id": "pondopath-failure",
+    "type": "function",
+    "z": "pondopath-followups",
+    "name": "Record reachable failure",
+    "func": "if (!msg.runId || msg.phase === \"finish\") {\n    delete msg.headers;\n    node.status({ fill: \"red\", shape: \"ring\", text: \"Check unavailable; stale notice remains\" });\n    node.warn(\"Follow-up check unavailable. Use Check now in PondoPath; no payments or messages were sent.\");\n    return null;\n}\nmsg.phase = \"finish\";\nmsg.finishingFailure = true;\nmsg.headers = { Authorization: \"Bearer \" + env.get(\"AUTOMATION_TOKEN\"), \"Content-Type\": \"application/json\" };\nmsg.payload = { operation: \"finish\", runId: msg.runId, success: false, errorCode: msg.error ? \"CONNECTION_ERROR\" : \"HTTP_ERROR\" };\ndelete msg.error;\nreturn msg;",
+    "outputs": 1,
+    "x": 920,
+    "y": 220,
+    "wires": [
+      [
+        "pondopath-http"
+      ]
+    ]
+  }
+]

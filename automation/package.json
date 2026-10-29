@@ -1,0 +1,8 @@
+{
+  "name": "pondopath-followup-worker",
+  "private": true,
+  "version": "1.0.0",
+  "engines": { "node": "24.x" },
+  "scripts": { "start": "node --env-file=../.env.automation.local node_modules/node-red/red.js --settings settings.cjs --userDir .runtime ../flows.json" },
+  "dependencies": { "node-red": "5.0.9" }
+}

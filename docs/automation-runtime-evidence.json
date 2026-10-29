@@ -1,0 +1,12 @@
+{
+  "verifiedAt": "2026-10-29T08:32:10.146Z",
+  "node": "v24.22.1",
+  "nodeRed": "5.0.9",
+  "checks": [
+    "Actual Node-RED startup scan/create/finish created one task through the real app endpoint.",
+    "Repeated actual flow preserved one task.",
+    "Restart caught a new missed commitment and marked the interrupted old run failed.",
+    "A recorded receipt resolved its task; rerun did not recreate it or post additional cash.",
+    "Unreachable app produced a bounded failure; stale status remained visible after a manual fallback."
+  ]
+}

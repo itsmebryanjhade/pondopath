@@ -6,6 +6,9 @@ import { DashboardIcon } from "@/components/dashboard-icon";
 import { RefreshRecords } from "@/components/refresh-records";
 import { checkedSum, formatPHP } from "@/lib/domain/money";
 import { formatPlanDate } from "@/lib/display";
+import { AutomationCheck } from "@/components/automation-check";
+
+const checkTime = (value?: string | null) => value ? new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value)) + " PHT" : "Never";
 
 export default async function FollowupsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[] }> }) {
   const workspace = await getWorkspace();
@@ -57,7 +60,12 @@ export default async function FollowupsPage({ searchParams }: { searchParams: Pr
       </section>
       <aside className="section-ai-card" role={workspace.automation.stale ? "status" : undefined}>
         <span><DashboardIcon name="bell" size={15} />Follow-up checks</span>
-        <p>{workspace.automation.stale ? "Automatic follow-up checks are not current. Review unresolved customer commitments and existing open tasks before following up again." : "Review the source invoice before contacting a customer. Completing a follow-up does not confirm that money was received."}</p>
+        <div className="automation-status-copy"><p>{workspace.automation.stale ? "Automatic follow-up checks are not current. Use Check now while the scheduled worker is unavailable." : "Scheduled checks run every 15 minutes. Review the source invoice before contacting a customer."}</p>
+          <small>Scheduled success: {checkTime(workspace.automation.lastSuccessAt)} · Last attempt: {checkTime(workspace.automation.lastAttemptAt)}{workspace.automation.lastStatus ? ` (${workspace.automation.lastStatus}${workspace.automation.lastErrorCode ? `: ${workspace.automation.lastErrorCode}` : ""})` : ""}</small>
+          {workspace.automation.lastManualAt && <small>Manual check: {checkTime(workspace.automation.lastManualAt)}. Scheduled status is tracked separately.</small>}
+          <small>Checks create tasks only. A payment commitment is not received cash.</small>
+        </div>
+        <AutomationCheck />
         <Link className="followup-source-link" href="/invoices?filter=commitment">Review commitments <DashboardIcon name="arrowRight" size={15} /></Link>
       </aside>
     </section>

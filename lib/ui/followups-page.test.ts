@@ -9,6 +9,7 @@ const readers = vi.hoisted(() => ({ getWorkspace: vi.fn() }));
 vi.mock("@/lib/server/workspace", () => readers);
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/followup-panel", () => ({ FollowupPanel: ({ invoice }: { invoice: { id: string } }) => createElement("section", { "data-followup-invoice": invoice.id }) }));
+vi.mock("@/components/automation-check", () => ({ AutomationCheck: () => createElement("button", null, "Check now") }));
 
 function task(index: number, due_date: string, state = "open"): WorkspaceSnapshot["followups"][number] {
   const workspace = uiWorkspace();
@@ -58,5 +59,14 @@ describe("source Follow-ups layout preserves the action ledger", () => {
     expect(html).not.toContain("NaN");
     expect(html).toContain('href="/invoices?filter=no_followup"');
     expect(html).not.toContain("data-followup-invoice=");
+  });
+  it("discloses the last scheduled failure and keeps a manual fallback", async () => {
+    const workspace = uiWorkspace();
+    workspace.automation = { stale: true, lastSuccessAt: null, lastAttemptAt: "2026-10-29T07:00:00Z", lastStatus: "failed", lastErrorCode: "HTTP_ERROR", lastManualAt: "2026-10-29T07:05:00Z" };
+    const html = await render(workspace);
+    expect(html).toContain("Check now");
+    expect(html).toContain("failed: HTTP_ERROR");
+    expect(html).toContain("Scheduled success: Never");
+    expect(html).toContain("Scheduled status is tracked separately");
   });
 });
