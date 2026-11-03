@@ -4,6 +4,8 @@ A one-business Philippine B2B hackathon MVP connecting collections, a 30-day cas
 
 PondoPath is the product; SoloForge is the builder brand. The transparent PP monogram is `public/brand/pondopath-monogram.png`; its simpler small-size companion is `public/brand/pondopath-icon.png`, used by notifications and the browser icon. Landing, sign-in, loading and workspace screens share the monogram through `ProductBrand`. The earlier blue mark remains as a historical asset. Sign-in errors appear beside the form; a dismissible successful sign-in notice is consumed on the first overview navigation.
 
+Presentation materials: [demo script and recording guide](docs/demo-and-verification.md) and [editable pitch deck](deliverables/PondoPath_Pitch_Deck_v3.pptx). The guide uses the fixed fictional demo dates and includes Taglish narration. The pitch materials are prepared; a live rehearsal, video and submission links remain pending.
+
 ## Accounts and private team access
 
 Create an account at `/signup`, then complete `/setup` to create one empty, private business workspace with owner access. Each account belongs to one business; there is no business switcher. Existing users sign in at `/login`. The [public-sign-up plan](docs/superpowers/plans/2026-10-30-public-signup.md) supersedes the earlier invite-only registration default. Email confirmation is temporarily disabled in the development project for immediate fictional-data testing; enable and verify it before a real-business pilot.

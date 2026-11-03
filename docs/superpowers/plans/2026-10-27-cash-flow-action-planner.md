@@ -334,7 +334,7 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 ### Task 12: Prepare the reproducible demo and hosting handoff
 
-**Pending/on hold:** Bryan explicitly said the app is not ready for demo or deployment. No hosting, rehearsal or provider purchase is authorized by the new feature roadmap.
+**Resumed 3 November for Task E preparation:** Bryan requested the next demo/presentation step. The demo guide and editable eight-slide pitch deck are prepared; see the delivery sequence. A live rehearsal, fresh AI/Node-RED recording, video, public viewer links and any deployment remain unfinished. No public destination or provider purchase is inferred from creating the presentation materials.
 
 **Dependencies:** Task 11. **Files:** `README.md`, `.env.example`, `docs/demo-and-verification.md`, demo seed script, optional small deployment configuration changes justified by verification.
 

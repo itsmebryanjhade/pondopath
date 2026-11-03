@@ -87,6 +87,13 @@ The Supabase security advisor flags eight intentionally authenticated, scoped `S
 
 **Files:** README, environment example, final evidence/demo notes, fictional seed script, pitch deck, video/demo link, and deployment configuration only if needed.
 
+**3 November preparation slice:** Created `docs/demo-and-verification.md` with Taglish narration, the exact screen sequence, fixed-date preflight, sample customer reply, money checks, CSV review segment and recording/submission handoff. Created the editable eight-slide `deliverables/PondoPath_Pitch_Deck_v3.pptx`, using the original green logo, English slide text, Taglish notes, a native expense table and a native cash-balance chart. The file's package/layout/font/chart-workbook checks pass, all eight rendered slides were inspected, and the affected slides were repaired and rechecked. Preview: `deliverables/PondoPath_Pitch_Preview.png`.
+
+This is prepared material, not a completed live rehearsal or recording. The existing ordinary Bryan workspace and the seeded fixed-date demo must not be conflated. No financial records, demo dates, authentication settings or application code were changed; no full app tests, paid model calls, live Node-RED runs, upload, deployment or submission were performed. Historical real-provider evidence is dated clearly in the deck. A fresh missed-commitment segment needs its own labelled fixture because a Monday promise is not overdue in the fixed Thursday reference date. Native PowerPoint opening was not exercised; the editable file and renders were validated with the bundled presentation tools.
+
+- [x] Prepare a short narration/script, numerical checkpoints and recording storyboard.
+- [x] Create and visually check an editable pitch deck based on the current verified scope.
+
 - [ ] Rehearse one persistent fictional journey: opening cash and obligations, invoice due-date assumption, delayed commitment, Friday shortfall, owner-reviewed reminder, verified partial receipt, smaller gap, and missed-commitment follow-up.
 - [ ] Show one real bounded AI request and one actual Node-RED run. Label copied/manual messages honestly; never imply automatic sending or bank settlement.
 - [ ] Document setup, environment variable names, Supabase migrations, Node-RED runtime, provider/model, fictional reference date, and manual fallbacks without secrets.
