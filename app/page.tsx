@@ -35,10 +35,10 @@ export default function Home() {
             <h1 id="hero-heading">See cash clearly.<br /><span>Plan what’s next.</span></h1>
             <p className={styles.heroDescription}>Customer payments don’t always arrive when bills are due. Bring collections, upcoming expenses, and a 30-day forecast into one practical cash plan.</p>
             <div className={styles.heroActions}>
-              <Link className={styles.primaryLink} href="/login">Open your workspace <span aria-hidden="true">↗</span></Link>
+              <Link className={styles.primaryLink} href="/signup">Create your workspace <span aria-hidden="true">↗</span></Link>
               <a className={styles.textLink} href="#how-it-works">See how it works <span aria-hidden="true">↓</span></a>
             </div>
-            <p className={styles.accessNote}>For existing owner and finance accounts.</p>
+            <p className={styles.accessNote}>Already have an account? <Link href="/login">Sign in</Link>.</p>
             <ul className={styles.heroFacts} aria-label="Planning essentials">
               <li>30-day visibility</li><li>Peso-based planning</li><li>Human-reviewed actions</li>
             </ul>
@@ -85,11 +85,11 @@ export default function Home() {
           <div className={styles.answers}>
             <details><summary>Who is PondoPath for?</summary><p>Small Philippine B2B suppliers and service businesses that let customers pay after delivery or completion. Finance and admin staff maintain the records; owners review the cash plan and approve reminders.</p></details>
             <details><summary>Does PondoPath send reminders or make payments?</summary><p>Your team copies an approved reminder and sends it through its existing channel. Reporting a manual send does not confirm delivery. Payments stay with the business’s existing payment process.</p></details>
-            <details><summary>How do I get access?</summary><p>Sign in with the owner or finance account provided for your business workspace. Public registration is not currently available.</p></details>
+            <details><summary>How do I get access?</summary><p>Sign up to create your own private business workspace, or use an invitation link to join an existing team.</p></details>
           </div>
         </section>
 
-        <section className={styles.finalCta} aria-labelledby="cta-heading"><div><p className={styles.eyebrow}>PondoPath by SoloForge</p><h2 id="cta-heading">Give the next cash decision<br />a clearer starting point.</h2></div><Link href="/login" className={styles.primaryLink}>Open your workspace <span aria-hidden="true">↗</span></Link></section>
+        <section className={styles.finalCta} aria-labelledby="cta-heading"><div><p className={styles.eyebrow}>PondoPath by SoloForge</p><h2 id="cta-heading">Give the next cash decision<br />a clearer starting point.</h2></div><Link href="/signup" className={styles.primaryLink}>Create your workspace <span aria-hidden="true">↗</span></Link></section>
       </main>
 
       <footer className={styles.footer}><div><Link className={styles.brand} href="/" aria-label="PondoPath home"><ProductBrand /></Link><p>A cash-flow action planner for Philippine B2B teams.</p></div><nav aria-label="Footer navigation"><a href="#how-it-works">How it works</a><a href="#your-control">Your team, in control</a><Link href="/login">Sign in</Link></nav><p className={styles.copyright}>© 2026 SoloForge. Cash planning starts with the records you enter.</p></footer>

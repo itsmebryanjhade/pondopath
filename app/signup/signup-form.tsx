@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useSyncExternalStore } from "react";
 import { PasswordField } from "@/components/password-field";
-import { finishSignup } from "./actions";
+import { finishSignup, registerAccount } from "./actions";
 import styles from "@/app/auth.module.css";
 
 function subscribe(listener: () => void) {
@@ -20,11 +20,12 @@ export function SignupForm() {
   const token = params.get("token") ?? "";
   const hasInvitation = /^[0-9a-f-]{36}$/i.test(userId) && /^[a-zA-Z0-9_-]{32,256}$/.test(token);
   const [error, action, pending] = useActionState(finishSignup, null);
+  const [registrationMessage, register, registering] = useActionState(registerAccount, null);
   return (
     <>
-      <p className={styles.eyebrow}>Your team, connected</p>
-      <h1 className={styles.title}>{hasInvitation ? "Create your account" : "Join your workspace"}</h1>
-      <p className={styles.intro}>{hasInvitation ? "Set a password to accept your invitation and start working with your team." : "PondoPath workspaces are private. Your business owner can invite you to join as a finance teammate."}</p>
+      <p className={styles.eyebrow}>Your business, connected</p>
+      <h1 className={styles.title}>{hasInvitation ? "Join your team" : "Create your account"}</h1>
+      <p className={styles.intro}>{hasInvitation ? "Set a password to accept your invitation and start working with your team." : "Start your own private cash-planning workspace. You can invite your team after setup."}</p>
       {hasInvitation ? (
         <form action={action} className={styles.form} aria-busy={pending}>
           <input type="hidden" name="userId" value={userId} />
@@ -36,12 +37,15 @@ export function SignupForm() {
           <button disabled={pending} className={styles.submit}>{pending ? "Creating your account…" : "Create account & join"}<span aria-hidden="true">↗</span></button>
           <p className={styles.hint}>You’ll join the workspace selected by your business owner with finance staff access.</p>
         </form>
-      ) : (
-        <div className={styles.notice}>
-          <strong>Have an invitation?</strong>
-          <p>Open the full private link your owner shared with you. If it has expired, ask them to create another.</p>
-        </div>
-      )}
+      ) : <form action={register} className={styles.form} aria-busy={registering}>
+        <div className={styles.fieldGroup}><label className={styles.label} htmlFor="signup-email">Work email</label><input className={styles.input} id="signup-email" name="email" type="email" autoComplete="email" required maxLength={254} placeholder="you@company.com" /></div>
+        <PasswordField id="password" label="Password" autoComplete="new-password" minLength={12} describedBy="signup-password-help" />
+        <p id="signup-password-help" className={styles.hint}>Use at least 12 characters and a password you don’t use elsewhere.</p>
+        <PasswordField id="confirmation" label="Confirm password" autoComplete="new-password" minLength={12} />
+        {registrationMessage && <p className={styles.error} role="alert">{registrationMessage}</p>}
+        <button disabled={registering} className={styles.submit}>{registering ? "Creating account…" : "Sign up"}<span aria-hidden="true">↗</span></button>
+        <p className={styles.hint}>Have an invitation? Open the private link your owner shared with you instead.</p>
+      </form>}
       <div className={styles.after}><p>Already have an account?</p><Link href="/login">Sign in to PondoPath <span aria-hidden="true">↗</span></Link></div>
     </>
   );

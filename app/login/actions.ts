@@ -15,10 +15,11 @@ export async function signIn(_previous: string | null, form: FormData): Promise<
   const { error } = await client.auth.signInWithPassword(parsed.data);
   if (error) return "Sign-in failed. Check your details and try again.";
   const member = await client.from("memberships").select("business_id").maybeSingle();
-  if (member.error || !member.data) {
+  if (member.error) {
     await client.auth.signOut();
-    return "This account does not have workspace access. Contact the business owner.";
+    return "Workspace access could not be checked. Please try again.";
   }
+  if (!member.data) redirect("/setup");
   (await cookies()).set(LOGIN_NOTICE_COOKIE, "signed-in", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

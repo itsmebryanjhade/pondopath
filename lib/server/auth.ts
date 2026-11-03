@@ -11,7 +11,8 @@ export async function requireActor(): Promise<Actor> {
   const membership = await client.from("memberships").select("business_id,role")
     .eq("user_id", data.claims.sub).maybeSingle();
   if (membership.error) throw new Error("Your workspace could not be loaded. Please try again.");
-  if (!membership.data || !["owner", "finance"].includes(membership.data.role)) {
+  if (!membership.data) redirect("/setup");
+  if (!["owner", "finance"].includes(membership.data.role)) {
     redirect("/login?reason=access");
   }
   return { userId: data.claims.sub, businessId: membership.data.business_id, role: membership.data.role as Actor["role"] };

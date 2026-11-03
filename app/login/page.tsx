@@ -22,9 +22,9 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <Suspense><SessionNotice searchParams={searchParams} /></Suspense>
       <LoginForm />
       <div className={styles.after}>
-        <p>New to your team? Use the private invitation link from your business owner to create your account.</p>
-        <Link href="/signup">About joining a workspace <span aria-hidden="true">↗</span></Link>
-        <p>Need help signing in? Contact your business owner.</p>
+        <p>New to PondoPath? Create an account and set up your business workspace.</p>
+        <Link href="/signup">Sign up <span aria-hidden="true">↗</span></Link>
+        <p>Joining a team? Use the invitation link your business owner shared with you.</p>
       </div>
     </AuthShell>
   );
