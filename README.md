@@ -4,17 +4,25 @@ A one-business Philippine B2B hackathon MVP connecting collections, a 30-day cas
 
 PondoPath is the product; SoloForge is the builder brand. The transparent PP monogram is `public/brand/pondopath-monogram.png`; its simpler small-size companion is `public/brand/pondopath-icon.png`, used by notifications and the browser icon. Landing, sign-in, loading and workspace screens share the monogram through `ProductBrand`. The earlier blue mark remains as a historical asset. Sign-in errors appear beside the form; a dismissible successful sign-in notice is consumed on the first overview navigation.
 
-## Private team access
+## Accounts and private team access
 
-Sign in at `/login`. New teammates join at `/signup` using a private owner-provided invitation; opening `/signup` without that link explains how to request access. This user-approved scope addition is recorded in the [onboarding plan](docs/superpowers/plans/2026-10-27-invite-only-onboarding.md).
+Create an account at `/signup`, then complete `/setup` to create one empty, private business workspace with owner access. Each account belongs to one business; there is no business switcher. Existing users sign in at `/login`. The [public-sign-up plan](docs/superpowers/plans/2026-10-30-public-signup.md) supersedes the earlier invite-only registration default. Email confirmation is temporarily disabled in the development project for immediate fictional-data testing; enable and verify it before a real-business pilot.
 
 Owners can choose **Invite a teammate** in the workspace, enter the recipient's name and work email, and copy the generated link. Share it privately with that person. No email is sent automatically. The invited account receives finance access in that owner's workspace; the invitation cannot transfer an existing membership or create an owner. Existing activated accounts should sign in instead.
 
 Set `APP_URL` to the application's trusted origin (for example `http://localhost:3000` in development, an HTTPS origin in production). Invitation links use this address, so a localhost link works only on the same computer. Supabase Auth controls invitation expiry and one-use verification. The token is kept in the URL fragment, consumed only by the password setup POST, and never written to application logs. If setup is interrupted after verification, the same authenticated invited session can retry setting its password. Missing workspace membership still blocks access.
 
-The core includes persistent financial records, verified partial payments, a 30-day forecast, reviewed commitments/reminders, follow-ups, history, what-if previews, English/Tagalog/Taglish AI assistance and the Node-RED missed-commitment flow. Some reminder UI checks and final MVP verification remain outstanding; full verification and demo/deployment preparation are paused at the owner's request.
+The core includes persistent financial records, verified partial payments, a 30-day forecast, reviewed commitments/reminders, follow-ups, history, what-if previews, English/Tagalog/Taglish AI assistance and the Node-RED missed-commitment flow. The next-action worklist and CSV Review Inbox are also implemented. The [delivery sequence](docs/superpowers/plans/2026-11-02-pondopath-delivery-sequence.md) records current verification and remaining demo/deployment work.
 
-[PRD revision 1.1](docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md) and implementation tasks 13–21 now track the approved next-action worklist, shared Review Inbox, CSV/XLSX import, planned n8n spreadsheet/file connections, receipt-image extraction, supported inbound business messages and a conditional named accounting/POS adapter. These additions are not implemented. Deliver one reviewed slice at a time; keep manual operation and human confirmation before financial changes.
+[PRD revision 1.1](docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md) tracks the approved expansion. Tasks 13–15 provide the worklist, shared Review Inbox and CSV import. XLSX, n8n spreadsheet/file connections, receipt-image extraction, inbound business messages and named accounting/POS adapters remain planned. Deliver one reviewed slice at a time; keep manual operation and human confirmation before financial changes.
+
+## CSV import and review
+
+Open **Invoices → Import & review**. The owner creates a named CSV source; finance teammates can reuse it. Upload a UTF-8 CSV, select invoice or expense records, map its columns, and preview each row. Select existing business customers explicitly. A downloadable fictional CSV is provided on the page.
+
+Use the same source and stable row IDs for later versions of a spreadsheet. Valid rows become proposals; invalid and duplicate rows stay out. Review the original source, current saved record and proposed values, then edit, clarify, reject or explicitly confirm each item. Confirmation uses the existing financial commands and permissions. Imports do not post cash, and missing rows never delete records. Repeated confirmations and uploads retain their earlier results.
+
+Limits are 512 KiB, 100 data rows and 24 columns per CSV, PHP amounts, ISO dates, a 16,384-character parser record cap and 16 KiB of retained source evidence per item. Invoice/expense proposals are supported; importing actual receipts, payments and new customers is outside this slice. The Review Inbox paginates 20 items; direct proposal links open the selected item. Its intake endpoint currently accepts same-origin signed-in sessions; external connector credentials are not implemented.
 
 ## Local setup
 
@@ -52,7 +60,9 @@ TEST_SUPABASE_SERVICE_ROLE_KEY=<development server key>
 
 Missing test configuration fails the integration command. The suite signs in actual isolated owner/finance accounts and creates a separate unrelated test business. Cleanup is restricted to the IDs and ownership marker created by each fixture. It does not reset the project or delete the seeded business.
 
-All exposed tables have RLS and explicitly denied direct application writes. Authorized RPC reads derive the business and current role from database membership. Public RPC wrappers run as the invoker; their narrowly scoped private implementations reauthorize and use an empty search path. Financial reads use the signed-in user's client, not the administrative key.
+The 3 November code gate passed on Node 24.22.1: 271 unit/UI tests, 112 integration tests, typecheck, lint and the Webpack production build. See `taskDGate` in the [runtime evidence](docs/mvp-runtime-evidence.json). The 390px phone check is explicitly deferred by the owner; this code gate is not a production-readiness claim. Development email confirmation and [leaked-password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) remain wider-launch prerequisites.
+
+All exposed financial/intake tables have RLS and explicitly denied direct application writes. Authorized RPC reads derive the business and current role from database membership. Core financial RPC wrappers use narrowly scoped private implementations. Intake and workspace-creation functions intentionally use `SECURITY DEFINER`, an empty search path, revoked anonymous execution and explicit authenticated identity/business/role checks. The Supabase advisor flags these intentional grants for review. Financial reads use the signed-in user's client, not the administrative key.
 
 Actual receipts and expense payments update balances together. Exact request retries replay the original result. Nonempty payment references are normalized and reserved even after an owner voids a mistaken entry; replacements require a new reference. A same-record, same-date, same-amount entry requires a reasoned duplicate review. Voids retain history, preserve the latest customer promise for review, and restore the unpaid balance without treating it as expected cash.
 

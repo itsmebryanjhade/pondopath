@@ -14,7 +14,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Requirements: `docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md`. Read the sections and acceptance criteria relevant to the current task.
 - Approved stack: Next.js, TypeScript, Tailwind CSS, Supabase, OpenRouter, Node-RED, Vercel, and planned n8n source intake (PRD revision 1.1). Inclusion in the PRD does not mean a tool or connector is installed, authorized, or verified.
 - Keep one business per account and no business switching. Public sign-up creates a private business; owner invitations add finance teammates. Respect current user instructions when they supersede older PRD defaults.
-- Deliver one reviewed feature slice at a time. Task 11 full verification is partially completed and paused; Task 12 demo/deployment preparation is on hold. Use focused checks for the current change and reuse existing evidence. Resume broad verification or demo/deployment work only when the user requests it.
+- Deliver one reviewed feature slice at a time. Task D's code gate passed on 3 November (271 unit/UI tests, 112 integration tests, typecheck, lint and production build on Node 24); its phone-width check is explicitly deferred by Bryan. Reuse `docs/mvp-runtime-evidence.json` and run focused checks for later changes. Task 12 demo/deployment preparation remains on hold until requested; do not repeat the broad gate without a new change, failure or user request.
 
 ## Mandatory skill workflow
 

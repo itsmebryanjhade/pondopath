@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver SoloForge's one-business cash-flow workflow, then add the approved source-intake expansion in small reviewed slices while preserving financial correctness and manual operation.
+**Goal:** Deliver SoloForge's one-business-per-workspace cash-flow workflow, then add the approved source-intake expansion in small reviewed slices while preserving financial correctness and manual operation.
 
 **Architecture:** Keep the existing Next.js application, pure TypeScript forecast, Supabase Auth/PostgreSQL and authorized atomic commands. Extend the current text assistant/Node-RED workflow with a shared Review Inbox and planned n8n source adapters. Stage imported data before human confirmation; financial rules and authorization remain independent of AI and external connectors.
 
@@ -10,16 +10,16 @@
 
 **Spec:** [SoloForge PRD — current revision 1.1](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). The original spec filename is retained for link stability.
 
-**Status — 29 October:** Tasks 1–7 and 9–10 are implemented with development evidence. Task 8's reminder implementation is present; its unchecked clipboard-denied/separate-session UI step remains outstanding. Task 11 is partially verified and paused at Bryan's request; Task 12 is pending. Tasks 13–21 below record the approved, unimplemented intake/worklist expansion. Prior verification results must be reused rather than rerun as routine setup. Current UI conflict/build changes and acceptance artifacts remain uncommitted; preserve them separately from this documentation update.
+**Status — 29 October:** Tasks 1–7 and 9–10 are implemented with development evidence. Task 8's reminder implementation is present; its unchecked clipboard-denied/separate-session UI step remains outstanding. Task 11 is resumed at Bryan's request; reuse prior results and complete only its remaining evidence. Task 12 remains pending/on hold. Tasks 13–21 below record the approved, unimplemented intake/worklist expansion. Prior verification results must be reused rather than rerun as routine setup. Current UI conflict/build changes and acceptance artifacts remain uncommitted; preserve them separately from this documentation update.
 
-**Execution instruction:** Keep native execution, one small slice at a time, with Bryan reviewing it before proceeding. Do not resume full Task 11 checks, demo preparation or deployment unless he requests it. The suggested feature order is 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21; provider-specific work can be blocked independently by access. Resume 11/12 only after the release scope is settled and Bryan resumes those phases. This update changes documents only.
+**Execution instruction:** Keep native execution, one small slice at a time, with Bryan reviewing it before proceeding. Task 11 is resumed; do not rerun completed checks. Demo preparation and deployment remain on hold. The suggested feature order is 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21; provider-specific work can be blocked independently by access. Task 12 remains paused until Bryan requests it. This update changes documents only.
 
 **Identity update (October 27; implemented):** PondoPath is the product name; SoloForge remains the builder brand. Added the approved P-shaped path logo, consistent sign-in/workspace branding and accessible login notifications. Verified one-time success feedback, repeatable error feedback and browser behavior. This does not advance Task 4 or change financial/authorization rules.
 
 ## Global Constraints
 
-- One preconfigured business, Philippine pesos only, Asia/Manila dates, and English interface text.
-- An owner login and finance/admin users in the same business, including the subsequently approved owner invitation flow. No public business registration or multi-business switching.
+- One business per account, Philippine pesos only, Asia/Manila dates, and English interface text. The preconfigured fictional business remains for demonstrations.
+- Public owner sign-up creates a private business workspace; owner invitations add finance/admin users. No multi-business switching. This 30 October scope update supersedes the original invite-only default.
 - Manual forms and fictional records stay supported. Reviewed CSV/XLSX, selected source connections, inbound messages and receipt images are approved expansion tasks 14–21, with individual acceptance gates.
 - Reminders are reviewed copyable drafts for manual sending through the business's existing channel.
 - One temporary what-if scenario at a time, changing one invoice's expected receipt date and/or amount.
@@ -316,17 +316,21 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 ### Task 11: Verify the complete MVP against the PRD
 
-**Paused — 29 October:** core verification already produced 249 passing unit tests, 103 passing database tests, successful lint/typecheck and a Webpack production build, real HTTP/session checks, and loaded-page observations at 480/768/1440px. A dirty-draft refresh bug was fixed with a failing-then-passing test and live two-tab confirmation. Exact 390px remains unchecked because the preview clamped to 480px; Node-RED dependency findings remain unresolved. This is partial evidence, not completion of every checkbox. Do not restart these broad checks while working on individual feature slices. Later include AC-14–AC-20 only for actually delivered expansion features.
+**3 November code gate:** 271/271 unit/UI tests, 112/112 real integration tests, typecheck, lint and the Webpack production build pass on Node 24.22.1. The initial shell default was Node 26; final checks used the existing matching runtime without changing global settings. All 18 migration versions/names match development. The fresh review found no Critical/Important findings. Bryan explicitly deferred the phone-width check again on 3 November; that remains the outstanding mobile gate. Current evidence is in `docs/mvp-runtime-evidence.json` under `taskDGate`; the paragraph below preserves the older 29 October measurements rather than presenting them as fresh results.
+
+**Resumed — 29 October:** reuse the already recorded 249 passing unit tests, 103 passing database tests, successful lint/typecheck and Webpack production build, real HTTP/session checks, and loaded-page observations at 480/768/1440px. The dirty-draft refresh bug has a failing-then-passing test and live two-tab confirmation. Exact 390px remains unchecked because the preview clamps to 480px. Save/refetch was 443.64ms on the user's reported 16 GB/RTX 3050 laptop, using the local app and Singapore development Supabase; CPU and link speed were not captured. The focused privacy review found no unauthenticated marker echo, no known synthetic message text in 67 static assets, and no runtime logging of message bodies. Authenticated extraction intentionally sends the selected reply and bounded context to OpenRouter and may return source quotes to that signed-in business user; provider retention settings remain unverified for real customer data. The Node-RED audit has seven findings (six high, one moderate); the editor remains loopback-only and no unsafe downgrade or blanket upgrade was applied. Do not rerun completed suites. Task 11 remains partial until its narrow-screen evidence and final evidence record are resolved. Later include AC-14–AC-20 only for actually delivered expansion features.
 
 **Dependencies:** Tasks 1–10. **Files:** `tests/integration/acceptance.test.ts`, relevant owning tests, `docs/demo-and-verification.md`; change product files only for a demonstrated failure.
 
 **Interfaces:** Reuses all prior contracts. Add `verifyAcceptanceFixture()` in the acceptance test file rather than another application abstraction. Test fixtures are isolated from the interactive demo business.
 
-- [ ] Exercise AC-01 through AC-13 using independent sample cases and the coverage table below. In integration tests, use real authenticated clients and database commands; mock only the external model for repeatability. Preserve Task 9's separate real-model evidence.
-- [ ] Run `npm run test:unit`, `npm run test:integration`, `npm run typecheck`, `npm run lint`, and `npm run build` on Node 24. No missing-environment skips count as passing integration evidence. Fix failures in the owning code and add a regression case where meaningful.
-- [ ] Use `npm run start` and real browser interaction at 390/768/1440px. Check keyboard-only completion, accessible names/focus, recoverable validation, empty/loading/failure/AI-unavailable/stale-automation states, reload/re-login, two-session conflicts and session expiry while a form is open. Set `TEST_APP_BASE_URL` to this isolated running app and add real HTTP checks for unauthenticated AI access, mismatched Origin, invalid automation token and a valid user session after proxy refresh; these must not call the paid model. Evaluate async Server Components in the browser rather than pretending Vitest rendered them.
-- [ ] Measure normal save/refetch time and forecast computation on the 1,000-record dataset. Record actual device/network conditions against the two-second record-operation and one-second computation targets. Check no keys/customer message bodies appear in browser bundles, responses, public flow exports or diagnostics. Review RLS/function grants and dependency audit findings without blanket upgrades or disabling checks.
-- [ ] Commit `test: verify the integrated cash-flow planning MVP` with an evidence table listing commands, outcomes, limitations and reviewer identity if a real user walkthrough occurred. Do not assign fabricated time savings, willingness to pay or judge scores.
+- [x] Exercise AC-01 through AC-13 using the existing task-owned tests and independent acceptance fixtures. Integration checks use real authenticated clients and database commands; only the external model is mocked for repeatability. Task 9's separate real-model evidence remains distinct.
+- [x] Run `npm run test:unit`, `npm run test:integration`, `npm run typecheck`, `npm run lint`, and `npm run build` on Node 24. Recorded results: 249/249 unit, 103/103 integration, lint/typecheck clean, Webpack production build successful. No missing-environment skips counted.
+- [x] Check keyboard completion, accessible names/focus, recoverable validation, empty/loading/failure/AI-unavailable/stale-automation states, reload/re-login, two-session conflicts and session expiry while a form is open. Real HTTP checks cover unauthenticated AI access, mismatched Origin, invalid automation token and valid session after proxy refresh; no paid model call.
+- [ ] Finish the narrow mobile review. User-provided screenshot at 393×852 shows the main content visually contained, but does not measure document overflow. Confirm Forecast/Follow-ups navigation reachability and the assistant-launcher/chart overlap when Bryan resumes this review. Exact 390px is not measured; the available preview clamps below 480px. Do not substitute earlier 390px evidence from the pre-redesign shell.
+- [x] Measure save/refetch and forecast computation on the 1,000-record fixture: 443.64ms and 1.90ms respectively. The app audit had zero findings; the separate Node-RED runtime retains seven findings (six high, one moderate), with its editor bound to loopback. Database grants and RLS policies were reviewed. Do not expose that runtime to a network until the findings are resolved.
+- [x] Review the current message data path: an unauthenticated synthetic-marker request redirected to login without echoing the marker; three synthetic fixture strings were absent from 67 generated static files; no app/flow runtime logs include message text. An authorized extraction does send the selected reply and bounded context to configured OpenRouter and can return validated source quotes to the same signed-in business user. This is disclosed in the assistant UI; do not use real customer data until provider retention settings are verified.
+- [x] Save the verified signup, migration, workspace/CSV and evidence slices as local commits. The phone check remains explicitly deferred; the commits do not claim that it passed. Do not assign fabricated time savings, willingness to pay or judge scores.
 
 ### Task 12: Prepare the reproducible demo and hosting handoff
 
@@ -344,34 +348,37 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 
 ## 4A. Approved remaining feature slices — PRD revision 1.1
 
-These tasks extend the existing implementation; their numbers preserve completed task history. All are pending. Each ends with targeted tests and a reviewable local result. Do not run the whole MVP suite for each adapter or imply unavailable providers are working. Expand a provider's implementation brief only when that slice is selected and its actual access is known.
+These tasks extend the existing implementation; their numbers preserve completed task history. As of 2 November, Task 13 includes pending intake links, and Tasks 14–15 have a working Review Inbox and CSV slice awaiting Bryan's review. Tasks 16–21 remain separate, unbuilt adapters. The [delivery sequence](2026-11-02-pondopath-delivery-sequence.md) records the focused checks and real browser journey. Do not run the whole MVP suite for each adapter or imply unavailable providers are working. Expand a provider's implementation brief only when that slice is selected and its actual access is known.
 
 ### Task 13: Make the next action clear
 
 **Dependencies:** existing collections/reminders. **Files:** planned `lib/ui/next-actions.ts`, `components/next-actions.tsx`, Overview/Follow-ups callers and owning UI tests. **Contract:** `buildNextActions(workspace: WorkspaceSnapshot): NextAction[]`; each result has a stable ID, kind, source link, assignee or explicit unassigned state, due date or missing-date state, and owner-review requirement. No AI ranking or financial writes.
 
-- [ ] Add focused cases for a missed promise, missing expectation, pending owner reminder review, completed action and empty workspace. Confirm the relevant assertions fail before adding the derived worklist.
-- [ ] Reuse existing record/task states and source links. Show why the item appears and open the existing action; do not create a second task system or mark an action complete just because its link was opened.
-- [ ] Verify keyboard access and one narrow layout in the real app; run the owning tests/typecheck. Add pending intake reviews after Task 14 exists. Review this slice with Bryan before proceeding.
+- [x] Add focused cases for a missed promise, missing expectation, pending owner reminder review, completed action and empty workspace. Confirm the relevant assertions fail before adding the derived worklist.
+- [x] Reuse existing record/task states and source links. Show why the item appears and open the existing action; do not create a second task system or mark an action complete just because its link was opened.
+- [x] Verify keyboard access and one narrow layout in the real app; run the owning tests/typecheck. Task B's 2 November record covers the actual empty worklist at 390px, keyboard source navigation, and populated helper/render cases; live populated worklist interaction was not exercised.
+- [x] Add pending intake reviews after Task 14 exists. Task C adds item-specific links; Bryan's visual review is the next step.
 
 ### Task 14: Build the shared Review Inbox
 
 **Dependencies:** core commands/auth. **Files:** CLI-generated intake migration, planned `lib/domain/intake.ts`, `lib/server/intake.ts`, `app/(workspace)/imports/page.tsx`, review controls, source-scoped intake endpoint and owning domain/integration tests. **Contracts:** `stageIntake(sourceId, externalId, sourceVersion, payload)` validates a source-scoped candidate; `apply_intake(p_item_id, p_review_version, p_expected_revision)` applies a reviewed item through the existing authorized command rules. Define strict record-kind payload schemas before adding an external adapter.
 
-- [ ] Test two businesses, finance/owner boundaries, duplicate source events, conflicting matches, changed source versions and stale review. Include a failure after command execution: retry must return the same applied result and never repost cash.
-- [ ] Add private source metadata and staged items with provenance, original content/reference, proposed/current values, match/review status, reviewer and retained outcome. Expose safe metadata only; do not expose connector credentials or private source files to other businesses.
-- [ ] Make application of a proposal and its intake outcome transactional/idempotent. Reuse core validation, role checks, correction/approval invalidation and audit; integrations must not write financial tables with administrative credentials.
-- [ ] Allow edit, reject, clarify and explicit confirm. Support partially applied batches with per-item results. A deleted/missing external row is not a delete/void instruction. Include intake reviews in Task 13's worklist.
-- [ ] Run targeted money/access/retry tests and one review-confirm browser journey. No real provider or paid AI is required for this foundation.
+Progress (2 November): Task C completed the Review Inbox, source metadata, editable proposals, explicit confirmation, rejection/clarification, bounded CSV staging and a session-authenticated source endpoint. `20261102144344_intake_review_workflow.sql` and `20261102150739_intake_replay_and_rollback_verification.sql` are applied in development. Seven focused intake integration tests and the transactional fault/rollback check pass. The real upload-confirm-repeat journey is recorded in the delivery-sequence plan. External connectors remain separate tasks; this endpoint does not imply n8n access.
+
+- [x] Test two businesses, finance/owner boundaries, duplicate source events, conflicting matches, changed source versions and stale review. Include a failure after command execution: retry must return the same applied result and never repost cash.
+- [x] Add private source metadata and staged items with provenance, original content/reference, proposed/current values, match/review status, reviewer and retained outcome. Expose safe metadata only; do not expose connector credentials or private source files to other businesses.
+- [x] Make application of a proposal and its intake outcome transactional/idempotent. Reuse core validation, role checks, correction/approval invalidation and audit; integrations must not write financial tables with administrative credentials.
+- [x] Allow edit, reject, clarify and explicit confirm. Support partially applied batches with per-item results. A deleted/missing external row is not a delete/void instruction. Include intake reviews in Task 13's worklist.
+- [x] Run targeted money/access/retry tests and one review-confirm browser journey. No real provider or paid AI is required for this foundation.
 
 ### Task 15: Add manual CSV import
 
 **Dependencies:** 14. **Files:** planned `lib/domain/imports.ts`, upload/mapping/preview components, inbox callers and import tests. **Contract:** a bounded CSV parser produces normalized candidate rows and row-specific errors for Task 14; it never saves financial records directly.
 
-- [ ] Use a fictional file with new, changed, unchanged, invalid and duplicate rows. Cover quoted commas, UTF-8/BOM, missing IDs/headers, invalid dates/precision/currency, unsafe totals and a repeat upload/apply.
-- [ ] Select a small maintained parser only if existing/native facilities do not correctly cover CSV quoting. Check its license first. Set and document file/row limits within the existing workspace capacity; reject oversized input before expensive processing.
-- [ ] Add explicit column mapping and record kind. Compare by stable IDs and programmed values; hold ambiguous matches. Show current/proposed values, row errors and per-item outcomes. Missing rows never remove records.
-- [ ] Verify a CSV-to-reviewed-invoice journey, repeat import without duplication, and manual forms still working. Run focused import/inbox tests; review with Bryan before XLSX.
+- [x] Use fictional CSV fixtures covering new, changed, unchanged, invalid and duplicate rows. Cover quoted commas, UTF-8/BOM, missing IDs/headers, invalid dates/precision/currency, unsafe amounts and a repeat upload/apply. Changed/unchanged comparisons are covered by focused parser tests; the browser journey covers new/invalid/duplicate and repeat rows.
+- [x] Select a small maintained parser only if existing/native facilities do not correctly cover CSV quoting. Check its license first. `csv-parse` 7.0.3 (MIT) handles quoting. File/row limits are recorded in the delivery sequence.
+- [x] Add explicit column mapping and record kind. Compare by stable IDs and programmed values; hold ambiguous matches. Show current/proposed values, row errors and per-item outcomes. Missing rows never remove records.
+- [x] Verify a CSV-to-reviewed-invoice journey and repeat import without duplication. Existing manual-form rendering tests pass; no additional live manual-form submission was made. Review with Bryan before XLSX.
 
 ### Task 16: Add Excel XLSX import
 

@@ -77,8 +77,8 @@ The selected product combines **A: collections**, **B: cash forecasting**, and *
 
 The following details are **author-selected MVP defaults**, made to keep the document concrete. They were not separately specified by Bryan and remain reviewable:
 
-- One preconfigured business, Philippine pesos only, Asia/Manila dates, and English interface text.
-- An owner login and a finance/admin login in that same business; an owner may perform both jobs. The subsequently approved private invitation flow can add finance teammates to that business. Public business registration and multi-business switching remain excluded.
+- One business per account, Philippine pesos only, Asia/Manila dates, and English interface text. The fictional preconfigured business remains for demonstrations.
+- Public sign-up creates a separate private business workspace with its registrant as owner. An owner may also perform the finance role and can invite finance teammates into that workspace. Multi-business switching remains excluded. For the development test, email confirmation is disabled; it must be reviewed before wider launch.
 - Manual forms and fictional seed records remain available. Version 1.1 schedules reviewed CSV/XLSX imports and selected source connections as separate remaining slices.
 - Reminders remain reviewed copyable drafts for manual sending through the business's existing channel. Approved message-intake connections are inbound only; automatic external sending remains excluded.
 - One temporary what-if scenario at a time, changing one invoice's expected receipt date and/or amount.
@@ -93,7 +93,7 @@ FR-01–FR-11 remain the P0 core. FR-12–FR-17 are approved expansion work, del
 
 | ID | Requirement | Required behavior |
 | --- | --- | --- |
-| FR-01 | Business access | Authenticate the two demo roles with Supabase Auth. Authorize every read and write for the fixed business. Finance staff cannot approve owner-only actions by changing a browser request. |
+| FR-01 | Business access | Authenticate public owners and invited finance staff with Supabase Auth. A new owner creates one private business workspace. Authorize every read and write by that business membership; finance staff cannot approve owner-only actions by changing a browser request. The existing demo roles remain for demonstrations. |
 | FR-02 | Financial records | Enter customers, existing unpaid invoices, opening cash with its cutoff date, and upcoming expenses. Validate required fields, amounts, and dates. Show the source and last update of expected receipts. |
 | FR-03 | Actual payments | Record manually verified customer receipts and expense payments, including partial amounts. Update remaining balances and available cash together. Prevent duplicate submissions and over-allocation. |
 | FR-04 | Thirty-day forecast | Calculate daily projected closing balances, earliest shortage date, largest projected shortfall, and related receipts/obligations. Explain which assumptions and records are included. |
@@ -227,7 +227,7 @@ All balance-changing writes and their history are atomic. If another user change
 
 ## 9. Core user journey
 
-1. Sign in to the fixed business and review the cash cutoff, latest updates, and incomplete records.
+1. Sign in to your business workspace and review the cash cutoff, latest updates, and incomplete records.
 2. Enter existing unpaid invoices and upcoming expenses, then view the 30-day cash plan.
 3. Open an invoice linked to a possible shortage and prepare a reminder for owner review.
 4. Copy the approved draft for manual sending. Record a reply or note when available.
@@ -340,7 +340,7 @@ A short walkthrough with a reachable finance/admin worker is useful but a broad 
 | --- | --- | --- |
 | Sustainability | Collection updates and upcoming obligations are recurring tasks. Bounded AI, reusable records, shared intake and explicitly owned automation jobs aim to keep operation and support manageable. | Measure ongoing usefulness, support effort, hosting/runtime expense, connector maintenance and AI usage. A subscription or service price is a later hypothesis. Environmental benefits are not claimed. |
 | Practicality | Uses familiar invoices, payment updates, and expense records. Staff review changes; owners retain decisions. Manual entry and existing communication channels avoid requiring customer adoption. | Observe real entry/update habits, preparation time, missing data, and whether a spreadsheet already handles the task adequately. Repeated data maintenance may outweigh the benefit. |
-| Feasibility | Retain one business, one currency and one scenario. Deliver imports, source adapters and image extraction separately through shared review, using programmed rules for structured data. | Prove each supported connection and extraction path, monetary correctness, access control, runtime costs and manual fallback. Provider availability and approvals can block a connector independently; expansion is not assumed to fit the original schedule. |
+| Feasibility | Retain one business per account, one currency and one scenario. Deliver imports, source adapters and image extraction separately through shared review, using programmed rules for structured data. | Prove each supported connection and extraction path, monetary correctness, access control, runtime costs and manual fallback. Provider availability and approvals can block a connector independently; expansion is not assumed to fit the original schedule. |
 
 Operating-cost review must include application hosting, database/auth and private-file storage, Node-RED/n8n hosting and licensing, connector onboarding/messaging fees, AI text/image usage, and maintenance/support time. Measure intake, review and correction effort. Check n8n's applicable terms before embedding customer-owned connections in a paid product. Use current provider terms; no promise of permanently free operation is made. Paid services or plan upgrades require a separate budget decision before purchase.
 
@@ -388,6 +388,7 @@ The final product review should confirm this scope before a separate implementat
 
 - **1.0 — 26 October 2026:** core collections, forecast, reviewed reminders, AI assistance and Node-RED MVP.
 - **1.1 — 29 October 2026:** records the previously approved private invitations and the newly approved shared intake, CSV/XLSX, n8n source connections, supported business messages, receipt images and clearer next actions. Retains human financial review, manual fallback, one-business scope and explicit provider gates. Expansion delivery is pending.
+- **1.2 — 30 October 2026:** Bryan superseded the invite-only registration default. Public sign-up now creates one private business per new owner account; the Team invitation flow remains for finance staff. Email confirmation is disabled only for development testing and requires review before wider use.
 
 ## 18. Supporting documents
 

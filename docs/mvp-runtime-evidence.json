@@ -1,0 +1,89 @@
+{
+  "verifiedAt": "2026-10-29T13:03:48.033Z",
+  "node": "v24.22.1",
+  "checks": [
+    "Real HTTP: anonymous AI redirects to login; mismatched Origin is 403; wrong automation token is 401; signed-in AI without a key is recoverable 503. No model called.",
+    "An expired fixture access token with a valid refresh token was renewed by the real proxy; protected overview rendered with updated session cookies.",
+    "A real save and snapshot refetch completed with 1,000 financial records; temporary scale records removed before browser review.",
+    "Production browser assets, exported flow and captured isolated-server diagnostics contained neither tested server key nor automation token."
+  ],
+  "timingsMs": {
+    "saveAndRefetch1000Records": 443.64
+  },
+  "environment": {
+    "device": "Windows laptop; 16 GB RAM and RTX 3050 reported by the user",
+    "appAndDatabase": "Local Next.js app with the Singapore development Supabase project",
+    "cpuAndNetworkLink": "Not captured; host inventory access is restricted. Save/refetch timing includes the database round trip."
+  },
+  "privacyReview": {
+    "unauthenticatedAssistantPost": "Synthetic marker request returned HTTP 307 to login; marker was not reflected in the response.",
+    "staticAssets": "Scanned 67 generated static files for three synthetic message fixtures; no matches.",
+    "runtimeLogs": "No runtime console/logger calls found in the assistant API/server paths. Node-RED flow logs aggregate counts and fixed status messages, not payload text.",
+    "authorizedAiDisclosure": "An authenticated extraction sends the selected reply and bounded business context to configured OpenRouter, then returns a validated proposal that may include source quotes. This is intentional; provider retention settings remain unverified for real customer data."
+  },
+  "mobileReview": {
+    "viewport": "393x852 (user-provided responsive preview screenshot)",
+    "observation": "Main workspace content appears visually contained within the viewport; this screenshot alone does not measure document overflow.",
+    "pending": "Confirm Forecast and Follow-ups are reachable from the clipped navigation row and review the assistant launcher overlap with chart content. User asked to defer both checks. Exact 390px was not measured."
+  },
+  "taskDGate": {
+    "verifiedAt": "2026-11-03T03:58:43Z",
+    "status": "code_verification_passed_phone_check_deferred",
+    "runtime": {
+      "node": "v24.22.1",
+      "initialShellNode": "v26.12.0",
+      "globalNodeUnchanged": true,
+      "reasonForMatchingRuntimePass": "The shell default differed from the project's 24.x engine requirement; final checks used the already-installed Node 24 binary."
+    },
+    "results": {
+      "unit": {
+        "passed": 271,
+        "files": 36
+      },
+      "integration": {
+        "passed": 112,
+        "files": 12,
+        "durationSeconds": 138.22
+      },
+      "typecheck": "passed",
+      "lint": "passed",
+      "productionBuild": "passed: Next.js 16.4.3 webpack, 18 routes/pages generated"
+    },
+    "database": {
+      "migrationFilesMatchRemote": true,
+      "migrationCount": 18,
+      "renamedSqlUnchanged": 4,
+      "project": "Dedicated Singapore development project"
+    },
+    "browser": {
+      "forecastReachable": true,
+      "followupsReachableViaInvoices": true,
+      "measuredWidth": 1056,
+      "documentOverflow": false,
+      "csv": "Task C's real 2 November upload-confirm-repeat evidence reused; not rerun.",
+      "publicSignup": "Real isolated Supabase sign-up and private workspace integration cases passed; no additional browser password creation.",
+      "phoneCheck": "Deferred explicitly by Bryan on 3 November. Preview zoom was 50%; no 390px result claimed."
+    },
+    "review": {
+      "freshContext": true,
+      "criticalFindings": 0,
+      "importantFindings": 0,
+      "scope": "Public signup/setup isolation, loading/navigation callers, receipt-plan links, draft revision handling and next-action/inbox routing. Task C's prior focused review reused."
+    },
+    "security": {
+      "intentionalAuthenticatedDefinerWarnings": 8,
+      "definerRemediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "definerAssessment": "Reviewed explicit identity/business/role checks and revoked anonymous execution; no demonstrated new bypass.",
+      "leakedPasswordProtection": "Disabled in development; wider-launch prerequisite.",
+      "passwordRemediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection",
+      "emailConfirmation": "Temporarily disabled for immediate fictional-data development signup; real-business pilot prerequisite."
+    },
+    "notPerformed": [
+      "390px phone and assistant/chart overlap check (user deferred)",
+      "Deployment or push",
+      "New paid AI or Node-RED live run",
+      "Fresh provider-retention or Node-RED dependency audit"
+    ],
+    "frameworkFeedback": "No new verified Next.js feedback candidate in this pass."
+  }
+}
