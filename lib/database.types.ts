@@ -538,6 +538,122 @@ export type Database = {
           },
         ]
       }
+      intake_items: {
+        Row: {
+          business_id: string
+          candidate: Json
+          current_values: Json | null
+          external_id: string
+          id: string
+          matched_record_id: string | null
+          matched_version: number | null
+          observed_at: string
+          original_content: Json
+          outcome: Json | null
+          review_note: string | null
+          review_version: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_evidence: Json | null
+          source_id: string
+          source_version: string
+          staged_by: string
+          status: string
+        }
+        Insert: {
+          business_id: string
+          candidate: Json
+          current_values?: Json | null
+          external_id: string
+          id?: string
+          matched_record_id?: string | null
+          matched_version?: number | null
+          observed_at?: string
+          original_content: Json
+          outcome?: Json | null
+          review_note?: string | null
+          review_version?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_evidence?: Json | null
+          source_id: string
+          source_version: string
+          staged_by: string
+          status?: string
+        }
+        Update: {
+          business_id?: string
+          candidate?: Json
+          current_values?: Json | null
+          external_id?: string
+          id?: string
+          matched_record_id?: string | null
+          matched_version?: number | null
+          observed_at?: string
+          original_content?: Json
+          outcome?: Json | null
+          review_note?: string | null
+          review_version?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_evidence?: Json | null
+          source_id?: string
+          source_version?: string
+          staged_by?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intake_items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_items_source_id_business_id_fkey"
+            columns: ["source_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "intake_sources"
+            referencedColumns: ["id", "business_id"]
+          },
+        ]
+      }
+      intake_sources: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          label: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          label: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intake_sources_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_cents: number
@@ -630,8 +746,8 @@ export type Database = {
           id: string
           invoice_id: string
           recipient: string
-          reported_by: string | null
           rejection_reason: string | null
+          reported_by: string | null
           reported_channel: string | null
           reported_sent_at: string | null
           reviewed_at: string | null
@@ -651,8 +767,8 @@ export type Database = {
           id?: string
           invoice_id: string
           recipient: string
-          reported_by?: string | null
           rejection_reason?: string | null
+          reported_by?: string | null
           reported_channel?: string | null
           reported_sent_at?: string | null
           reviewed_at?: string | null
@@ -672,8 +788,8 @@ export type Database = {
           id?: string
           invoice_id?: string
           recipient?: string
-          reported_by?: string | null
           rejection_reason?: string | null
+          reported_by?: string | null
           reported_channel?: string | null
           reported_sent_at?: string | null
           reviewed_at?: string | null
@@ -704,15 +820,71 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      amend_intake: {
+        Args: {
+          p_candidate: Json
+          p_expected_revision: number
+          p_item_id: string
+          p_note: string
+          p_review_version: number
+        }
+        Returns: number
+      }
+      apply_intake: {
+        Args: {
+          p_expected_revision: number
+          p_item_id: string
+          p_review_version: number
+        }
+        Returns: Json
+      }
       automation_followups: {
         Args: { p_business_id: string; p_request: Json }
         Returns: Json
       }
       check_missed_commitments: { Args: never; Returns: Json }
+      create_business_workspace: {
+        Args: { p_display_name: string; p_name: string }
+        Returns: string
+      }
+      create_intake_source: {
+        Args: { p_kind: string; p_label: string }
+        Returns: string
+      }
       get_approved_reminder_text: { Args: { p_id: string }; Returns: Json }
+      get_intake_bindings: {
+        Args: { p_external_ids: string[]; p_source_id: string }
+        Returns: Json
+      }
       reserve_ai_request: {
-        Args: { p_expected_revision: number; p_model: string; p_provider: string }
+        Args: {
+          p_expected_revision: number
+          p_model: string
+          p_provider: string
+        }
         Returns: number
+      }
+      review_intake: {
+        Args: {
+          p_decision: string
+          p_item_id: string
+          p_reason: string
+          p_review_version: number
+        }
+        Returns: number
+      }
+      stage_intake: {
+        Args: {
+          p_candidate: Json
+          p_external_id: string
+          p_source_id: string
+          p_source_version: string
+        }
+        Returns: string
+      }
+      stage_intake_batch: {
+        Args: { p_rows: Json; p_source_id: string }
+        Returns: Json
       }
       workspace_command: { Args: { p_command: Json }; Returns: Json }
       workspace_history: {

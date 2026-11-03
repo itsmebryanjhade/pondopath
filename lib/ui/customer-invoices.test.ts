@@ -2,9 +2,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { CustomerInvoices } from "@/components/customer-invoices";
+import { CollectionPanel } from "@/components/collection-panel";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/app/(workspace)/actions", () => ({ executeWorkspaceAction: vi.fn() }));
 
 function fixture() {
   const workspace = uiWorkspace();
@@ -43,6 +45,11 @@ describe("source Invoices page connected to collection records", () => {
     expect(html).toContain("unplanned");
     expect(html).toContain("2026-10-28");
     expect(html).toContain("Customer commitment");
+    expect(html).toContain(`/invoices/${workspace.invoices[0].id}?plan=edit#collection-plan`);
+    expect(html).toContain("Update expected payment");
+    expect(html).toMatch(/<th scope="row">[\s\S]*?Update expected payment[\s\S]*?<\/th>/);
+    expect(html).toContain('href="/followups"');
+    expect(html).toContain("Follow-ups");
     expect(html).toContain(`#collection-plan`);
     expect(html).toContain("Expected receipts are not available cash");
     expect(html).toContain("Add invoice");
@@ -108,5 +115,23 @@ describe("source Invoices page connected to collection records", () => {
     expect(html).not.toContain(">Add invoice<");
     expect(html).toContain("Save customer");
     expect(chartAmounts(html)).toEqual([0, 0, 0, 0, 0]);
+  });
+
+  it("offers a direct setup action for an invoice without an expectation", () => {
+    const workspace = fixture();
+    workspace.expectations = [];
+    const html = render(workspace);
+    expect(html).toContain("Set expected payment");
+    expect(html).toContain(`/invoices/${workspace.invoices[0].id}?plan=edit#collection-plan`);
+  });
+
+  it("opens the payment plan from a direct link while keeping receipt facts separate", () => {
+    const workspace = fixture();
+    const invoice = workspace.invoices[0];
+    const html = renderToStaticMarkup(createElement(CollectionPanel, { workspace, invoice, openPlan: true }));
+    expect(html).toContain('class="disclosure" open=""');
+    expect(html).toContain(`Original due date: ${invoice.due_date}`);
+    expect(html).toContain("Changing this plan does not record a payment");
+    expect(html).toContain("Expected receipt date");
   });
 });

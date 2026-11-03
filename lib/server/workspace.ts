@@ -20,6 +20,7 @@ export type WorkspaceSnapshot = {
   expectations: Row<"expectations">[];
   followups: Row<"followups">[];
   reminders: Row<"reminders">[];
+  intakeReviews?: Pick<Row<"intake_items">, "id" | "external_id" | "status">[];
   automation: { lastSuccessAt: string | null; stale: boolean; lastAttemptAt?: string | null; lastStatus?: string | null; lastErrorCode?: string | null; lastManualAt?: string | null };
   forecastInput: ForecastInput;
 };
@@ -33,13 +34,20 @@ function readError(message: string): never {
 export const getWorkspace = cache(async (): Promise<WorkspaceSnapshot> => {
   const actor = await requireActor();
   const client = await createClient();
-  const { data, error } = await client.rpc("workspace_snapshot");
+  const [{ data, error }, intake] = await Promise.all([
+    client.rpc("workspace_snapshot"),
+    client.from("intake_items").select("id,external_id,status").eq("business_id", actor.businessId)
+      .in("status", ["pending", "needs_match"]).order("observed_at", { ascending: false }).order("id", { ascending: false }).limit(20),
+  ]);
   if (error || !data) readError(error?.message ?? "");
+  if (intake.error) readError(intake.error.message);
   // This JSON contract is produced by our versioned SQL function, not user input.
   const snapshot = data as unknown as WorkspaceSnapshot;
   if (snapshot.business.id !== actor.businessId || snapshot.actor.userId !== actor.userId)
     readError("");
   calculateForecast(snapshot.forecastInput);
+  // shortcut: The worklist includes the first inbox page; the inbox paginates the complete review history.
+  snapshot.intakeReviews = intake.data;
   return snapshot;
 });
 

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { WorkspaceFrame } from "@/components/workspace-frame";
+import WorkspaceLayout from "@/app/(workspace)/layout";
 import { WorkspaceNavigation } from "@/components/workspace-navigation";
 import WorkspaceLoading from "@/components/workspace-loading";
 import WorkspaceError from "@/app/(workspace)/error";
@@ -17,6 +18,7 @@ vi.mock("next/link", async (importOriginal) => ({
   useLinkStatus: () => ({ pending: navigationState.pending }),
 }));
 vi.mock("@/app/login/actions", () => ({ signOut: async () => {} }));
+vi.mock("@/lib/server/workspace", () => ({ getWorkspace: () => new Promise(() => {}) }));
 vi.mock("@/components/ai-assistant", () => ({ AiAssistant: () => createElement("button", null, "AI assistant") }));
 
 const workspace: WorkspaceSnapshot = {
@@ -42,9 +44,31 @@ describe("persistent workspace navigation", () => {
   it("loads only the content area without replacing the brand or navigation", () => {
     const html = renderToStaticMarkup(createElement(WorkspaceLoading));
     expect(html).toContain('aria-busy="true"');
-    expect(html).toContain('role="status"');
+    expect(html).toContain('class="sr-only" role="status"');
+    expect(html).toContain('class="skeleton-feature"');
+    expect(html.match(/class="skeleton-metric"/g)).toHaveLength(3);
+    expect(html).toContain("workspace-slow-splash");
+    expect(html).not.toContain("<h1>");
     expect(html).not.toContain("<main");
-    expect(html).not.toContain("PondoPath");
+  });
+
+  it("shows a branded splash during the initial authenticated load", () => {
+    const html = renderToStaticMarkup(createElement(WorkspaceLayout, null, "Workspace data"));
+    expect(html).toContain("first-paint-splash");
+    expect(html).toContain('class="first-paint-splash" aria-hidden="true"');
+    expect(html.match(/<main\b/g)).toHaveLength(2);
+    expect(html).toContain("PondoPath");
+    expect(html).toContain("Preparing your cash plan");
+    expect(html).toContain("workspace-splash-mark");
+    expect(html).toContain("workspace-splash-name");
+    expect(html).not.toContain("workspace-splash-eyebrow");
+    expect(html).not.toContain("workspace-splash-steps");
+    expect(html).not.toContain("<svg");
+    expect(html).not.toContain("<progress");
+    expect(html).not.toContain("workspace-splash-card");
+    expect(html).toContain("Still loading your workspace");
+    expect(html).not.toContain("skeleton-feature");
+    expect(html).toContain('role="status"');
   });
 
   it("keeps one main landmark and role-based controls around loading content", () => {
@@ -71,8 +95,10 @@ describe("persistent workspace navigation", () => {
     navigationState.pathname = "/followups";
     const html = renderToStaticMarkup(createElement(WorkspaceNavigation, { mobile: true, followupCount: 2 }));
     expect(html).toContain('aria-label="2 open follow-ups"');
-    expect(html.match(/href="\/(overview|cash|invoices|payments|expenses|forecast|followups)"/g)).toHaveLength(7);
-    expect(html).toMatch(/class="mobile-tab active"[^>]*aria-current="page"[^>]*href="\/followups"/);
+    expect(html.match(/href="\/(overview|cash|invoices|expenses|forecast)"/g)).toHaveLength(5);
+    expect(html).not.toContain('href="/followups"');
+    expect(html).not.toContain('href="/payments"');
+    expect(html).toMatch(/class="mobile-tab active"[^>]*aria-current="page"[^>]*href="\/invoices"/);
     expect(renderToStaticMarkup(createElement(WorkspaceNavigation))).not.toContain('class="side-count"');
   });
 
@@ -85,12 +111,12 @@ describe("persistent workspace navigation", () => {
     expect(renderToStaticMarkup(createElement(WorkspaceNavigation))).not.toContain('aria-current="page"');
   });
 
-  it.each(["/cash", "/payments", "/forecast", "/followups"])("selects the dedicated %s page", (pathname) => {
+  it.each([["/cash", "/cash"], ["/payments", "/cash"], ["/forecast", "/forecast"], ["/followups", "/invoices"]])("selects the parent tab for %s", (pathname, destination) => {
     navigationState.pathname = pathname;
     const html = renderToStaticMarkup(createElement(WorkspaceNavigation));
     const selected = html.match(/<a[^>]*aria-current="page"[^>]*>/g);
     expect(selected).toHaveLength(1);
-    expect(selected![0]).toContain(`href="${pathname}"`);
+    expect(selected![0]).toContain(`href="${destination}"`);
   });
 
   it("announces pending navigation without replacing its icons with spinning circles", () => {

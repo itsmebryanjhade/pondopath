@@ -16,7 +16,7 @@ import { z } from "zod";
 
 type InvoiceDetailProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ history?: string; movement?: string }>;
+  searchParams: Promise<{ history?: string; movement?: string; plan?: string }>;
 };
 
 export default async function InvoiceDetail({ params, searchParams }: InvoiceDetailProps) {
@@ -76,7 +76,7 @@ export default async function InvoiceDetail({ params, searchParams }: InvoiceDet
             remainingCents={invoice.outstanding_cents}
           />
         </section>
-        <CollectionPanel workspace={workspace} invoice={invoice} />
+        <CollectionPanel workspace={workspace} invoice={invoice} openPlan={query.plan === "edit"} />
       </div>
       <ScenarioPanel key={workspace.revision} workspace={workspace} invoiceId={invoice.id} />
       <FollowupPanel workspace={workspace} invoice={invoice} />

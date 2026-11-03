@@ -25,6 +25,8 @@ describe("source Forecast layout preserves calculated risk", () => {
     expect(html).toContain('id="forecast-main-chart-fill"');
     expect(html.match(/<tbody>([\s\S]+?)<\/tbody>/)?.[1].match(/<tr/g)).toHaveLength(30);
     expect(html).toContain("data-scenario=");
+    expect(html).toContain(`/invoices/${uiWorkspace().invoices[0].id}?plan=edit#collection-plan`);
+    expect(html).toContain("Review expected payment for");
   });
   it("keeps incomplete promises and overdue due-now expenses visible", async () => {
     const workspace = uiWorkspace();
@@ -45,5 +47,6 @@ describe("source Forecast layout preserves calculated risk", () => {
     expect(html).not.toContain("data-scenario=");
     expect(html).toContain("-₱40,000.00");
     expect(html).toContain('class="num forecast-below-zero"');
+    expect(html).not.toContain("Review expected payment for");
   });
 });

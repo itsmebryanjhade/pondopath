@@ -14,6 +14,12 @@ export default async function ForecastPage() {
   const forecast = calculateForecast(workspace.forecastInput);
   const end = forecast.days[29];
   const lowest = forecast.days.reduce((minimum, day) => day.closingCents < minimum.closingCents ? day : minimum);
+  const shortageDate = forecast.firstShortage?.date;
+  const plans = new Map(workspace.forecastInput.invoices.map((invoice) => [invoice.id, invoice]));
+  const invoicesToReview = shortageDate ? workspace.invoices.filter((invoice) => {
+    const plan = plans.get(invoice.id);
+    return plan && plan.outstandingCents > 0 && (!plan.expectation || plan.expectation.needsReview || plan.expectation.date < workspace.forecastInput.referenceDate || plan.expectation.date >= shortageDate);
+  }).slice(0, 3) : [];
   const metrics = [
     { label: "Expected receipts", value: checkedSum(forecast.days.map((day) => day.expectedInCents)), note: "Next 30 days · not received cash", tone: "green" },
     { label: "Planned expenses", value: checkedSum(forecast.days.map((day) => day.plannedOutCents)), note: "Next 30 days · includes overdue due-now bills", tone: "blue" },
@@ -50,6 +56,7 @@ export default async function ForecastPage() {
         <p className="forecast-first-shortage">{forecast.firstShortage ? `${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(forecast.firstShortage.date)}` : "None projected from entered records"}</p>
         <p>Largest projected shortfall: <strong>{formatPHP(forecast.maxShortfallCents)}</strong></p>
         <p>{forecast.incompleteInvoiceIds.length ? `Incomplete plan: ${forecast.incompleteInvoiceIds.length} unpaid invoices have unplanned amounts or no usable expected payment. ` : "This plan reflects entered records only. "}{forecast.staleExpectationIds.length} past expectations excluded; {forecast.overdueExpenseIds.length} overdue expenses treated as due now.</p>
+        {invoicesToReview.length > 0 && <div aria-label="Invoice receipt plans to review"><p>Review receipt timing for these invoices:</p>{invoicesToReview.map((invoice) => <p key={invoice.id}><Link className="forecast-source-link" href={`/invoices/${invoice.id}?plan=edit#collection-plan`}>Review expected payment for {invoice.number} <DashboardIcon name="arrowRight" size={15} /></Link></p>)}</div>}
         <Link className="forecast-source-link" href="/invoices">Review inputs <DashboardIcon name="arrowRight" size={15} /></Link>
         <div className="source-note"><span>Zero cash leaves no buffer</span><strong>Expected is not received</strong></div>
       </aside>

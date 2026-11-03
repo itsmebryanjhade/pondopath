@@ -33,6 +33,9 @@ describe("source Follow-ups layout preserves the action ledger", () => {
     workspace.automation.stale = true;
     const html = await render(workspace);
     expect(html).toContain("section-follow-ups followups-page");
+    expect(html).toContain("Next actions");
+    expect(html).toContain('id="followup-queue"');
+    expect(html).toContain('aria-label="Review action: Review collection 0. DEMO-001 · Demo customer"');
     expect(html).toMatch(/Amount tied to open follow-ups<\/span><strong[^>]*>₱50,000.00/);
     expect([...html.matchAll(/data-count="(\d+)"/g)].map((match) => Number(match[1]))).toEqual([1, 1, 1]);
     expect(html).toContain("Automatic follow-up checks are not current");

@@ -88,6 +88,7 @@ export function CommandForm({
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const submitted = useRef<WorkspaceCommand | null>(null);
+  const draftRevision = useRef<number | null>(null);
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<Failure | null>(null);
   const [failedRevision, setFailedRevision] = useState<number | null>(null);
@@ -104,7 +105,7 @@ export function CommandForm({
         const parsed = workspaceCommandSchema.safeParse({
           ...draft,
           requestId: crypto.randomUUID(),
-          expectedRevision: revision,
+          expectedRevision: draftRevision.current ?? revision,
         });
         if (!parsed.success)
           throw new RangeError(parsed.error.issues.map((issue) => issue.message).join(" "));
@@ -135,6 +136,7 @@ export function CommandForm({
       }
       if (result.ok) {
         submitted.current = null;
+        draftRevision.current = null;
         setFailure(null);
         setNotice(
           result.data.replayed
@@ -158,6 +160,10 @@ export function CommandForm({
     <form
       ref={form}
       className="record-form"
+      onChangeCapture={() => {
+        // Dirty inputs survive refresh; their review basis must survive with them.
+        draftRevision.current ??= revision;
+      }}
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -187,6 +193,7 @@ export function CommandForm({
                 disabled={revision === failedRevision}
                 onClick={() => {
                   submitted.current = null;
+                  draftRevision.current = revision;
                   setFailure(null);
                 }}
               >

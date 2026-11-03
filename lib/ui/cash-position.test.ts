@@ -33,6 +33,8 @@ describe("Cash page source layout with saved balances", () => {
     expect(html).toContain("₱20,000.00");
     expect(html).toContain("₱5,000.00");
     expect(html).toContain("Customer promises do not change this balance");
+    expect(html).toContain('href="/payments"');
+    expect(html).toContain("Payment history");
     expect(html).not.toContain("Bank balances");
     expect(html).toContain("Set opening cash");
   });

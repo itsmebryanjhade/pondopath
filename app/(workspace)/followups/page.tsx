@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getWorkspace } from "@/lib/server/workspace";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { FollowupPanel } from "@/components/followup-panel";
+import { NextActions } from "@/components/next-actions";
 import { DashboardIcon } from "@/components/dashboard-icon";
 import { RefreshRecords } from "@/components/refresh-records";
 import { checkedSum, formatPHP } from "@/lib/domain/money";
@@ -40,8 +41,9 @@ export default async function FollowupsPage({ searchParams }: { searchParams: Pr
       <div className="dashboard-heading-actions"><span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span><RefreshRecords /><Link className="section-primary" href="/invoices?filter=no_followup"><DashboardIcon name="plus" size={17} />Find invoices without a follow-up</Link></div>
     </header>
   }>
+    <NextActions workspace={workspace} />
     <section className="section-lower-grid">
-      <section className="records-panel">
+      <section className="records-panel" id="followup-queue">
         <div className="records-head"><div><h2>Follow-up queue and history</h2><p>Expand an invoice to review its actions, assignment and outcomes</p></div><span>{invoices.length} invoices</span></div>
         {invoices.length ? <div className="followup-list-scroll" role="region" aria-label="Invoice follow-up records" tabIndex={0}>
           <div className="record-list followup-worklist">{invoices.slice((page - 1) * 20, page * 20).map((invoice) => {

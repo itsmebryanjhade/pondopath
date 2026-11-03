@@ -7,7 +7,7 @@ import { assertLocalDate } from "@/lib/domain/dates";
 import { CommandForm, Field, TextAreaField, AssigneeField } from "./command-form";
 import { CashImpact } from "./cash-impact";
 
-type Props = { workspace: WorkspaceSnapshot; invoice: WorkspaceSnapshot["invoices"][number]; proposed?: { amountCents: number; date: string; sourceNote: string } };
+type Props = { workspace: WorkspaceSnapshot; invoice: WorkspaceSnapshot["invoices"][number]; proposed?: { amountCents: number; date: string; sourceNote: string }; openPlan?: boolean };
 function ExpectationFields({ workspace, invoice, proposed }: Props) {
   const current = workspace.expectations.find((row) => row.invoice_id === invoice.id);
   const next = workspace.followups
@@ -132,7 +132,7 @@ function ExpectationFields({ workspace, invoice, proposed }: Props) {
   );
 }
 
-export function CollectionPanel({ workspace, invoice, proposed }: Props) {
+export function CollectionPanel({ workspace, invoice, proposed, openPlan = false }: Props) {
   const current = workspace.expectations.find((row) => row.invoice_id === invoice.id);
   const review =
     current &&
@@ -142,6 +142,7 @@ export function CollectionPanel({ workspace, invoice, proposed }: Props) {
   return (
     <section id="collection-plan" className="panel">
       <h2>Current receipt expectation</h2>
+      <p className="muted">Original due date: {invoice.due_date} · Verified received: {formatPHP(invoice.paid_cents)}. Changing this plan does not record a payment.</p>
       {current ? (
         <>
           <p className="expectation-amount num">{formatPHP(current.remaining_cents)}</p>
@@ -172,8 +173,8 @@ export function CollectionPanel({ workspace, invoice, proposed }: Props) {
         <span className="num">{formatPHP(Math.max(0, invoice.outstanding_cents - planned))}</span>.
       </p>
       {invoice.outstanding_cents > 0 && (
-        <details className="disclosure" open={!!proposed}>
-          <summary>Review or confirm a receipt plan</summary>
+        <details className="disclosure" open={!!proposed || openPlan}>
+          <summary>{current ? "Update expected payment" : "Set expected payment"}</summary>
           <CommandForm
             revision={workspace.revision}
             label="Confirm reviewed receipt plan"

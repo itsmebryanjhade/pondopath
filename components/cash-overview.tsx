@@ -7,6 +7,7 @@ import { formatPlanDate } from "@/lib/display";
 import { buildActivityRows } from "@/lib/ui/cash-overview";
 import { CashForecast } from "./cash-forecast";
 import { CashActivity } from "./cash-activity";
+import { NextActions } from "./next-actions";
 import { WorkspaceShell } from "./workspace-shell";
 import { RefreshRecords } from "./refresh-records";
 import { DashboardIcon } from "./dashboard-icon";
@@ -52,6 +53,7 @@ export function CashOverview({ workspace, planningTools }: { workspace: Workspac
       <div className="card-title"><span>{metric.label}</span><Link href={metric.href} aria-label={`Review ${metric.label.toLowerCase()}`}><DashboardIcon name="arrowRight" size={16} /></Link></div>
       <strong className="num">{formatPHP(metric.amount)}</strong><p className={metric.tone === "orange" ? "warning" : undefined}>{metric.note}</p>
     </article>)}</section>
+    <NextActions workspace={workspace} limit={5} viewAllHref="/followups" />
     <CashActivity key={workspace.revision} rows={rows} />
     <details id="forecast-review" className="panel disclosure forecast-review">
       <summary>Forecast checks and next steps</summary>

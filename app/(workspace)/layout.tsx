@@ -1,14 +1,16 @@
 import { Suspense, type ReactNode } from "react";
-import WorkspaceLoading from "@/components/workspace-loading";
-import { ProductBrand } from "@/components/product-brand";
+import { WorkspaceSplash } from "@/components/workspace-loading";
 import { WorkspaceFrame } from "@/components/workspace-frame";
 import { getWorkspace } from "@/lib/server/workspace";
 import "../workspace.css";
 
 export default function WorkspaceLayout({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<main className="loading-workspace"><ProductBrand /><WorkspaceLoading /></main>}>
-    <AuthenticatedWorkspace>{children}</AuthenticatedWorkspace>
-  </Suspense>;
+  return <>
+    <div className="first-paint-splash" aria-hidden="true"><WorkspaceSplash /></div>
+    <Suspense fallback={<WorkspaceSplash />}>
+      <AuthenticatedWorkspace>{children}</AuthenticatedWorkspace>
+    </Suspense>
+  </>;
 }
 
 async function AuthenticatedWorkspace({ children }: { children: ReactNode }) {

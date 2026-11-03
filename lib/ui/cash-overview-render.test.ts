@@ -13,6 +13,8 @@ describe("ported dashboard uses the saved cash model", () => {
     expect(html.match(/class="summary-card"/g)).toHaveLength(4);
     expect(html).toContain("not been verified as received");
     expect(html).toContain("Overdue invoices");
+    expect(html).toContain("Next actions");
+    expect(html).toContain("No actions need attention");
     expect(html).not.toContain("Across connected accounts");
   });
   it("does not hide an incomplete partial promise behind a disclosure", () => {

@@ -33,6 +33,7 @@ export function CashPosition({ workspace, receipts, payments, openingControls }:
       <div className="dashboard-heading-actions">
         <span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span>
         <RefreshRecords />
+        <Link className="button secondary" href="/payments">Payment history</Link>
         <Link className="section-primary" href="/invoices?filter=unpaid"><DashboardIcon name="plus" size={17} />Record a receipt</Link>
       </div>
     </header>

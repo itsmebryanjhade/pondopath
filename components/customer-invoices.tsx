@@ -77,6 +77,8 @@ export function CustomerInvoices({ workspace, params, invoiceControls, customerC
         <div className="dashboard-heading-actions">
           <span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span>
           <RefreshRecords />
+          <Link className="button secondary" href="/imports">Import &amp; review</Link>
+          <Link className="button secondary" href="/followups">Follow-ups</Link>
           <Link className="section-primary" href="#new-invoice"><DashboardIcon name="plus" size={17} />Add an invoice</Link>
         </div>
       </header>
@@ -137,6 +139,7 @@ export function CustomerInvoices({ workspace, params, invoiceControls, customerC
                         <p className="muted">
                           {workspace.customers.find((row) => row.id === invoice.customer_id)?.name}
                         </p>
+                        {invoice.outstanding_cents > 0 && <Link className="text-link" href={`/invoices/${invoice.id}?plan=edit#collection-plan`}>{expectation ? "Update expected payment" : "Set expected payment"}</Link>}
                       </th>
                       <td>
                         {invoice.due_date}
@@ -158,7 +161,7 @@ export function CustomerInvoices({ workspace, params, invoiceControls, customerC
                         {invoice.outstanding_cents === 0 ? (
                           "Fully received"
                         ) : expectation ? (
-                          <Link className="invoice-expectation" href={`/invoices/${invoice.id}#collection-plan`}>
+                          <Link className="invoice-expectation" href={`/invoices/${invoice.id}?plan=edit#collection-plan`}>
                             <span className={`status${stale ? " review" : ""}`}>
                               {stale
                                 ? "Needs review · Excluded"

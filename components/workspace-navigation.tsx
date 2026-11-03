@@ -10,10 +10,8 @@ const destinations = [
   { href: "/overview", label: "Overview", icon: "sparkle" },
   { href: "/cash", label: "Cash", icon: "wallet" },
   { href: "/invoices", label: "Invoices", icon: "receipt" },
-  { href: "/payments", label: "Payments", icon: "arrowIn" },
   { href: "/expenses", label: "Expenses", icon: "arrowOut" },
   { href: "/forecast", label: "Forecast", icon: "calendar" },
-  { href: "/followups", label: "Follow-ups", icon: "bell" },
 ] as const;
 
 function NavigationFeedback({ label }: { label: string }) {
@@ -23,17 +21,18 @@ function NavigationFeedback({ label }: { label: string }) {
 
 export function WorkspaceNavigation({ mobile = false, followupCount = 0 }: { mobile?: boolean; followupCount?: number }) {
   const pathname = usePathname();
+  const activeHref = pathname === "/payments" ? "/cash" : ["/followups", "/imports"].includes(pathname) ? "/invoices" : pathname;
   const navigation = useRef<HTMLElement>(null);
   return (
     <nav ref={navigation} aria-label={mobile ? "Mobile cash planning" : "Cash planning"} className={mobile ? "mobile-nav" : undefined}>
       <ul>{destinations.map((item) => (
         <li key={item.href}>
           <Link href={item.href}
-            className={`${mobile ? "mobile-tab" : "side-link"}${pathname === item.href || pathname.startsWith(`${item.href}/`) ? " active" : ""}`}
-            aria-current={pathname === item.href || pathname.startsWith(`${item.href}/`) ? "page" : undefined}
+            className={`${mobile ? "mobile-tab" : "side-link"}${activeHref === item.href || activeHref.startsWith(`${item.href}/`) ? " active" : ""}`}
+            aria-current={activeHref === item.href || activeHref.startsWith(`${item.href}/`) ? "page" : undefined}
             onNavigate={() => navigation.current?.closest("details")?.removeAttribute("open")}>
             {!mobile && <span className="side-link-icon"><DashboardIcon name={item.icon} size={17} /></span>}<span>{item.label}</span>
-            {item.href === "/followups" && followupCount > 0 && <span className="side-count" aria-label={`${followupCount} open follow-ups`}>{followupCount}</span>}
+            {item.href === "/invoices" && followupCount > 0 && <span className="side-count" aria-label={`${followupCount} open follow-ups`}>{followupCount}</span>}
             <NavigationFeedback label={item.label} />
           </Link>
         </li>
