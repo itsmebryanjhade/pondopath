@@ -103,6 +103,14 @@ describe("reading files", () => {
     const result = await readFile("t", { id: "csv123456789", name: "c.csv", mimeType: "text/csv", size: 80, trashed: false });
     expect(result).toEqual({ tabs: [], tab: null, read: { ...expected, rowNumbers: [2, 3], rows: [["SRC-1", "100", "2026-11-20"], ["SRC-2", "250.5", "2026-11-21"]] } });
   });
+  it("files over the row limits are FILE_TOO_LARGE, not unreadable", async () => {
+    const many = ["ID,Amount,Due", ...Array.from({ length: 101 }, (_, i) => `R${i},1,2026-11-20`), ""].join(String.fromCharCode(10));
+    routes.push([/files\/csv123456789\?alt=media/, () => new Response(many)]);
+    await expect(readFile("t", { id: "csv123456789", name: "c.csv", mimeType: "text/csv", size: 1, trashed: false })).rejects.toThrow("FILE_TOO_LARGE");
+    routes.push([/spreadsheets\/sheet123456\?fields/, () => json({ sheets: [{ properties: { title: "Sales" } }] })]);
+    routes.push([quotedTab("Sales"), () => json({ values: [["ID"], ...Array.from({ length: 501 }, (_, i) => ["R" + i])] })]);
+    await expect(readFile("t", sheet)).rejects.toThrow("FILE_TOO_LARGE");
+  });
   it("an oversize download is refused even when metadata had no size", async () => {
     routes.push([/files\/csv123456789\?alt=media/, () => new Response("x".repeat(600 * 1024))]);
     await expect(readFile("t", { id: "csv123456789", name: "c.csv", mimeType: "text/csv", size: null, trashed: false })).rejects.toThrow("FILE_TOO_LARGE");

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const state = vi.hoisted(() => ({
   actor: { userId: "40000000-0000-4000-8000-000000000001", businessId: "10000000-0000-4000-8000-000000000001", role: "owner" as "owner" | "finance" },
-  adminRpc: vi.fn(), userRpc: vi.fn(), accessToken: vi.fn(), fileInfo: vi.fn(), readFile: vi.fn(), ingest: vi.fn(),
+  mime: "application/vnd.google-apps.spreadsheet", adminRpc: vi.fn(), userRpc: vi.fn(), accessToken: vi.fn(), fileInfo: vi.fn(), readFile: vi.fn(), ingest: vi.fn(),
 }));
 vi.mock("@/lib/server/auth", () => ({ requireActor: async () => state.actor }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: state.adminRpc }) }));
@@ -22,9 +22,10 @@ const read = { headers: ["ID", "Type", "Customer", "Amount", "Due Date"], rows: 
 beforeEach(() => {
   vi.stubEnv("GOOGLE_TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
   state.actor.role = "owner";
+  state.mime = "application/vnd.google-apps.spreadsheet";
   state.adminRpc.mockReset().mockImplementation(async (name: string) => {
     if (name === "google_connection_token") return { data: sealToken("1//fictional-refresh"), error: null };
-    if (name === "google_file_source") return { data: { businessId: state.actor.businessId, status: "awaiting_first_read", fileId: sheetInfo.id, tab: "Sales" }, error: null };
+    if (name === "google_file_source") return { data: { businessId: state.actor.businessId, status: "awaiting_first_read", fileId: sheetInfo.id, tab: "Sales", settings: { mimeType: state.mime } }, error: null };
     return { data: null, error: null };
   });
   state.userRpc.mockReset().mockImplementation(async (name: string) => name === "create_google_file_connection" ? { data: sourceId, error: null } : { data: null, error: null });
@@ -80,6 +81,17 @@ describe("setup", () => {
     expect(setup.rows[0][4]).toBe("2026-11-20");
     expect(state.ingest.mock.calls[0][0]).toBe(sourceId);
     expect(state.ingest.mock.calls[0][1]).toMatchObject({ headers: read.headers, rowNumbers: [2, 3] });
+  });
+  it("a CSV file has no tabs, so its setup works without one", async () => {
+    state.mime = "text/csv";
+    state.readFile.mockResolvedValue({ tabs: [], tab: null, read });
+    const setup = await readGoogleSetup(sourceId, "");
+    expect(setup.labels.length).toBe(2);
+    expect(state.userRpc).not.toHaveBeenCalledWith("set_google_file_tab", expect.anything());
+    expect(state.readFile).toHaveBeenCalledWith("short-lived-access", sheetInfo, undefined);
+  });
+  it("a workbook still needs a tab", async () => {
+    await expect(readGoogleSetup(sourceId, "")).rejects.toThrow("VALIDATION_ERROR");
   });
   it("refuses a source from another business", async () => {
     state.adminRpc.mockImplementation(async (name: string) => name === "google_file_source"

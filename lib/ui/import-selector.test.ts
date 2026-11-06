@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ImportSelector, readSelectorForm, selectorProblems, type SelectorLabel } from "@/components/import-selector";
+import { ImportSelector, readSelectorForm, relabel, selectorProblems, type SelectorLabel } from "@/components/import-selector";
 
 const customerId = "00000000-0000-4000-8000-000000000001";
 const headers = ["ID", "Type", "Customer", "Supplier", "Amount", "Due"];
@@ -51,5 +51,24 @@ describe("import selector", () => {
   it("a missing ID column blocks saving with the reason", () => {
     expect(selectorProblems(form(base.filter(([k]) => k !== "externalId")), labels)[0])
       .toBe("Choose the column that stays the same when a row is edited (for example an invoice or reference number). Without it, an edited row would look new and could be imported twice.");
+  });
+  it("keeps saved left-out rows and label changes for rows not shown", () => {
+    const saved = { excludedIds: ["SRC-1", "SRC-200"], overrides: { "SRC-300": "expense" as const, "SRC-2": "invoice" as const } };
+    const mapping = readSelectorForm(form([...base.filter(([k, v]) => !(k === "row" && v === "SRC-1"))]), labels, saved);
+    expect(mapping.excludedIds.sort()).toEqual(["SRC-1", "SRC-200", "SRC-4"]);
+    expect(mapping.overrides).toEqual({ "SRC-300": "expense" });
+  });
+  it("shows saved choices when the setup is reopened", () => {
+    const page = renderToStaticMarkup(createElement(ImportSelector, { headers, rows, labels, fields, customers: [], saved: { excludedIds: ["SRC-2"], columns: headers.filter(h => h !== "Supplier"), overrides: {} } }));
+    const input = (label: string) => page.match(new RegExp(`<input[^>]*aria-label="${label}"[^>]*>`))?.[0] ?? "";
+    expect(input("Include row SRC-2")).not.toContain("checked");
+    expect(input("Include row SRC-1")).toContain("checked");
+    expect(input("Include column Supplier")).not.toContain("checked");
+    expect(input("Include column ID")).toContain("checked");
+  });
+  it("relabels rows when the owner changes the column choices", () => {
+    const changed = form([...base.filter(([k]) => k !== "typeColumn" && k !== "label"), ["label", "ID"]]);
+    const result = relabel(headers, rows, changed);
+    expect(result.map(item => [item.externalId, item.label])).toEqual([["SRC-1", "invoice"], ["SRC-2", "expense"], ["SRC-3", "choose"], ["SRC-4", "choose"]]);
   });
 });

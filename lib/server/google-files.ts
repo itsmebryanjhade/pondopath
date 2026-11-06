@@ -60,16 +60,24 @@ export type GoogleSetup = { headers: string[]; rows: string[][]; fields: AutoFie
 /** Owner only. Stores the tab, records the first read (headers and samples) and returns the selector's preview, suggestions and labels. */
 export async function readGoogleSetup(sourceId: string, tab: string): Promise<GoogleSetup> {
   const actor = await owner();
-  if (!z.uuid().safeParse(sourceId).success || !tab || tab.length > 200) throw new Error("VALIDATION_ERROR");
-  const client = await createClient();
-  dbError((await client.rpc("set_google_file_tab", { p_source_id: sourceId, p_tab: tab })).error);
+  if (!z.uuid().safeParse(sourceId).success || tab.length > 200) throw new Error("VALIDATION_ERROR");
   const source = await createAdminClient().rpc("google_file_source", { p_source_id: sourceId });
-  const parsed = z.object({ businessId: z.uuid(), status: z.string(), fileId: z.string() }).safeParse(source.data);
+  const parsed = z.object({ businessId: z.uuid(), status: z.string(), fileId: z.string(), settings: z.object({ mimeType: z.string().optional() }).loose().optional() }).safeParse(source.data);
   if (source.error || !parsed.success || parsed.data.businessId !== actor.businessId) throw new Error("NOT_FOUND");
+  // CSV files have no tabs; workbooks and Sheets need one, stored by the owner-only database function.
+  const workbook = parsed.data.settings?.mimeType !== "text/csv" && parsed.data.settings?.mimeType !== "application/vnd.ms-excel";
+  if (workbook && !tab) throw new Error("VALIDATION_ERROR");
+  let status = parsed.data.status;
+  if (workbook) {
+    dbError((await (await createClient()).rpc("set_google_file_tab", { p_source_id: sourceId, p_tab: tab })).error);
+    // A new tab restarts setup, so read the status again.
+    const again = await createAdminClient().rpc("google_file_source", { p_source_id: sourceId });
+    status = z.object({ status: z.string() }).safeParse(again.data).data?.status ?? status;
+  }
   const token = await businessAccessToken(actor.businessId);
   const info = await fileInfo(token, parsed.data.fileId);
-  const { read, tabs, tab: readTab } = await readFile(token, info, tab);
-  if (["awaiting_first_read", "awaiting_mapping"].includes(parsed.data.status))
+  const { read, tabs, tab: readTab } = await readFile(token, info, tab || undefined);
+  if (["awaiting_first_read", "awaiting_mapping"].includes(status))
     await ingestGoogleRead(sourceId, { runId: `google-setup-${new Date().toISOString()}-${randomBytes(3).toString("hex")}`, ...read });
   // Suggest roles from the headers first, so date columns can be turned from serial numbers into dates before labelling.
   const text = read.rows.slice(0, 20).map(row => row.map(value => value === null ? "" : String(value)));

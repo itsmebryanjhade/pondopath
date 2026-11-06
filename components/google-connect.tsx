@@ -10,7 +10,7 @@ import { ImportSelector, readSelectorForm, selectorProblems, type SelectorLabel 
 
 export type DriveFile = { id: string; label: string; connector_status: string | null; mapping: unknown; connector_settings: unknown; last_run_at: string | null; last_run_summary: unknown };
 type Connection = { account_email: string; status: string } | null;
-type Setup = { sourceId: string; tabs: string[]; tab: string; data?: { headers: string[]; rows: string[][]; fields: AutoFields; labels: SelectorLabel[] } };
+type Setup = { sourceId: string; tabs: string[]; tab: string; saved?: Partial<AutoMapping>; data?: { headers: string[]; rows: string[][]; fields: AutoFields; labels: SelectorLabel[] } };
 const PICKER_MIMES = "application/vnd.google-apps.spreadsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv";
 
 function ago(at: string, now: number) {
@@ -57,9 +57,9 @@ export function GoogleConnect({ owner, configured, connection, files, customers,
   const [setup, setSetup] = useState<Setup | null>(null);
   const connected = connection?.status === "connected";
 
-  const readTab = (sourceId: string, tabs: string[], tab: string) => start(async () => {
+  const readTab = (sourceId: string, tabs: string[], tab: string, saved?: Partial<AutoMapping>) => start(async () => {
     const result = await readGoogleSetupAction(sourceId, tab);
-    if (result.ok) setSetup({ sourceId, tabs: result.data.tabs.length ? result.data.tabs : tabs, tab: result.data.tab ?? tab, data: result.data });
+    if (result.ok) setSetup({ sourceId, tabs: result.data.tabs.length ? result.data.tabs : tabs, tab: result.data.tab ?? tab, saved, data: result.data });
     else setMessage(result.message);
   });
   const choose = () => start(async () => {
@@ -108,15 +108,16 @@ export function GoogleConnect({ owner, configured, connection, files, customers,
         const data = new FormData(event.currentTarget);
         const problems = selectorProblems(data, setup.data.labels);
         if (problems.length) { setMessage(problems.join(" ")); return; }
-        const mapping: AutoMapping = readSelectorForm(data, setup.data.labels);
+        const mapping: AutoMapping = readSelectorForm(data, setup.data.labels, setup.saved);
         start(async () => {
           const result = await saveGoogleSetupAction(setup.sourceId, mapping);
           if (result.ok) { setSetup(null); setMessage("Saved. New and changed rows will arrive in the Review Inbox."); router.refresh(); } else setMessage(result.message);
         });
       }}>
         <h3>Set up {files.find(file => file.id === setup.sourceId)?.label ?? "the file"}</h3>
-        {setup.tabs.length > 1 && <label className="form-field"><span>Tab</span><select className="field" value={setup.tab} disabled={busy} onChange={event => readTab(setup.sourceId, setup.tabs, event.target.value)}>{setup.tabs.map(tab => <option key={tab}>{tab}</option>)}</select></label>}
-        {setup.data ? <ImportSelector headers={setup.data.headers} rows={setup.data.rows} labels={setup.data.labels} fields={setup.data.fields} customers={customers} disabled={busy} /> : <p className="muted">Reading the file…</p>}
+        {setup.tabs.length > 1 && <label className="form-field"><span>Tab</span><select className="field" value={setup.tab} disabled={busy} onChange={event => readTab(setup.sourceId, setup.tabs, event.target.value, setup.saved)}>{setup.tabs.map(tab => <option key={tab}>{tab}</option>)}</select></label>}
+        {setup.data ? <ImportSelector key={`${setup.sourceId}:${setup.tab}`} headers={setup.data.headers} rows={setup.data.rows} labels={setup.data.labels} fields={setup.data.fields} customers={customers} saved={setup.saved} disabled={busy}
+          onLabels={labels => setSetup(current => current?.data ? { ...current, data: { ...current.data, labels } } : current)} /> : <p className="muted">Reading the file…</p>}
         <div className="intake-buttons"><button className="button" disabled={busy || !setup.data}>Save setup</button><button type="button" className="button secondary" disabled={busy} onClick={() => setSetup(null)}>Cancel</button></div>
       </form>}
       {files.map(file => {
@@ -133,7 +134,7 @@ export function GoogleConnect({ owner, configured, connection, files, customers,
             })}>{busy ? "Syncing…" : "Sync now"}</button>
           </div>}
           {owner && file.connector_status !== "disconnected" && <div className="intake-buttons">
-            {connected && <button className="button secondary" disabled={busy} onClick={() => readTab(file.id, [], settings.tab ?? "")}>{waiting ? "Finish setup" : "Change setup"}</button>}
+            {connected && <button className="button secondary" disabled={busy} onClick={() => readTab(file.id, [], settings.tab ?? "", waiting ? undefined : (file.mapping ?? undefined) as Partial<AutoMapping> | undefined)}>{waiting ? "Finish setup" : "Change setup"}</button>}
             {!waiting && <button className="button secondary" disabled={busy} onClick={() => start(async () => { const result = await setConnectorPausedAction(file.id, file.connector_status !== "paused"); if (!result.ok) setMessage(result.message); router.refresh(); })}>{file.connector_status === "paused" ? "Resume" : "Pause"}</button>}
             <button className="button secondary" disabled={busy} onClick={() => { if (window.confirm("Stop syncing this file? History and proposals are kept.")) start(async () => { const result = await disconnectConnectorAction(file.id); if (!result.ok) setMessage(result.message); router.refresh(); }); }}>Disconnect file</button>
           </div>}

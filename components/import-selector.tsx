@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import type { AutoFields, AutoMapping, RowLabel } from "@/lib/domain/reader";
+import { useRef, useState } from "react";
+import { labelRows, type AutoFields, type AutoMapping, type RowLabel } from "@/lib/domain/reader";
 
 export type SelectorLabel = { row: number; externalId: string; label: RowLabel; reason: string };
 type Customer = { id: string; name: string };
@@ -19,16 +19,32 @@ const ROLE_FIELDS: { name: keyof AutoFields; label: string; required: boolean }[
 ];
 
 /** Column/row selector with the reader's labels. Field names are read by `readSelectorForm`; the server validates the result. */
-export function ImportSelector({ headers, rows, labels, fields, customers, saved, disabled = false }: {
+/** Labels the shown rows again from the column choices currently in the form, so the screen matches what a sync will do. */
+export function relabel(headers: string[], rows: (string | number | boolean | null)[][], data: FormData, rowNumbers?: number[]): SelectorLabel[] {
+  const text = (key: string) => String(data.get(key) ?? "").trim();
+  const optional = (key: "customer" | "payee" | "label" | "typeColumn") => text(key) ? { [key]: text(key) } : {};
+  const file = { headers, rows: rows.map(row => row.map(value => value === null ? "" : String(value))), rowNumbers: rowNumbers ?? rows.map((_, index) => index + 2) };
+  return labelRows(file, { externalId: text("externalId"), amount: text("amount"), overrides: {}, ...optional("customer"), ...optional("payee"), ...optional("label"), ...optional("typeColumn") });
+}
+
+export function ImportSelector({ headers, rows, labels: initial, fields, customers, saved, disabled = false, onLabels }: {
   headers: string[]; rows: (string | number | boolean | null)[][]; labels: SelectorLabel[]; fields: AutoFields; customers: Customer[]; saved?: Partial<AutoMapping>; disabled?: boolean;
+  onLabels?: (labels: SelectorLabel[]) => void;
 }) {
   const table = useRef<HTMLDivElement>(null);
+  const [labels, setLabels] = useState(initial);
+  const roleChanged = (event: React.ChangeEvent<HTMLDivElement>) => {
+    const target = event.target as unknown as HTMLSelectElement;
+    if (!ROLE_FIELDS.some(field => field.name === target.name) || !target.form) return;
+    const next = relabel(headers, rows, new FormData(target.form), initial.map(item => item.row));
+    setLabels(next); onLabels?.(next);
+  };
   const pick = (name: keyof AutoFields) => { const value = (saved?.[name] as string | undefined) ?? fields[name]; return value && headers.includes(value) ? value : ""; };
   const columnOn = (header: string) => !saved?.columns || saved.columns.includes(header);
   const rowOn = (id: string) => !saved?.excludedIds?.includes(id);
   const selectAll = () => table.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(box => { box.checked = true; });
   return <div className="import-selector">
-    <div className="intake-form-grid">
+    <div className="intake-form-grid" onChange={roleChanged}>
       {ROLE_FIELDS.map(field => <label key={field.name} className="form-field"><span>{field.label}</span>
         <select className="field" name={field.name} required={field.required} disabled={disabled} defaultValue={pick(field.name)}>
           <option value="">{field.required ? "Select a column" : "Not used"}</option>{headers.map(header => <option key={header}>{header}</option>)}
@@ -43,7 +59,7 @@ export function ImportSelector({ headers, rows, labels, fields, customers, saved
     <div className="intake-table-scroll" ref={table}><table className="intake-table">
       <thead><tr><th scope="col">Include</th>{headers.map(header => <th key={header} scope="col">
         <label><input type="checkbox" name="column" value={header} defaultChecked={columnOn(header)} disabled={disabled} aria-label={`Include column ${header}`} /> {header}</label></th>)}<th scope="col">Label</th></tr></thead>
-      <tbody>{labels.map((item, index) => <tr key={`${item.row}:${item.externalId}`}>
+      <tbody>{labels.map((item, index) => <tr key={`${item.row}:${item.externalId}:${item.label}`}>
         <td><input type="hidden" name="rowId" value={item.externalId} />{item.label === "payment" ? "—" :
           <input type="checkbox" name="row" value={item.externalId} defaultChecked={rowOn(item.externalId)} disabled={disabled} aria-label={`Include row ${item.externalId || item.row}`} />}</td>
         {headers.map((header, column) => <td key={header}>{String(rows[index]?.[column] ?? "")}</td>)}
@@ -58,12 +74,16 @@ export function ImportSelector({ headers, rows, labels, fields, customers, saved
   </div>;
 }
 
-/** Builds an `auto` mapping from the selector; label changes are kept only where they differ from the reader. */
-export function readSelectorForm(data: FormData, labels: SelectorLabel[]): AutoMapping {
+/**
+ * Builds an `auto` mapping from the selector; label changes are kept only where they differ from the reader.
+ * Saved choices for rows not shown (the preview has at most 100 rows) are kept, never silently undone.
+ */
+export function readSelectorForm(data: FormData, labels: SelectorLabel[], saved?: Pick<Partial<AutoMapping>, "excludedIds" | "overrides">): AutoMapping {
   const text = (key: string) => String(data.get(key) ?? "").trim();
   const optional = (key: string) => text(key) ? { [key]: text(key) } : {};
   const ticked = new Set(data.getAll("row").map(String));
-  const overrides: Record<string, "invoice" | "expense"> = {};
+  const shown = new Set(labels.map(item => item.externalId));
+  const overrides: Record<string, "invoice" | "expense"> = Object.fromEntries(Object.entries(saved?.overrides ?? {}).filter(([id]) => !shown.has(id)));
   for (const item of labels) {
     const value = text(`label:${item.externalId}`);
     if ((value === "invoice" || value === "expense") && value !== item.label) overrides[item.externalId] = value;
@@ -73,7 +93,8 @@ export function readSelectorForm(data: FormData, labels: SelectorLabel[]): AutoM
     label: text("label"), payee: text("payee"), ...optional("customer"), ...optional("typeColumn"),
     columns: data.getAll("column").map(String), overrides,
     // Payment rows have no checkbox: they are held as payments, never counted as rows the owner left out.
-    excludedIds: labels.filter(item => item.label !== "payment" && item.externalId && !ticked.has(item.externalId)).map(item => item.externalId).filter((id, index, ids) => ids.indexOf(id) === index),
+    excludedIds: [...labels.filter(item => item.label !== "payment" && item.externalId && !ticked.has(item.externalId)).map(item => item.externalId),
+      ...(saved?.excludedIds ?? []).filter(id => !shown.has(id))].filter((id, index, ids) => ids.indexOf(id) === index),
   } as AutoMapping;
 }
 

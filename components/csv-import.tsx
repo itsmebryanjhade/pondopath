@@ -82,7 +82,7 @@ export function CsvImport({ sources, customers, owner }: { sources: IntakeSource
         setMapping(selected); setNotice(""); start(async () => { const result = await previewCsvAction(makeForm(selected)); if (result.ok) { setRows(result.data.rows); setHeld(result.data.held); } else setNotice(result.message); });
       }}>
         {kind === "auto"
-          ? <><ImportSelector headers={headers} rows={preview.rows} labels={preview.labels} fields={preview.fields} customers={customers} disabled={busy} /><p><button type="button" className="text-link" onClick={() => setKind("invoice")}>Set columns manually instead</button></p></>
+          ? <><ImportSelector headers={headers} rows={preview.rows} labels={preview.labels} fields={preview.fields} customers={customers} disabled={busy} onLabels={labels => setPreview(current => ({ ...current, labels }))} /><p><button type="button" className="text-link" onClick={() => setKind("invoice")}>Set columns manually instead</button></p></>
           : <><ImportMappingFields headers={headers} customers={customers} kind={kind} onKindChange={setKind} disabled={busy} /><p><button type="button" className="text-link" onClick={() => setKind("auto")}>Let PondoPath read the rows</button></p></>}
         <button className="button secondary" disabled={busy}>Preview rows</button>
       </form>}

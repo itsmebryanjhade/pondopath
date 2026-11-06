@@ -1,7 +1,7 @@
 import "server-only";
 import { CSV_LIMITS, readCsv, type CsvFile } from "@/lib/domain/imports";
 import { readXlsx } from "@/lib/domain/xlsx";
-import type { ConnectorSheetRead } from "@/lib/domain/connector-rows";
+import { CONNECTOR_LIMITS, type ConnectorSheetRead } from "@/lib/domain/connector-rows";
 
 /** The only module that calls Google. Errors are thrown as `new Error(code)` and never contain tokens or file content. */
 export type GoogleError = "GOOGLE_RECONNECT" | "FILE_ACCESS_LOST" | "FILE_TOO_LARGE" | "FILE_NOT_SUPPORTED" | "FILE_UNREADABLE" | "GOOGLE_UNAVAILABLE";
@@ -99,7 +99,8 @@ async function download(url: string, token: string): Promise<Uint8Array> {
 const fromFile = (file: CsvFile): GoogleRead => ({ headers: file.headers, rows: file.rows, rowNumbers: file.rows.map((_, index) => file.rowNumbers?.[index] ?? index + 2) });
 
 async function parse<T>(work: () => Promise<T> | T): Promise<T> {
-  try { return await work(); } catch { return fail("FILE_UNREADABLE"); }
+  // The upload parsers reject more than 100 data rows; that is a size problem, not an unreadable file.
+  try { return await work(); } catch (error) { return fail(error instanceof Error && error.message.includes("1–100 data rows") ? "FILE_TOO_LARGE" : "FILE_UNREADABLE"); }
 }
 
 async function readWorkbook(bytes: Uint8Array, tab?: string) {
@@ -143,5 +144,7 @@ export async function readFile(token: string, info: FileInfo, tab?: string): Pro
   const range = encodeURIComponent(`'${chosen.replaceAll("'", "''")}'`);
   const values = check(await call(`${sheets}/values/${range}?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER&majorDimension=ROWS`, auth(token)));
   const body = await values.json().catch(() => fail("GOOGLE_UNAVAILABLE")) as { values?: unknown[][] };
-  return { tabs: titles, tab: chosen, read: fromGrid(Array.isArray(body.values) ? body.values : []) };
+  const read = fromGrid(Array.isArray(body.values) ? body.values : []);
+  if (read.rows.length > CONNECTOR_LIMITS.rows) fail("FILE_TOO_LARGE");
+  return { tabs: titles, tab: chosen, read };
 }
