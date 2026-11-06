@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { connectorReadSchema } from "@/lib/domain/connector-rows";
+import { connectorEnvelopeSchema } from "@/lib/domain/connector-rows";
 import { ingestConnectorRead } from "@/lib/server/connector-intake";
 import { readLimitedJson } from "@/lib/server/ai-provider";
 
@@ -14,7 +14,8 @@ export async function POST(request: Request, context: { params: Promise<{ source
   let input;
   try { input = await readLimitedJson(request, 524_288); }
   catch (failure) { return failure instanceof Error && failure.message === "PAYLOAD_TOO_LARGE" ? error(413, "PAYLOAD_TOO_LARGE") : error(400, "INVALID_REQUEST"); }
-  const parsed = connectorReadSchema.safeParse(input);
+  // Row/column limits are checked after the key is verified, so over-limit Sheets are recorded for the owner.
+  const parsed = connectorEnvelopeSchema.safeParse(input);
   if (!parsed.success) return error(400, "INVALID_REQUEST");
   try {
     const summary = await ingestConnectorRead(sourceId, bearer[1], parsed.data);

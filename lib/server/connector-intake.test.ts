@@ -133,3 +133,40 @@ describe("scoped connector intake", () => {
     expect(await ingestConnectorRead(sourceId, key, read())).not.toHaveProperty("errorCode");
   });
 });
+
+describe("connector review fixes", () => {
+  it("sends the current headers and names the missing column when a mapped header was renamed", async () => {
+    const renamed = { ...read(), headers: ["ID", "Invoice no.", "Amount", "Due", "Include"] };
+    expect(await ingestConnectorRead(sourceId, key, renamed)).toMatchObject({ result: "failed", errorCode: "MAPPING_HEADER_MISSING", missingHeaders: ["Invoice"] });
+    expect(stagedRun()).toMatchObject({ firstRead: { headers: renamed.headers }, counts: { missingHeaders: ["Invoice"] } });
+    expect(stagedRun().rows).toBeUndefined();
+  });
+
+  it("records an over-limit Sheet as a failed INVALID_SHEET run after authentication", async () => {
+    const big = read(Array.from({ length: 501 }, (_, i) => "r" + i));
+    expect(await ingestConnectorRead(sourceId, key, big)).toMatchObject({ result: "failed", errorCode: "INVALID_SHEET", read: 500 });
+    expect(stagedRun().rows).toBeUndefined();
+  });
+
+  it("keeps the first-read capture well inside the database's size check", async () => {
+    state.source.status = "awaiting_first_read";
+    const wide = { runId: "wide", headers: Array.from({ length: 24 }, (_, i) => "Column " + i), rows: Array.from({ length: 5 }, () => Array.from({ length: 24 }, () => "x".repeat(450))), rowNumbers: [2, 3, 4, 5, 6] };
+    await ingestConnectorRead(sourceId, key, wide);
+    const captured = stagedRun().firstRead;
+    // jsonb text adds ", " and ": " separators, so the compact capture keeps a 20,000-byte budget under the 24,576-byte SQL check.
+    expect(captured.samples.length).toBeGreaterThan(0);
+    expect(Buffer.byteLength(JSON.stringify(captured))).toBeLessThanOrEqual(20_000);
+  });
+
+  it("records a mapping whose fallback customer no longer exists as a failed run", async () => {
+    state.tables.customers = [];
+    expect(await ingestConnectorRead(sourceId, key, read())).toMatchObject({ result: "failed", errorCode: "INVALID_MAPPING" });
+  });
+
+  it("records a failed run when the owner who connected the Sheet is no longer an owner", async () => {
+    const original = state.rpc.getMockImplementation()!;
+    state.rpc.mockImplementation(async (name: string, args: { p_run?: { rows?: unknown[] } }) =>
+      name === "connector_ingest" && args.p_run?.rows?.length ? { data: null, error: { message: "FORBIDDEN" } } : original(name, args));
+    expect(await ingestConnectorRead(sourceId, key, read())).toMatchObject({ result: "failed", errorCode: "CONNECTED_OWNER_REMOVED" });
+  });
+});

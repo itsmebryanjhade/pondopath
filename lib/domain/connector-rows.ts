@@ -16,6 +16,17 @@ export const connectorReadSchema = z.union([
   z.strictObject({ runId, error: z.enum(["SHEET_ACCESS_DENIED", "SHEET_NOT_FOUND", "READ_FAILED"]) }),
 ]);
 export type ConnectorRead = z.infer<typeof connectorReadSchema>;
+
+/**
+ * The request shape accepted before authentication. It has no row/column limits (the 512 KiB body cap bounds it),
+ * so an over-limit Sheet can still be authenticated and recorded as a failed read the owner can see.
+ */
+const looseCell = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+export const connectorEnvelopeSchema = z.union([
+  z.strictObject({ runId, headers: z.array(z.string()), rows: z.array(z.array(looseCell)), rowNumbers: z.array(z.number().int()) }),
+  z.strictObject({ runId, error: z.enum(["SHEET_ACCESS_DENIED", "SHEET_NOT_FOUND", "READ_FAILED"]) }),
+]);
+export type ConnectorEnvelope = z.infer<typeof connectorEnvelopeSchema>;
 export type ConnectorSheetRead = Extract<ConnectorRead, { headers: string[] }>;
 export type ConnectorFile = CsvFile & { booleanCells: boolean[][] };
 

@@ -42,3 +42,19 @@ describe("Google Sheet connection controls", () => {
     expect(render(true, [{ ...source, last_run_summary: { result: "failed", errorCode: "MAPPING_HEADER_MISSING" } }])).toContain("update the mapping");
   });
 });
+
+describe("Google Sheet connection review fixes", () => {
+  const mapped: SheetSource = { ...source, connector_settings: { intervalMinutes: 10, headers: ["ID", "Invoice", "Amount", "Due", "Status"], samples: [] },
+    mapping: { kind: "invoice", externalId: "ID", number: "Invoice", amount: "Amount", dueDate: "Due", customerId: "30000000-0000-4000-8000-000000000001", filter: { column: "Status", value: "Unpaid" } } };
+  it("names the missing column when a mapped header is gone", () => {
+    const html = render(true, [{ ...mapped, last_run_summary: { result: "failed", errorCode: "MAPPING_HEADER_MISSING", counts: { missingHeaders: ["Invoice"] } } }]);
+    expect(html).toContain("Column ‘Invoice’ not found — update the mapping.");
+  });
+  it("preloads the saved mapping, including the row filter, when updating columns", () => {
+    const html = renderToStaticMarkup(createElement(SheetConnection, { owner: true, sources: [mapped], serviceAccountEmail: "robot@fictional.example", customers: [{ id: "30000000-0000-4000-8000-000000000001", name: "Fictional Customer" }], checkedAt: now }));
+    expect(html).toMatch(/<option selected="">ID<\/option>/);
+    expect(html).toMatch(/<option value="30000000-0000-4000-8000-000000000001" selected="">Fictional Customer<\/option>/);
+    expect(html).toMatch(/<option selected="">Status<\/option>/);
+    expect(html).toContain('value="Unpaid"');
+  });
+});

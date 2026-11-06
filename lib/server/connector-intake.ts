@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { connectorReadSchema, normalizeConnectorRows, CONNECTOR_LIMITS, type ConnectorRead } from "@/lib/domain/connector-rows";
+import { connectorEnvelopeSchema, connectorReadSchema, normalizeConnectorRows, CONNECTOR_LIMITS } from "@/lib/domain/connector-rows";
 import { csvMappingSchema, mapCsv, type CsvMapping, type IntakeBinding } from "@/lib/domain/imports";
 import type { IntakeCandidate } from "@/lib/domain/intake";
 import type { Json } from "@/lib/database.types";
@@ -13,7 +13,19 @@ const countsSchema = z.object({
   unchanged: z.number().int().min(0).max(500), skippedByFilter: z.number().int().min(0).max(500),
   invalid: z.array(z.object({ row: z.number().int().positive(), reason: z.string().max(50) })).max(500),
   missing: z.number().int().min(0).max(500), morePending: z.boolean(),
+  missingHeaders: z.array(z.string().max(200)).max(24).optional(),
 });
+// Compact JSON budget for the header/sample capture; jsonb text adds separators, and SQL checks 24,576 bytes.
+const FIRST_READ_BUDGET = 20_000;
+type Cell = string | number | boolean | null;
+function captureFirstRead(headers: string[], rows: Cell[][]) {
+  const capture: { headers: string[]; samples: Cell[][] } = { headers, samples: [] };
+  for (const values of rows.slice(0, 5)) {
+    if (Buffer.byteLength(JSON.stringify({ ...capture, samples: [...capture.samples, values] })) > FIRST_READ_BUDGET) break;
+    capture.samples.push(values);
+  }
+  return capture;
+}
 export type ConnectorRunSummary = z.infer<typeof countsSchema> & { result: z.infer<typeof resultSchema>; replayed: boolean; errorCode?: string };
 const sourceSchema = z.object({ businessId: z.uuid(), status: z.enum(["awaiting_first_read", "awaiting_mapping", "active", "paused"]), mapping: z.unknown(), settings: z.record(z.string(), z.unknown()) });
 const fail = (): never => { throw new Error("CONNECTOR_UNAVAILABLE"); };
@@ -42,7 +54,7 @@ function safeReason(message: string) {
   return "Check this row's amount, date and mapped values.";
 }
 
-export async function ingestConnectorRead(sourceId: string, key: string, input: ConnectorRead): Promise<ConnectorRunSummary> {
+export async function ingestConnectorRead(sourceId: string, key: string, input: unknown): Promise<ConnectorRunSummary> {
   if (!z.uuid().safeParse(sourceId).success || !/^[A-Za-z0-9_-]{32,200}$/.test(key)) throw new Error("UNAUTHENTICATED");
   const client = createAdminClient();
   const sourceResult = await client.rpc("connector_source", { p_source_id: sourceId, p_key: key });
@@ -50,10 +62,11 @@ export async function ingestConnectorRead(sourceId: string, key: string, input: 
   const parsedSource = sourceSchema.safeParse(sourceResult.data);
   if (sourceResult.error || !parsedSource.success) fail();
   const source = parsedSource.data!;
-  const parsedRead = connectorReadSchema.safeParse(input);
-  if (!parsedRead.success) throw new Error("INVALID_REQUEST");
-  const read = parsedRead.data;
-  const summary: ConnectorRunSummary = { result: "staged", read: "rows" in read ? read.rows.length : 0, staged: 0, unchanged: 0, skippedByFilter: 0, invalid: [], missing: 0, morePending: false, replayed: false };
+  const envelope = connectorEnvelopeSchema.safeParse(input);
+  if (!envelope.success) throw new Error("INVALID_REQUEST");
+  const parsedRead = connectorReadSchema.safeParse(envelope.data);
+  const read = parsedRead.success ? parsedRead.data : envelope.data;
+  const summary: ConnectorRunSummary = { result: "staged", read: "rows" in read ? Math.min(read.rows.length, 500) : 0, staged: 0, unchanged: 0, skippedByFilter: 0, invalid: [], missing: 0, morePending: false, replayed: false };
   const previous = await client.from("intake_sources").select("last_run_summary").eq("business_id", source.businessId).eq("id", sourceId).range(0, 0);
   if (previous.error) fail();
   const previousCounts = z.object({ counts: z.object({ seen: z.array(z.string()).max(500) }) }).safeParse(previous.data?.[0]?.last_run_summary);
@@ -63,18 +76,15 @@ export async function ingestConnectorRead(sourceId: string, key: string, input: 
   let firstRead: { headers: string[]; samples: (string | number | boolean | null)[][] } | undefined;
   if ("error" in read) { summary.result = "failed"; summary.errorCode = read.error; }
   else if (source.status === "paused") summary.result = "paused";
+  else if (!parsedRead.success) { summary.result = "failed"; summary.errorCode = "INVALID_SHEET"; }
   else {
+    const sheet = parsedRead.data as Extract<typeof parsedRead.data, { headers: string[] }>;
     let file: ReturnType<typeof normalizeConnectorRows> | undefined;
-    try { file = normalizeConnectorRows(read, { dateColumns: [] }); }
+    try { file = normalizeConnectorRows(sheet, { dateColumns: [] }); }
     catch { summary.result = "failed"; summary.errorCode = "INVALID_SHEET"; }
     if (file && ["awaiting_first_read", "awaiting_mapping"].includes(source.status)) {
-      summary.result = source.status === "awaiting_first_read" ? "first_read" : "awaiting_mapping";
-      firstRead = { headers: file.headers, samples: [] };
-      for (const values of read.rows.slice(0, 5)) {
-        if (Buffer.byteLength(JSON.stringify({ ...firstRead, samples: [...firstRead.samples, values] })) > 24_576) break;
-        firstRead.samples.push(values);
-      }
-      // Repeated reads while waiting for mapping may refresh the same bounded header/sample capture.
+      // Repeated reads while waiting for mapping refresh the same bounded header/sample capture.
+      firstRead = captureFirstRead(file.headers, sheet.rows);
       summary.result = "first_read";
     } else if (file) {
       const parsedMapping = csvMappingSchema.safeParse(source.mapping);
@@ -83,10 +93,13 @@ export async function ingestConnectorRead(sourceId: string, key: string, input: 
         const mapping = parsedMapping.data;
         const mapped = columns(mapping);
         const required = [...mapped.map(([, header]) => header), ...(mapping.filter ? [mapping.filter.column] : [])];
-        if (required.some(header => !file!.headers.includes(header))) {
-          summary.result = "failed"; summary.errorCode = "MAPPING_HEADER_MISSING";
-        } else {
-          file = normalizeConnectorRows(read, { dateColumns: [mapping.dueDate] });
+        const missingHeaders = [...new Set(required.filter(header => !file!.headers.includes(header)))];
+        if (missingHeaders.length) {
+          // Send the current headers so the owner can remap to a renamed column.
+          summary.result = "failed"; summary.errorCode = "MAPPING_HEADER_MISSING"; summary.missingHeaders = missingHeaders.slice(0, 24);
+          firstRead = captureFirstRead(file.headers, sheet.rows);
+        } else try {
+          file = normalizeConnectorRows(sheet, { dateColumns: [mapping.dueDate] });
           const [customers, invoices, expenses, items] = await Promise.all([
             all((a, b) => client.from("customers").select("id").eq("business_id", source.businessId).order("id").range(a, b)),
             all((a, b) => client.from("invoices").select("id,number,customer_id,amount_cents,due_date").eq("business_id", source.businessId).order("id").range(a, b)),
@@ -122,14 +135,25 @@ export async function ingestConnectorRead(sourceId: string, key: string, input: 
             rows.push({ externalId: proposal.externalId, sourceVersion: fingerprint, candidate: value, evidence: { via: "google_sheet_connector", runId: read.runId, sheetRow: proposal.row, fields: proposal.fields } });
           }
           summary.staged = rows.length;
+        } catch (error) {
+          // Data fetch failures stay unavailable; mapping-level problems (e.g. a removed fallback customer) are shown to the owner.
+          if (error instanceof Error && error.message === "CONNECTOR_UNAVAILABLE") throw error;
+          rows = undefined;
+          Object.assign(summary, { result: "failed", errorCode: "INVALID_MAPPING", staged: 0, unchanged: 0, skippedByFilter: 0, invalid: [], morePending: false });
         }
       }
     }
   }
-  const counts = { read: summary.read, staged: summary.staged, unchanged: summary.unchanged, skippedByFilter: summary.skippedByFilter, invalid: summary.invalid, missing: summary.missing, morePending: summary.morePending, seen };
-  const result = await client.rpc("connector_ingest", { p_source_id: sourceId, p_key: key, p_run: {
-    runId: read.runId, result: summary.result, counts, ...(summary.errorCode ? { errorCode: summary.errorCode } : {}), ...(firstRead ? { firstRead } : {}), ...(rows?.length ? { rows } : {}),
-  } as unknown as Json });
+  const send = (run: { result: string; errorCode?: string; rows?: StagedRow[] }) => {
+    const counts = { read: summary.read, staged: run.rows?.length ?? 0, unchanged: summary.unchanged, skippedByFilter: summary.skippedByFilter, invalid: summary.invalid, missing: summary.missing, morePending: summary.morePending, seen,
+      ...(summary.missingHeaders ? { missingHeaders: summary.missingHeaders } : {}) };
+    return client.rpc("connector_ingest", { p_source_id: sourceId, p_key: key, p_run: {
+      runId: read.runId, result: run.result, counts, ...(run.errorCode ? { errorCode: run.errorCode } : {}), ...(firstRead ? { firstRead } : {}), ...(run.rows?.length ? { rows: run.rows } : {}),
+    } as unknown as Json });
+  };
+  let result = await send({ result: summary.result, errorCode: summary.errorCode, rows });
+  // The database refuses to stage when the connecting owner is no longer an owner; record that so the owner sees it.
+  if (result.error?.message === "FORBIDDEN" && rows?.length) result = await send({ result: "failed", errorCode: "CONNECTED_OWNER_REMOVED" });
   if (result.error?.message === "UNAUTHENTICATED") throw new Error("UNAUTHENTICATED");
   const canonical = z.object({ replayed: z.boolean(), result: resultSchema, counts: countsSchema, errorCode: z.string().nullable().optional() }).safeParse(result.data);
   if (result.error || !canonical.success) fail();

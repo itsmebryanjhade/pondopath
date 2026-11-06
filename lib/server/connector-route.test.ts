@@ -39,6 +39,12 @@ describe("connector bearer-only HTTP boundary", () => {
     expect(await failed.text()).not.toMatch(/private-row-value|fictional-connector-key/);
   });
 
+  it("passes an over-limit Sheet to the authenticated service so it can be recorded as failed", async () => {
+    const big = { runId: "big", headers: ["ID"], rows: Array.from({ length: 501 }, (_, i) => ["r" + i]), rowNumbers: Array.from({ length: 501 }, (_, i) => i + 2) };
+    expect((await POST(request(big), context)).status).toBe(200);
+    expect(mocks.ingest).toHaveBeenCalledWith(sourceId, key, big);
+  });
+
   it("reports an internal TypeError as unavailable while malformed JSON is an invalid request", async () => {
     mocks.ingest.mockRejectedValue(new TypeError("private-row-value"));
     expect((await POST(request(body), context)).status).toBe(503);

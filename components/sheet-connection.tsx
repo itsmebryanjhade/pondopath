@@ -31,6 +31,7 @@ function ConnectionStatus({ source, checkedAt }: { source: SheetSource; checkedA
     MAPPING_HEADER_MISSING: "A mapped column is missing — update the mapping.",
     INVALID_MAPPING: "Check and save the column mapping again.",
     INVALID_SHEET: "Use up to 500 rows and 24 unique, nonempty column headers.",
+    CONNECTED_OWNER_REMOVED: "The owner who connected this Sheet is no longer an owner. Reconnect the Sheet as a current owner.",
   };
   return <div aria-live="polite">
     {source.connector_status === "awaiting_first_read" && <p>Waiting for the first read from n8n…</p>}
@@ -38,7 +39,9 @@ function ConnectionStatus({ source, checkedAt }: { source: SheetSource; checkedA
     {source.connector_status === "paused" && <p>Paused by owner. New reads do not send proposals.</p>}
     {source.connector_status === "disconnected" && <p>Disconnected. Previous proposals and history are kept.</p>}
     {source.last_run_at && <p>Last read {time(source.last_run_at)} · {count(counts.staged)} sent to review · {count(counts.unchanged)} unchanged · {count(counts.skippedByFilter)} skipped by filter</p>}
-    {typeof summary.errorCode === "string" && <p role="alert" className="form-error">{errors[summary.errorCode] ?? "The connection needs attention. Check n8n and retry."}</p>}
+    {typeof summary.errorCode === "string" && <p role="alert" className="form-error">{summary.errorCode === "MAPPING_HEADER_MISSING" && Array.isArray(counts.missingHeaders) && typeof counts.missingHeaders[0] === "string"
+      ? `Column ‘${counts.missingHeaders.filter(value => typeof value === "string").join("’, ‘")}’ not found — update the mapping.`
+      : errors[summary.errorCode] ?? "The connection needs attention. Check n8n and retry."}</p>}
     {stale && <p role="status">No read since {time(source.last_run_at ?? source.created_at)}. Reads catch up when n8n is running again.</p>}
     {count(counts.missing) > 0 && <p>{count(counts.missing)} rows missing since the last read. No saved records were deleted.</p>}
     {counts.morePending === true && <p>More rows are waiting. The next read sends up to 100 more to review.</p>}
@@ -61,7 +64,7 @@ function Connection({ source, owner, customers, checkedAt, showKey }: { source: 
       <p>Connection ID: <code>{source.id}</code></p>
       {headers.length > 0 && <details open={source.connector_status === "awaiting_mapping"}><summary>Map or update columns</summary>
         {samples.length > 0 && <div className="intake-table-scroll"><table className="intake-table"><caption>Sample rows from the selected Sheet</caption><thead><tr>{headers.map(header => <th key={header} scope="col">{header}</th>)}</tr></thead><tbody>{samples.map((values, index) => <tr key={index}>{headers.map((header, column) => <td key={header}>{String(values[column] ?? "")}</td>)}</tr>)}</tbody></table></div>}
-        <form onSubmit={event => { event.preventDefault(); const mapping = readMappingForm(new FormData(event.currentTarget), kind); run(() => saveConnectorMappingAction(source.id, mapping), "Mapping saved. Future reads will use these columns."); }}><ImportMappingFields headers={headers} customers={customers} kind={kind} onKindChange={setKind} disabled={busy} /><button className="button" disabled={busy}>Save mapping</button></form>
+        <form onSubmit={event => { event.preventDefault(); const mapping = readMappingForm(new FormData(event.currentTarget), kind); run(() => saveConnectorMappingAction(source.id, mapping), "Mapping saved. Future reads will use these columns."); }}><ImportMappingFields headers={headers} customers={customers} kind={kind} onKindChange={setKind} disabled={busy} defaults={object(source.mapping)} /><button className="button" disabled={busy}>Save mapping</button></form>
       </details>}
       <div className="intake-buttons">
         {["active", "paused"].includes(source.connector_status ?? "") && <button type="button" className="button secondary" disabled={busy} onClick={() => run(() => setConnectorPausedAction(source.id, source.connector_status !== "paused"), source.connector_status === "paused" ? "Connection resumed." : "Connection paused.")}>{source.connector_status === "paused" ? "Resume connection" : "Pause connection"}</button>}
