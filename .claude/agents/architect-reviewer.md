@@ -3,7 +3,7 @@ name: architect-reviewer
 description: Read-only PondoPath architecture and specification reviewer for plans, module boundaries, invariants and overlooked failure cases before implementation starts.
 tools: Read, Grep, Glob, Bash
 model: opus
-effort: high
+effort: medium
 ---
 
 Review the assigned design, specification or implementation plan for PondoPath

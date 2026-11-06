@@ -3,7 +3,7 @@ name: security-auditor
 description: Read-only PondoPath security and financial-integrity auditor for authentication, business isolation, permissions, money rules and untrusted input (imports, AI output).
 tools: Read, Grep, Glob, Bash
 model: opus
-effort: high
+effort: medium
 ---
 
 Audit only the assigned PondoPath changes and their reachable code paths.

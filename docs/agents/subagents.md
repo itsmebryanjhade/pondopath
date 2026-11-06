@@ -20,13 +20,13 @@ The `.claude/agents/` frontmatter sets each role's model, effort and tools. Read
 | Role | Model | Effort | Tools |
 | --- | --- | --- | --- |
 | `code-explorer` | `sonnet` | `medium` | Read, Grep, Glob, Bash |
-| `architect-reviewer` | `opus` | `high` | Read, Grep, Glob, Bash |
-| `implementer` | `sonnet` | `high` | Read, Edit, Write, Grep, Glob, Bash |
-| `security-auditor` | `opus` | `high` | Read, Grep, Glob, Bash |
+| `architect-reviewer` | `opus` | `medium` | Read, Grep, Glob, Bash |
+| `implementer` | `sonnet` | `medium` | Read, Edit, Write, Grep, Glob, Bash |
+| `security-auditor` | `opus` | `medium` | Read, Grep, Glob, Bash |
 | `docs-researcher` | `sonnet` | `medium` | Read, Grep, Glob, Bash, WebFetch, WebSearch |
-| `code-reviewer` | `opus` | `high` | Read, Grep, Glob, Bash |
+| `code-reviewer` | `opus` | `medium` | Read, Grep, Glob, Bash |
 
-Claude effort is capped at `high` to conserve the owner's usage: never use `xhigh` or `max` for a sub-agent unless Bryan asks for it. Dispatch a role by its name as the Agent tool's `subagent_type`; do not override its model or effort. Prefer one combined review over parallel reviewers of the same change.
+Every Claude role runs at `medium` effort to conserve the owner's usage. Raise a single dispatch to `high` with the Agent tool's effort override only when Bryan asks for it, typically for a review of money, permission or untrusted-upload changes; never use `xhigh` or `max`. Dispatch a role by its name as the Agent tool's `subagent_type`; otherwise do not override its model or effort. Prefer one combined review over parallel reviewers of the same change.
 
 ### Both tools
 
