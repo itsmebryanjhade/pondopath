@@ -42,4 +42,9 @@ describe("connector sheet values", () => {
     expect(connectorReadSchema.safeParse({ runId: "run-1", error: "SOMETHING_ELSE" }).success).toBe(false);
     expect(connectorReadSchema.safeParse({ ...read([["SRC-1", 1, 1, true]]), rowNumbers: [] }).success).toBe(false);
   });
+
+  it("keeps an out-of-range whole serial invalid in its own row", () => {
+    const read = { runId: "bad-date", headers: ["Due"], rows: [[1e100], [46346]], rowNumbers: [2, 3] };
+    expect(normalizeConnectorRows(read, { dateColumns: ["Due"] }).rows).toEqual([["1e+100"], ["2026-11-20"]]);
+  });
 });

@@ -39,7 +39,10 @@ export function normalizeConnectorRows(read: ConnectorSheetRead, options: { date
       if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
       if (typeof value === "string") return value;
       // Whole serials become dates; anything else stays as text and fails normal date or money validation.
-      if (dateIndexes.has(index) && Number.isInteger(value)) return new Date(SERIAL_EPOCH + value * DAY).toISOString().slice(0, 10);
+      if (dateIndexes.has(index) && Number.isInteger(value)) {
+        const date = new Date(SERIAL_EPOCH + value * DAY);
+        if (Number.isFinite(date.getTime())) return date.toISOString().slice(0, 10);
+      }
       return String(value);
     });
     nonTextCells.push(numeric);

@@ -135,4 +135,20 @@ describe("Google Sheet connector storage and staging", () => {
     expect((await ingest(theirs.sourceId, mine.key, { runId: "cross", result: "staged", counts: {}, rows: [row(other, "x", "GS-CROSS")] })).error?.message).toBe("UNAUTHENTICATED");
     expect((await admin.from("intake_items").select("id", { count: "exact", head: true }).eq("source_id", theirs.sourceId)).count).toBe(0);
   });
+
+  it("records actual staging outcomes and replays those counts, including a pause race", async () => {
+    const connection = await activeConnection(owner, business);
+    const good = row(business, "count-good", "COUNT-GOOD");
+    const bad = row(business, "count-bad", "COUNT-BAD");
+    bad.candidate.payload.amountCents = 0;
+    const counts = { read: 2, staged: 2, unchanged: 0, skippedByFilter: 0, invalid: [], missing: 0, morePending: false, seen: [] };
+    const run = { runId: randomUUID(), result: "staged", counts, rows: [good, bad] };
+    const result = checked(await ingest(connection.sourceId, connection.key, run));
+    expect(result.data).toMatchObject({ result: "staged", replayed: false, counts: { staged: 1, invalid: [{ row: 2, reason: "This row needs attention. Review current records." }] } });
+    const saved = checked(await owner.from("intake_connector_runs").select("counts").eq("source_id", connection.sourceId).eq("run_id", run.runId).single());
+    expect(saved.data?.counts).toMatchObject({ staged: 1, invalid: [{ row: 2 }] });
+    expect(checked(await ingest(connection.sourceId, connection.key, run)).data).toMatchObject({ replayed: true, counts: { staged: 1, invalid: [{ row: 2 }] } });
+    checked(await owner.rpc("set_connector_paused", { p_source_id: connection.sourceId, p_paused: true }));
+    expect(checked(await ingest(connection.sourceId, connection.key, { ...run, runId: randomUUID() })).data).toMatchObject({ result: "paused", counts: { staged: 0 } });
+  });
 });
