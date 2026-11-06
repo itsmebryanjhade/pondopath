@@ -24,7 +24,7 @@ The R-tasks below retain the baseline and final-completion checks. R2/R3 can be 
 
 **Description:** Record the complete approved feature scope and available development environment. Keep the fictional-data boundary and identify provider/environment questions as they become relevant.
 
-**Status — 6 November:** drafted in [the plan](plan.md) ("Full target" and "Working environment and fictional data"); awaiting Bryan's confirmation.
+**Status — 6 November:** complete. Recorded in [the plan](plan.md) ("Full target" and "Working environment and fictional data") and confirmed by Bryan.
 
 **Acceptance criteria:**
 - [x] Full approved scope is recorded, including XLSX, n8n, file sources, images, message channels and an identified accounting/POS path; calendar-based feature deferrals are removed.
@@ -32,8 +32,8 @@ The R-tasks below retain the baseline and final-completion checks. R2/R3 can be 
 - [x] Fictional fixtures and the available working environment are identified; unverified provider access/allowances are recorded without blocking unrelated ready work.
 
 **Verification:**
-- [ ] Compare the working boundary with Bryan's current direction and the PRD; check the links. No application suite is needed for this document task.
-  - Links checked on 6 November. Bryan's confirmation that the recorded scope matches his current direction is still needed.
+- [x] Compare the working boundary with Bryan's current direction and the PRD; check the links. No application suite is needed for this document task.
+  - 6 November: links checked; the scope matches PRD FR-12–FR-16 and the accounting/POS source; Bryan confirmed it matches his current direction.
 
 **Dependencies:** None. **Files likely touched:** `tasks/plan.md`, `docs/demo-and-verification.md`. **Estimated scope:** Small, 1–2 files.
 
@@ -72,9 +72,11 @@ The R-tasks below retain the baseline and final-completion checks. R2/R3 can be 
 
 ## Checkpoint A — after R1–R3
 
-- [ ] Full-scope working boundary is recorded; reminder and phone gaps have evidence or remain explicitly pending, without blocking unrelated implementation.
-- [ ] Owning checks for any fixes pass without weakened assertions; changed scope remains within the agreed release.
+- [x] Full-scope working boundary is recorded; reminder and phone gaps have evidence or remain explicitly pending, without blocking unrelated implementation.
+- [x] Owning checks for any fixes pass without weakened assertions; changed scope remains within the agreed release.
+  - The only fix (the phone scroll offset) has no automated test; it was re-measured in the browser. No assertion or check was weakened.
 - [ ] Coordinator/Bryan review the outstanding findings; full candidate verification waits for the implemented integration scope.
+  - Outstanding findings for review: (1) full `npm run lint` fails only on the ignored local `.taste-skill/check-production-css.cjs` helper; (2) original Task 8's two-browser separate-session UI walkthrough stays open because R2 accepted the integration tests instead; (3) the machine's default Node is 26, so checks rely on the separate Node 24 binary.
 
 ## R4: Identify and verify the complete candidate
 
