@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16.4.3, React 19.3.0, TypeScript 5, Tailwind CSS 4, Supabase, OpenRouter, Node-RED, Vercel; n8n is approved but not installed for the new intake work. Use Node.js 24.x for the application; verify the chosen n8n release's runtime separately before installation.
 
-**Spec:** [SoloForge PRD — current revision 1.1](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). The original spec filename is retained for link stability.
+**Spec:** [SoloForge PRD — current revision 1.1](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../research/c01-sample-business-walkthrough.md). The original spec filename is retained for link stability.
 
 **Status — 29 October:** Tasks 1–7 and 9–10 are implemented with development evidence. Task 8's reminder implementation is present; its unchecked clipboard-denied/separate-session UI step remains outstanding. Task 11 is resumed at Bryan's request; reuse prior results and complete only its remaining evidence. Task 12 remains pending/on hold. Tasks 13–21 below record the approved, unimplemented intake/worklist expansion. Prior verification results must be reused rather than rerun as routine setup. Current UI conflict/build changes and acceptance artifacts remain uncommitted; preserve them separately from this documentation update.
 

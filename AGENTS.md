@@ -8,60 +8,35 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Project scope
+# PondoPath workspace
 
-- Product: PondoPath by SoloForge — AI-Assisted Cash-Flow Action Planner.
-- Requirements: `docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md`. Read the sections and acceptance criteria relevant to the current task.
-- Approved stack: Next.js, TypeScript, Tailwind CSS, Supabase, OpenRouter, Node-RED, Vercel, and planned n8n source intake (PRD revision 1.1). Inclusion in the PRD does not mean a tool or connector is installed, authorized, or verified.
-- Keep one business per account and no business switching. Public sign-up creates a private business; owner invitations add finance teammates. Respect current user instructions when they supersede older PRD defaults.
-- Deliver one reviewed feature slice at a time. Task D's code gate passed on 3 November (271 unit/UI tests, 112 integration tests, typecheck, lint and production build on Node 24); its phone-width check is explicitly deferred by Bryan. Reuse `docs/mvp-runtime-evidence.json` and run focused checks for later changes. Task 12 demo/deployment preparation remains on hold until requested; do not repeat the broad gate without a new change, failure or user request.
+PondoPath by SoloForge is a cash-flow planner. Approved stack: Next.js App Router, TypeScript, Tailwind, Supabase, OpenRouter, Node-RED and Vercel; n8n intake is planned in PRD 1.1. Naming a tool does not establish installation, authorization or verification. Use Node 24 and npm.
 
-## Mandatory skill workflow
+## Essential rules
 
-Before every implementation task:
+- Read only the task-relevant sections of the [PRD](docs/superpowers/specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Its contents are version 1.1; keep the canonical filename. One business per account, public owner sign-up, invited finance teammates, no business switcher.
+- Make the smallest complete change; preserve unrelated work. Keep validation, authorization, audit history, recovery behavior and accessibility intact. Keep secrets server-only and out of logs.
+- Programmed rules own money and forecasts. Payment promises are not actual receipts; AI proposals need human confirmation. Never weaken checks to obtain a passing result.
+- For every code change, apply `superpowers:using-superpowers`, `ponytail:ponytail` (full) and `agent-skills:git-workflow-and-versioning`. Before completion claims, apply `superpowers:verification-before-completion`. Claude Code does not have these plugins: use the Claude Code mapping in the project workflow skill instead. Reuse instructions already read. For nontrivial application implementation/review, use [the project workflow skill](.agents/skills/pondopath-change/SKILL.md) and select only task-relevant installed skills.
+- Check the applicable nested `AGENTS.md` before editing a directory; nested rules may not be injected when starting at the root. Use the actual `app/`, `components/`, `lib/` and `supabase/` layout; do not move source into `src/` to match an example.
+- Run checks relevant to the change and report what was not checked. Documentation-only edits need document/link checks, not application suites. Reuse recorded evidence in [testing](docs/testing.md); do not repeat a broad gate without a new change, failure or request. Task 12 demo/deployment preparation remains on hold until requested.
+- Before broad code exploration, query the current local Graphify map; load [mapping guidance](docs/agents/repository-map.md) only when needed. Do not index secrets, dependencies or generated output.
+- Delegate independent, complex work only when useful. Read [sub-agent routing](docs/agents/subagents.md) when dispatching; preserve its model/effort choices and avoid parallel writes to the same files. Skills do not expand user authorization or session permissions.
+- Codex and Claude Code share these instructions. Before concurrent work, follow [agent collaboration](docs/agents/collaboration.md): one coordinator assigns file ownership; simultaneous implementers use separate worktrees; shared database, worker and browser operations are serialized. Agent-specific skills, tools and model identifiers are not automatically portable.
 
-1. Read this file, the current task or implementation-plan step, and the relevant PRD sections.
-2. Select the skills below that match the work. Open their actual `SKILL.md` instructions using the installed skill catalog; do not rely on their names or remembered summaries. Reuse instructions already read in the current context unless they changed.
-3. Announce newly applied skills briefly, inspect the affected source and callers, then follow the selected workflow. Load referenced skill resources only when needed.
-4. Complete the applicable verification before reporting success. Record what was checked and disclose anything not checked.
+## Load context by task
 
-These rules apply without the user repeating a skill name. Use Superpowers as the primary development workflow, Ponytail as the simplicity constraint, and the other skills for the relevant engineering or design concerns. Do not run two equivalent planning, testing, or debugging workflows for the same task.
-
-| When | Required skill instructions |
+| Task | Read when relevant |
 | --- | --- |
-| Starting a development task | `superpowers:using-superpowers`; `ponytail:ponytail` in full mode unless the user chooses another level |
-| A new feature or material behavior/scope change needs design | `superpowers:brainstorming`; reuse settled PRD decisions rather than restarting discovery |
-| Turning agreed requirements into a build sequence | `superpowers:writing-plans` |
-| Implementing an agreed plan | `superpowers:executing-plans`; `agent-skills:incremental-implementation` for small, verifiable slices |
-| Changing calculations, validation, permissions, or other nontrivial behavior | `superpowers:test-driven-development`; cover meaningful failure cases and PRD acceptance criteria |
-| An error, failing check, or unexpected behavior occurs | `superpowers:systematic-debugging` before proposing a fix |
-| Designing APIs or module boundaries | `agent-skills:api-and-interface-design` |
-| Handling authentication, financial/customer data, secrets, or external integrations | `agent-skills:security-and-hardening`; `agent-skills:source-driven-development` for current official integration guidance |
-| Working with Supabase | `supabase:supabase`; also `supabase:supabase-postgres-best-practices` when designing/reviewing database schemas, queries, or policies |
-| Building or changing screens/components | `design-taste-frontend`; its `references/app-screens.md` for dashboard/admin screens; `agent-skills:frontend-ui-engineering` for accessibility and interaction behavior |
-| Verifying browser behavior | `agent-skills:browser-testing-with-devtools`; use the available authorized browser tool for real interaction and screenshots |
-| Changing code or managing Git history | `agent-skills:git-workflow-and-versioning`; preserve unrelated user changes |
-| Reviewing completed implementation | `agent-skills:code-review-and-quality`; use `superpowers:requesting-code-review` when its review workflow applies |
-| About to claim completion, passing checks, or a fixed bug | `superpowers:verification-before-completion` |
-| Exploring code relationships or finding affected files | `graphify`, following the local-map rules below |
+| Product scope / current delivery | Relevant PRD sections; [project status](docs/project-status.md) |
+| Module boundaries / system design | [Architecture](docs/architecture.md) |
+| Schema, auth, permissions or financial rules | [Database](docs/database.md); scoped rules in `lib/` and `supabase/` |
+| Screens, components or styling | [Design system](docs/design-system.md); scoped rules in `app/` and `components/` |
+| Setup, tests or runtime checks | [Development](docs/development.md), [testing](docs/testing.md) |
+| Worker / script changes | Scoped rules and runbook in `automation/`; scoped rules in `scripts/` |
+| Documentation or locating older decisions | `docs/AGENTS.md`; [documentation index](docs/README.md) |
 
-Use installed skill names and current catalog locations rather than hard-coding plugin-cache versions. If a required skill is unavailable, report the missing skill and the affected work; never claim to have loaded it. User instructions and higher-priority runtime instructions take precedence over skill defaults. A skill does not independently authorize purchases, deployments, external messages, or broader access.
-
-## Simplicity, design, and correctness
-
-- Reuse existing components, helpers, installed dependencies, and native controls before adding libraries or abstractions. Make the smallest complete change; avoid unrelated cleanup.
-- Programmed rules own balances and forecasts. AI proposals require the PRD's human review. Payment promises must remain distinct from actual receipts.
-- Preserve input validation, access checks, audit history, error handling, and accessibility. Never weaken a check just to make a test pass.
-- Financial clarity and the user's task take priority over decorative design rules. Use Taste's app-screen route for this product; verify tables, amounts, states, keyboard access, and mobile behavior in a real browser.
-- Run checks appropriate to the change. Money, authorization, duplicate handling, and recovery behavior need meaningful tests. Documentation-only changes need document checks, not unrelated application test runs.
-
-## Local code map and focused reading
-
-- Before broad code exploration, query a current `graphify-out/graph.json`. Inspect the relevant source before editing; the map can be incomplete or stale.
-- Initial local map: `graphify extract . --code-only --no-cluster --max-workers 1`.
-- After source changes, refresh with `graphify update . --no-cluster` and check results against the changed files. Use focused `rg` searches if mapping is unavailable or insufficient.
-- Keep `.graphifyignore` exclusions in effect. Do not index secrets, dependencies, build output, or generated reports. Do not enable cloud services or automatic hooks as part of ordinary mapping.
-- The code-only map does not index the PRD/research documents or unsupported files such as CSS. Read those directly when relevant. Avoid rereading the entire workspace for each task.
+These are routes, not a reading checklist. Load only the entries needed for the current task.
 
 <!-- BEGIN:nextjs-agent-feedback -->
 

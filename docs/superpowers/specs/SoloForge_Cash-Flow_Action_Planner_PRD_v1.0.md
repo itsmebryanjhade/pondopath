@@ -294,7 +294,7 @@ Conceptual records are: business/cash baseline, user membership/role, customer, 
 
 ## 13. Acceptance criteria and demonstration
 
-Use the [sample business walkthrough](../../c01-sample-business-walkthrough.md) as the numerical reference. The starting case has PHP 40,000 available, PHP 50,000 expected before Friday, and PHP 80,000 of Friday obligations. Alternative cases are independent, not cumulative events.
+Use the [sample business walkthrough](../../research/c01-sample-business-walkthrough.md) as the numerical reference. The starting case has PHP 40,000 available, PHP 50,000 expected before Friday, and PHP 80,000 of Friday obligations. Alternative cases are independent, not cumulative events.
 
 | ID | Acceptance criterion |
 | --- | --- |
@@ -392,8 +392,8 @@ The final product review should confirm this scope before a separate implementat
 
 ## 18. Supporting documents
 
-- [C01 verification ledger](../../c01-verification-ledger.md): problem evidence, competitor limits, and validation assumptions.
-- [C01 open-source audit](../../c01-open-source-audit.md): inspected repositories, licenses, dependencies, and proposed reuse boundaries.
-- [Sample business walkthrough](../../c01-sample-business-walkthrough.md): fictional records, messages, calculations, and reviewer exercise.
+- [C01 verification ledger](../../research/c01-verification-ledger.md): problem evidence, competitor limits, and validation assumptions.
+- [C01 open-source audit](../../research/c01-open-source-audit.md): inspected repositories, licenses, dependencies, and proposed reuse boundaries.
+- [Sample business walkthrough](../../research/c01-sample-business-walkthrough.md): fictional records, messages, calculations, and reviewer exercise.
 
 This is the single current PRD. Earlier draft specifications were removed during workspace cleanup; the supporting research remains separate from product requirements.

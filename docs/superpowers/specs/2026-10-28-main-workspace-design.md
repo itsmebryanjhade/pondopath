@@ -49,7 +49,7 @@ Preserve genuine loading, empty, failure, stale-data and role-specific states. K
 
 ## Mockup data and visual variants
 
-All visuals use the same explicitly fictional delayed-payment case from `docs/c01-sample-business-walkthrough.md`: PHP40,000 recorded cash; PHP50,000 expected on 2 November 2026; PHP80,000 expenses due 30 October; first/largest projected gap PHP40,000 on 30 October; projected ending balance PHP10,000 once the expected payment arrives. Demo financial reference date is 29 October 2026, intentionally preserved; actual client date is 28 October 2026. The negative interval must remain visible.
+All visuals use the same explicitly fictional delayed-payment case from `docs/research/c01-sample-business-walkthrough.md`: PHP40,000 recorded cash; PHP50,000 expected on 2 November 2026; PHP80,000 expenses due 30 October; first/largest projected gap PHP40,000 on 30 October; projected ending balance PHP10,000 once the expected payment arrives. Demo financial reference date is 29 October 2026, intentionally preserved; actual client date is 28 October 2026. The negative interval must remain visible.
 
 Explore three variations within the approved direction: neutral balanced cards; a stronger available-cash focal card; a compact grouped summary with more action emphasis. These are visual explorations of the same product and data. Resolve option numbers from their displayed order, then finalize this brief around the selected image before implementation.
 
