@@ -27,6 +27,8 @@ The 3 November code gate passed on Node 24.22.1: 271 unit/UI tests, 112 integrat
 
 Task 16 (XLSX import) owning checks passed on 6 November with Node 24.22.1: 75 unit/UI tests in `lib/domain/xlsx.test.ts`, `lib/domain/imports.test.ts` and `lib/ui/intake-review.test.ts`; 8 tests in `tests/integration/intake.test.ts`, including CSV/XLSX replay; typecheck; and lint of project source, plus one browser upload review. Full lint also reports two errors in the ignored local `.taste-skill/check-production-css.cjs` helper, which is not project source. This is a focused feature check, not a new full gate.
 
+Connect Google (demo item D2) checks passed on 6 November with Node 24.22.1: 476 unit/UI tests, 130 integration tests (including `tests/integration/google-connect.test.ts`), typecheck and the Webpack production build. The live proof with Bryan's Google test account (sign-in, picking, setup, sync, repeat sync, edited row, recovery) is recorded as `connectGoogleProof` in the [runtime evidence](mvp-runtime-evidence.json), including what was not checked.
+
 ## Build and runtime notes
 
 The production build downloads Google Fonts and needs network access. Next.js Cache Components and Partial Prefetching remain enabled. Node-RED will run separately from Next.js/Vercel. Read [AGENTS.md](../AGENTS.md) before implementation.

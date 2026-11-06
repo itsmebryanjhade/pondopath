@@ -138,5 +138,30 @@
       "coverage": "Separately signed-in owner and finance clients: finance approval is FORBIDDEN; owner approval from a stale revision is rejected (STALE_VERSION) without erasing the submission; copy after a reference-date change returns stale with no text and clears approval; a partial receipt clears approval and the new balance is used; approved text is returned only by the server recheck and manual send is recorded as unverified.",
       "notCovered": "No browser UI walkthrough with two simultaneous sessions. A contact-detail change before copy is covered by the approval-basis unit test (contact version is part of the digest), not by a dedicated integration case."
     }
+  },
+  "connectGoogleProof": {
+    "verifiedAt": "2026-11-06",
+    "status": "passed_except_access_lost_message_and_excel_in_drive",
+    "environment": "Local dev server on Node 24.22.1; built-in browser; SoloForge Demo Services (fictional); Google project pondopath-dev in Testing mode with Bryan's test account; fictional Sheet 'PondoPath test invoices' (Sheet1).",
+    "signIn": "Owner Connect Google → Google consent (drive.file, openid, email) → google_connections status connected, refresh token stored sealed (v1.).",
+    "readMethod": "Sheets API values.get worked under drive.file (typed numbers, date serials, booleans); the xlsx export fallback was not needed for Sheets.",
+    "setupAndSync": "Selector labelled 5 rows (3 invoices, 2 bills); setup saved with fallback customer Demo Client Services; Sync now → 5 pending proposals via google_drive_connector with correct amounts and due dates; nothing applied or posted to cash.",
+    "repeatSync": "0 staged, 5 unchanged.",
+    "editedRow": "SRC-0002 9000→9500 in the Sheet → exactly 1 staged, 4 unchanged; the earlier SRC-0002 proposal became superseded.",
+    "accessLost": "The trash attempt recorded INVALID_SHEET with 0 rows (Google reported the file not trashed; the tab returned no header row). Fixed afterwards: empty tab → FILE_UNREADABLE, renamed/removed tab → TAB_MISSING. The 'can't open this file' message still needs one live re-check.",
+    "recovery": "After restoring, Sync now → 0 staged, 5 unchanged.",
+    "notChecked": [
+      "Excel (.xlsx) file in Drive (unit-tested only)",
+      "Picker Upload tab and flat list (Bryan to try)",
+      "Supabase Cron on Vercel (applied only after deployment)"
+    ],
+    "checks": {
+      "unit": "476/476",
+      "integration": "130/130",
+      "typecheck": "pass",
+      "lint": "changed files clean; one pre-existing failure in .taste-skill/check-production-css.cjs",
+      "build": "pass (next build --webpack)"
+    },
+    "review": "Whole-branch review (Opus, medium): 0 Critical, 4 Important fixed test-first, 7 Minor deferred."
   }
 }
