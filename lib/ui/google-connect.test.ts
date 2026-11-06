@@ -48,6 +48,9 @@ describe("Connect Google screen", () => {
     expect(render({ files: [{ ...file, connector_status: "awaiting_mapping" }] })).not.toContain("Sync now");
     expect(render({ connection: { account_email: "owner@fictional.example", status: "needs_reconnect" } })).not.toContain("Sync now");
   });
+  it("a saved file waiting for its first sync says so, not 'finish setup'", () => {
+    expect(syncSummary({ result: "first_read", counts: {} }, "2026-11-06T08:58:00Z", now, "active")).toBe("Set up. Click Sync now, or wait for the next automatic sync.");
+  });
   it("asks the owner to finish setup for a new file", () => {
     expect(render({ files: [{ ...file, connector_status: "awaiting_first_read", last_run_at: null, last_run_summary: null }] })).toContain("Finish setup");
   });

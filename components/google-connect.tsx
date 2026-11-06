@@ -18,11 +18,12 @@ function ago(at: string, now: number) {
   return minutes < 1 ? "just now" : minutes < 60 ? `${minutes} min ago` : `${Math.round(minutes / 60)} h ago`;
 }
 /** Plain-words summary of a file's last sync, built from the stored run summary. */
-export function syncSummary(summary: unknown, at: string | null, now: number): string {
+export function syncSummary(summary: unknown, at: string | null, now: number, status?: string | null): string {
   if (!summary || !at || typeof summary !== "object") return "Not synced yet.";
   const { result, errorCode, counts = {} } = summary as { result?: string; errorCode?: string | null; counts?: Record<string, unknown> };
   if (result === "failed") return `Last sync ${ago(at, now)} failed: ${googleMessage(errorCode ?? "")}`;
   if (result === "paused") return `Paused · last checked ${ago(at, now)}.`;
+  if ((result === "first_read" || result === "awaiting_mapping") && (status === "active" || status === "paused")) return "Set up. Click Sync now, or wait for the next automatic sync.";
   if (result === "first_read" || result === "awaiting_mapping") return `Read ${ago(at, now)}. Finish setup to start syncing.`;
   const number = (value: unknown) => typeof value === "number" ? value : 0;
   const choose = Array.isArray(counts.choose) ? counts.choose.length : 0;
@@ -128,7 +129,7 @@ export function GoogleConnect({ owner, configured, connection, files, customers,
         const waiting = file.connector_status === "awaiting_first_read" || file.connector_status === "awaiting_mapping";
         return <article key={file.id} className="intake-connection">
           <h3>{file.label}{settings.tab ? ` · ${settings.tab}` : ""}</h3>
-          <p className="muted">{file.connector_status === "disconnected" ? "Disconnected. History and proposals are kept." : waiting ? "Finish setup to start syncing." : syncSummary(file.last_run_summary, file.last_run_at, checkedAt)}</p>
+          <p className="muted">{file.connector_status === "disconnected" ? "Disconnected. History and proposals are kept." : waiting ? "Finish setup to start syncing." : syncSummary(file.last_run_summary, file.last_run_at, checkedAt, file.connector_status)}</p>
           {connected && !waiting && file.connector_status !== "disconnected" && <div className="intake-buttons">
             <button className="button" disabled={busy} onClick={() => start(async () => {
               const result = await syncNowAction(file.id);

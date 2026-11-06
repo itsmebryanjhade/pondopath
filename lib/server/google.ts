@@ -4,7 +4,7 @@ import { readXlsx } from "@/lib/domain/xlsx";
 import { CONNECTOR_LIMITS, type ConnectorSheetRead } from "@/lib/domain/connector-rows";
 
 /** The only module that calls Google. Errors are thrown as `new Error(code)` and never contain tokens or file content. */
-export type GoogleError = "GOOGLE_RECONNECT" | "FILE_ACCESS_LOST" | "FILE_TOO_LARGE" | "FILE_NOT_SUPPORTED" | "FILE_UNREADABLE" | "GOOGLE_UNAVAILABLE";
+export type GoogleError = "GOOGLE_RECONNECT" | "FILE_ACCESS_LOST" | "TAB_MISSING" | "FILE_TOO_LARGE" | "FILE_NOT_SUPPORTED" | "FILE_UNREADABLE" | "GOOGLE_UNAVAILABLE";
 export type FileInfo = { id: string; name: string; mimeType: string; size: number | null; trashed: boolean };
 export type GoogleRead = Omit<ConnectorSheetRead, "runId">;
 
@@ -105,7 +105,9 @@ async function parse<T>(work: () => Promise<T> | T): Promise<T> {
 
 async function readWorkbook(bytes: Uint8Array, tab?: string) {
   const { sheets } = await parse(() => readXlsx(bytes));
-  const chosen = tab && sheets.includes(tab) ? tab : sheets[0];
+  // A saved tab that was renamed or removed is reported, never silently swapped for another tab.
+  if (tab && !sheets.includes(tab)) fail("TAB_MISSING");
+  const chosen = tab ?? sheets[0];
   if (!chosen) fail("FILE_UNREADABLE");
   const { file } = await parse(() => readXlsx(bytes, chosen));
   return { tabs: sheets, tab: chosen, read: fromFile(file ?? fail("FILE_UNREADABLE")) };
@@ -140,11 +142,13 @@ export async function readFile(token: string, info: FileInfo, tab?: string): Pro
   if (meta.status === 403 || meta.status === 404) return readWorkbook(await download(`${base}/export?mimeType=${encodeURIComponent(XLSX_MIME)}`, token), tab);
   const titles = ((await check(meta).json().catch(() => fail("GOOGLE_UNAVAILABLE"))) as { sheets?: { properties?: { title?: string } }[] }).sheets
     ?.map(sheet => sheet.properties?.title).filter((title): title is string => !!title) ?? [];
-  const chosen = tab && titles.includes(tab) ? tab : titles[0] ?? fail("FILE_UNREADABLE");
+  if (tab && !titles.includes(tab)) fail("TAB_MISSING");
+  const chosen = tab ?? titles[0] ?? fail("FILE_UNREADABLE");
   const range = encodeURIComponent(`'${chosen.replaceAll("'", "''")}'`);
   const values = check(await call(`${sheets}/values/${range}?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER&majorDimension=ROWS`, auth(token)));
   const body = await values.json().catch(() => fail("GOOGLE_UNAVAILABLE")) as { values?: unknown[][] };
   const read = fromGrid(Array.isArray(body.values) ? body.values : []);
+  if (!read.headers.some(header => header.trim())) fail("FILE_UNREADABLE");
   if (read.rows.length > CONNECTOR_LIMITS.rows) fail("FILE_TOO_LARGE");
   return { tabs: titles, tab: chosen, read };
 }

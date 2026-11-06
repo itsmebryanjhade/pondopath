@@ -8,7 +8,7 @@ import { businessAccessToken } from "@/lib/server/google-files";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const sourceSchema = z.object({ businessId: z.uuid(), status: z.string(), fileId: z.string(), tab: z.string().nullable().optional() });
-const KNOWN = new Set(["GOOGLE_RECONNECT", "FILE_ACCESS_LOST", "FILE_TOO_LARGE", "FILE_NOT_SUPPORTED", "FILE_UNREADABLE", "GOOGLE_UNAVAILABLE", "GOOGLE_NOT_CONFIGURED"]);
+const KNOWN = new Set(["GOOGLE_RECONNECT", "FILE_ACCESS_LOST", "TAB_MISSING", "FILE_TOO_LARGE", "FILE_NOT_SUPPORTED", "FILE_UNREADABLE", "GOOGLE_UNAVAILABLE", "GOOGLE_NOT_CONFIGURED"]);
 
 async function source(sourceId: string) {
   const result = await createAdminClient().rpc("google_file_source", { p_source_id: sourceId });

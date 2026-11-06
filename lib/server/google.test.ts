@@ -83,6 +83,12 @@ describe("reading files", () => {
     expect(result.tab).toBe("Bills");
     expect(result.read).toEqual({ ...expected, rows: [["SRC-1", 100, "2026-11-20"], ["SRC-2", 250.5, "2026-11-21"]] });
   });
+  it("an empty tab is unreadable and a renamed or removed tab is reported, never swapped", async () => {
+    routes.push([/spreadsheets\/sheet123456\?fields/, () => json({ sheets: [{ properties: { title: "Sales" } }] })]);
+    routes.push([quotedTab("Sales"), () => json({})]);
+    await expect(readFile("t", sheet, "Sales")).rejects.toThrow("FILE_UNREADABLE");
+    await expect(readFile("t", sheet, "Bills")).rejects.toThrow("TAB_MISSING");
+  });
   it("uses the first tab by default", async () => {
     routes.push([/spreadsheets\/sheet123456\?fields/, () => json({ sheets: [{ properties: { title: "Sales" } }] })]);
     routes.push([quotedTab("Sales"), () => json({ values: grid })]);

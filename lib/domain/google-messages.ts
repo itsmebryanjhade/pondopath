@@ -2,6 +2,7 @@
 const MESSAGES: Record<string, string> = {
   GOOGLE_RECONNECT: "Google needs you to sign in again. Click Reconnect Google.",
   FILE_ACCESS_LOST: "PondoPath can't open this file anymore. Check that it still exists in your Drive.",
+  TAB_MISSING: "The tab used in the setup was renamed or removed. Open Change setup and choose the tab again.",
   FILE_TOO_LARGE: "This file is too large. Use an Excel or CSV file up to 512 KiB and 100 rows, or a Google Sheet up to 500 rows.",
   FILE_NOT_SUPPORTED: "Choose a Google Sheet, an Excel (.xlsx) file or a CSV file.",
   FILE_UNREADABLE: "PondoPath couldn't read this file. Put the column headers in row 1 and use plain values.",
