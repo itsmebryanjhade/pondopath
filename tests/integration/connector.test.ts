@@ -122,6 +122,17 @@ describe("Google Sheet connector storage and staging", () => {
     expect((await admin.from("intake_items").select("id", { count: "exact", head: true }).eq("source_id", sourceId).eq("external_id", "c")).count).toBe(1);
   });
 
+  it("refreshes stored headers after a mapped column is renamed, without changing status or mapping", async () => {
+    const { sourceId, key } = await activeConnection(owner, business);
+    const before = checked(await owner.from("intake_sources").select("mapping").eq("id", sourceId).single()).data;
+    const renamed = ["ID", "Invoice no.", "Amount", "Due"];
+    checked(await ingest(sourceId, key, { runId: "renamed", result: "failed", errorCode: "MAPPING_HEADER_MISSING", counts: { read: 1, missingHeaders: ["Invoice"] }, firstRead: { headers: renamed, samples: [] } }));
+    const after = checked(await owner.from("intake_sources").select("connector_status,mapping,connector_settings").eq("id", sourceId).single()).data;
+    expect(after.connector_status).toBe("active");
+    expect(after.mapping).toEqual(before.mapping);
+    expect((after.connector_settings as { headers: string[] }).headers).toEqual(renamed);
+  });
+
   it("records paused reads without staging", async () => {
     const { sourceId, key } = await activeConnection(owner, business);
     checked(await owner.rpc("set_connector_paused", { p_source_id: sourceId, p_paused: true }));
