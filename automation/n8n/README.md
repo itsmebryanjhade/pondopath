@@ -16,4 +16,29 @@ n8n reads one Google Sheet on a schedule and sends its rows to PondoPath's conne
   - Checkbox cells arrive as JSON booleans (`true` / `false`).
 - **Decision:** Node-RED keeps the missed-commitment job unchanged.
 
-Setup, import and operation steps are added with the workflow file (Task 7).
+## Workflow: `google-sheet-intake.json`
+
+Every 10 minutes (or on **Run now**), the workflow reads the selected tab through the Google Sheets API with the service account and read-only scope, builds `{ runId, headers, rows, rowNumbers }`, and posts it to `POST {appUrl}/api/intake/connectors/{sourceId}` with `Authorization: Bearer <connection key>`. A failed read posts `{ runId, error }` (`SHEET_ACCESS_DENIED`, `SHEET_NOT_FOUND` or `READ_FAILED`) and never sends Sheet content.
+
+It calls the Sheets API (`values.get`, unformatted values, serial-number dates) instead of the Google Sheets node's *Get Row(s)*. That node returns header-keyed objects, which silently merge duplicate headers and emit nothing for an empty Sheet. The raw grid keeps both visible, so PondoPath can record them as a failed read for the owner. Blank rows are skipped, and the real Sheet row numbers are kept.
+
+### Setup (owner and operator, once per Sheet)
+
+1. **Start n8n** with Node 24 (the machine default Node 26 is unsupported):
+   `N8N_DIAGNOSTICS_ENABLED=false N8N_PERSONALIZATION_ENABLED=false N8N_HOST=localhost N8N_LISTEN_ADDRESS=127.0.0.1 npx --yes n8n@2.46.6 start` with the Node 24 binary first on `PATH`. The editor is at `http://localhost:5678`, on loopback only.
+2. **Import** `google-sheet-intake.json` from the n8n editor menu, or run `npx n8n@2.46.6 import:workflow --input=automation/n8n/google-sheet-intake.json`.
+3. **In PondoPath (owner):** go to *Imports → Connect a Google Sheet*, share the Sheet with the robot email as **Viewer**, paste the Sheet link and create the connection. Copy the one-time **connection key** and the **connection ID**.
+4. **Google credential:** open the existing *Google Service Account API* credential. Turn on **Set up for use in HTTP Request node** and set the scope to `https://www.googleapis.com/auth/spreadsheets.readonly`. Select this credential in **Read Sheet (read-only)**.
+5. **Connection key:** create a **Header Auth** credential with name `Authorization` and value `Bearer <connection key>`. Select it in **Send to PondoPath**. The key lives only in n8n's encrypted credential store.
+6. **Config node:** set `spreadsheetId` (the part of the Sheet link between `/d/` and `/edit`), `sheetName` (the tab name, for example `Sheet1`), `appUrl` (`http://localhost:3000` for local development) and `sourceId` (the connection ID).
+7. **First read:** click **Run now**. PondoPath stores the headers and samples and shows the mapping form. Map the columns, optionally set a row filter, and save.
+8. **Publish** the workflow so the 10-minute schedule runs while n8n is on. Missed runs catch up on the next read after the laptop or n8n restarts.
+
+### Operation
+
+- **Pause** in PondoPath to stop staging without touching n8n; reads are still recorded as paused.
+- **Replace key** in PondoPath, then update the Header Auth credential. The old key stops working immediately.
+- **Disconnect** in PondoPath to stop reads. History and proposals are kept.
+- **Un-share** the Sheet to stop Google access; PondoPath then shows the access error.
+- Export the workflow without credentials (editor menu → *Download*). Credentials and keys are never part of the file.
+- `npx n8n` is fine for development and the proof. Move to Docker before n8n 3.0 (npm installs are deprecated there) or for longer-running use.
