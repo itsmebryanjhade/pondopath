@@ -1,24 +1,31 @@
-# PondoPath full-scope completion tasks
+# PondoPath tasks: hackathon demo first
 
-Target: complete the full approved scope in dependency order, using fictional data. The earlier dated-release restriction is removed. Read [the plan](plan.md) for the complete scope and dependency rules. Existing pending work remains pending; this update does not claim implementation or verification. Run commands from the repository root with Node 24/npm.
+Target (decided by Bryan, 6 November): finish a focused hackathon demo with easy setup, then continue the full expansion afterwards. Read [the plan](plan.md) for scope, order and rules. Fictional data only. Run commands from the repository root with Node 24/npm.
 
-## Integration execution queue
+## Demo queue
 
-Track implementation acceptance in the existing [Tasks 16–21](../docs/superpowers/plans/2026-10-27-cash-flow-action-planner.md). This table coordinates those tasks rather than duplicating their completion checkboxes. Decompose the next milestone into small implementation slices before coding; verify each provider separately.
-
-| Original task | Milestone | Current state |
+| Order | Milestone | Current state |
 | --- | --- | --- |
-| 16 | XLSX import into the existing Review Inbox | Done — 6 November (`a9d3c01`); owning checks on Node 24 |
-| 17 | n8n intake from one selected Google Sheet | Pending — runtime/access preflight |
-| 18 | Selected Google Drive file | Pending — provider-specific access and proof |
-| 18 | Selected OneDrive file | Pending — provider-specific access and proof |
-| 19 | Private receipt-image extraction and review | Pending — provider evaluation and implementation |
-| 20 | Messenger Page intake | Pending — access unverified |
-| 20 | Approved Viber business/bot intake | Pending — access unverified |
-| 20 | Business SMS intake | Pending — access unverified |
-| 21 | Identified accounting/POS API or supported export | Pending — product/access not yet identified |
+| — | Task 16: XLSX import into the Review Inbox | Done — 6 November (`a9d3c01`); owning checks on Node 24 |
+| D1 | Task 17: Google Sheet intake (n8n operator route) + "Confirm selected" | In progress (~80%): endpoint, storage, connection screen, mapping, status, pause and workflow work end to end; review fixes applied (`e894485`, `f2a7746`). Remaining: edited-row and un-share proofs, plan Task 8 "Confirm selected", records. See the [Task 17 plan](../docs/superpowers/plans/2026-11-06-google-sheet-intake.md) and its progress ledger. |
+| D2 | Smart mapping (auto-matched columns, owner confirms) | Pending — needs a short design and plan before coding |
+| D3 | Connect Google: sign-in + Google Picker (`drive.file`) for Sheets and Excel/CSV files in Drive, Sync now, scheduled sync | Pending — design and plan before coding; first verify `drive.file` reads of a picked Sheet; create the OAuth client (Testing mode) |
+| D4 | Demo preparation (Task 12) and final candidate check (R4) | Pending — after D1–D3 |
 
-The R-tasks below retain the baseline and final-completion checks. R2/R3 can be addressed alongside independent feature work. R4 waits for the full implemented scope; provider blockers must be resolved or the advertised scope explicitly changed by Bryan before full completion is claimed.
+## After the hackathon (agreed, not part of the demo claim)
+
+| Original task | Milestone |
+| --- | --- |
+| — | Import presets for common exports (GCash, Maya, Shopee, Lazada, Loyverse, Xero/QuickBooks exports) |
+| 18 | Connect Microsoft (OneDrive/Excel) |
+| — | Google production verification and production tokens |
+| 21 | Accounting/POS sign-in: Xero pilot, then QuickBooks Online, Loyverse |
+| 19 | Receipt and notebook-page photo capture with reviewed extraction |
+| 20 | Messenger Page, Viber business/bot and SMS intake |
+| — | PayMongo/Xendit, marketplace apps, unified APIs, Philippine tax tools (partnership or later) |
+| R5–R8 | Full environment, worker, rehearsal and handoff checks for the expanded scope |
+
+The R-tasks below keep the baseline and final-completion checks. For the demo, R4 covers the demo candidate only; R5–R8 apply to the expanded scope after the hackathon.
 
 ## R1: Record the full-scope working boundary
 

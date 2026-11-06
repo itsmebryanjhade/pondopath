@@ -177,3 +177,8 @@ Checked on 6 November 2026 from official sources before implementation; re-check
 | Get row(s) output | First row is treated as headers; rows return as header-keyed objects; Output Formatting defaults to unformatted values (numbers stay numeric); Date Formatting defaults to locale text, with Serial Number as an option. [Sheets node docs](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/sheet-operations/) | Workflow uses unformatted values and serial-number dates; PondoPath applies the value rules in 4.1a. Checkbox output is unverified and is checked in slice 0. |
 
 The page wording above was summarized by a research tool; treat it as paraphrase and re-check the linked pages in slice 0.
+
+## Update — 6 November 2026
+
+- **Read method:** the workflow reads through the Sheets API (`values.get`, unformatted values, serial-number dates) with the read-only service account instead of the Google Sheets node's *Get Row(s)*, which merges duplicate headers and emits nothing for an empty Sheet. See the [n8n runbook](../../../automation/n8n/README.md).
+- **Role:** with the hackathon-demo-first order, this n8n route becomes the optional **operator / advanced** path. The owner-facing path is the planned in-app **Connect Google** (sign-in and the Google Picker), which reuses this design's connector pipeline, mapping, dedupe and run history. See the [plan](../../../tasks/plan.md) and PRD 1.3 (FR-14).
