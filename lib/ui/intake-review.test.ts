@@ -41,3 +41,23 @@ it("lets finance reuse CSV and XLSX sources and choose either supported file for
   expect(html).toMatch(/accept="[^"]*\.csv[^"]*\.xlsx/);
   expect(html).not.toContain("Create source");
 });
+
+it("offers Mixed (by Type column) with value lists and both record field sets", async () => {
+  const { ImportMappingFields } = await import("@/components/csv-import");
+  const props = { headers: ["ID", "Type", "Status"], customers: [{ id: "00000000-0000-4000-8000-000000000003", name: "Fictional Customer" }], onKindChange: () => {} };
+  expect(renderToStaticMarkup(createElement(ImportMappingFields, { ...props, kind: "invoice" }))).toContain("Mixed (by Type column)");
+  const mixed = renderToStaticMarkup(createElement(ImportMappingFields, { ...props, kind: "mixed" }));
+  for (const label of ["Type column", "Values meaning invoice", "Values meaning expense", "Invoice number", "Expense label", "Payee / supplier"]) expect(mixed).toContain(label);
+});
+
+it("offers an optional row filter and builds the mapping from the form", async () => {
+  const { ImportMappingFields, readMappingForm } = await import("@/components/csv-import");
+  const html = renderToStaticMarkup(createElement(ImportMappingFields, { headers: ["ID", "Status"], customers: [], kind: "expense", onKindChange: () => {} }));
+  expect(html).toContain("Only include rows where");
+  expect(html).toContain("equals");
+  const data = new FormData();
+  for (const [key, value] of Object.entries({ externalId: "ID", amount: "Amount", dueDate: "Due", typeColumn: "Type", invoiceValues: "Invoice, AR", expenseValues: "Bill", number: "No", customerId: "00000000-0000-4000-8000-000000000003", label: "Label", payee: "Payee", filterColumn: "Status", filterValue: "Unpaid" })) data.set(key, value);
+  expect(readMappingForm(data, "mixed")).toMatchObject({ kind: "mixed", invoiceValues: ["Invoice", "AR"], expenseValues: ["Bill"], filter: { column: "Status", value: "Unpaid" } });
+  data.delete("filterColumn");
+  expect(readMappingForm(data, "mixed")).not.toHaveProperty("filter");
+});

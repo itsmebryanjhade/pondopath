@@ -7,6 +7,37 @@ import type { CsvMapping, CsvRow } from "@/lib/domain/imports";
 import type { IntakeSource, IntakeBatchResult } from "@/lib/server/intake";
 import { Field } from "./command-form";
 
+export type MappingKind = "invoice" | "expense" | "mixed";
+
+/** Column-mapping inputs shared by file imports and connected Sheets. Field names are read by `readMappingForm`. */
+export function ImportMappingFields({ headers, customers, kind, onKindChange, disabled = false }: { headers: string[]; customers: { id: string; name: string }[]; kind: MappingKind; onKindChange: (kind: MappingKind) => void; disabled?: boolean }) {
+  const selectColumn = (name: string, label: string, required = true) => <label className="form-field"><span>{label}</span><select className="field" name={name} required={required} disabled={disabled} defaultValue=""><option value="">{required ? "Select a column" : "Not mapped"}</option>{headers.map(header => <option key={header}>{header}</option>)}</select></label>;
+  return <div className="intake-form-grid">
+    <label className="form-field"><span>Record kind</span><select className="field" value={kind} disabled={disabled} onChange={event => onKindChange(event.target.value as MappingKind)}><option value="invoice">Customer invoices</option><option value="expense">Upcoming expenses</option><option value="mixed">Mixed (by Type column)</option></select></label>
+    {selectColumn("externalId", "Stable source row ID")}
+    {kind === "mixed" && <>{selectColumn("typeColumn", "Type column")}<Field name="invoiceValues" label="Values meaning invoice" placeholder="Invoice, Receivable, AR" required disabled={disabled} maxLength={1000} /><Field name="expenseValues" label="Values meaning expense" placeholder="Bill, Payable, AP" required disabled={disabled} maxLength={1000} /></>}
+    {kind !== "expense" && <>{selectColumn("number", "Invoice number")}<label className="form-field"><span>Customer for rows without a customer ID</span><select name="customerId" className="field" required disabled={disabled} defaultValue=""><option value="">Select an existing customer</option>{customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select><small>Create missing customers using the existing invoice page.</small></label>{selectColumn("customer", "Existing PondoPath customer ID (optional)", false)}</>}
+    {kind !== "invoice" && <>{selectColumn("label", "Expense label")}{selectColumn("payee", "Payee / supplier")}</>}
+    {selectColumn("amount", "Total amount (PHP)")}{selectColumn("dueDate", "Original due date (YYYY-MM-DD)")}{selectColumn("recordId", "Existing PondoPath record ID (optional)", false)}{selectColumn("currency", "Currency column (optional; PHP only)", false)}
+    <label className="form-field"><span>Only include rows where (optional)</span><select className="field" name="filterColumn" disabled={disabled} defaultValue=""><option value="">Include every row</option>{headers.map(header => <option key={header}>{header}</option>)}</select></label>
+    <Field name="filterValue" label="equals" placeholder="Unpaid" disabled={disabled} maxLength={200} />
+  </div>;
+}
+
+/** Builds a mapping from `ImportMappingFields`; the server validates it with `csvMappingSchema`. */
+export function readMappingForm(data: FormData, kind: MappingKind): CsvMapping {
+  const text = (key: string) => String(data.get(key) ?? "").trim();
+  const optional = (key: string) => text(key) ? { [key]: text(key) } : {};
+  const list = (key: string) => text(key).split(",").map(item => item.trim()).filter(Boolean);
+  const base = { externalId: text("externalId"), amount: text("amount"), dueDate: text("dueDate"), ...optional("recordId"), ...optional("currency"),
+    ...(text("filterColumn") ? { filter: { column: text("filterColumn"), value: text("filterValue") } } : {}) };
+  const invoice = { number: text("number"), customerId: text("customerId"), ...optional("customer") };
+  const expense = { label: text("label"), payee: text("payee") };
+  if (kind === "invoice") return { ...base, kind, ...invoice };
+  if (kind === "expense") return { ...base, kind, ...expense };
+  return { ...base, kind, typeColumn: text("typeColumn"), invoiceValues: list("invoiceValues"), expenseValues: list("expenseValues"), ...invoice, ...expense };
+}
+
 export function CsvImport({ sources, customers, owner }: { sources: IntakeSource[]; customers: { id: string; name: string }[]; owner: boolean }) {
   const router = useRouter();
   const [busy, start] = useTransition();
@@ -15,13 +46,12 @@ export function CsvImport({ sources, customers, owner }: { sources: IntakeSource
   const [headers, setHeaders] = useState<string[]>([]);
   const [sheets, setSheets] = useState<string[]>([]);
   const [sheet, setSheet] = useState("");
-  const [kind, setKind] = useState<"invoice" | "expense">("invoice");
+  const [kind, setKind] = useState<MappingKind>("invoice");
   const [rows, setRows] = useState<CsvRow[] | null>(null);
   const [mapping, setMapping] = useState<CsvMapping | null>(null);
   const [results, setResults] = useState<IntakeBatchResult | null>(null);
   const [notice, setNotice] = useState("");
   const makeForm = (map?: CsvMapping) => { const form = new FormData(); if (file) form.set("file", file); form.set("sourceId", sourceId); if (sheet) form.set("sheet", sheet); if (map) form.set("mapping", JSON.stringify(map)); return form; };
-  const selectColumn = (name: string, label: string, required = true) => <label className="form-field"><span>{label}</span><select className="field" name={name} required={required} disabled={busy} defaultValue=""><option value="">{required ? "Select a column" : "Not mapped"}</option>{headers.map(header => <option key={header}>{header}</option>)}</select></label>;
   return <section className="records-panel" id="csv-import" aria-labelledby="csv-title">
     <div className="records-head"><div><h2 id="csv-title">Import a spreadsheet</h2><p>1. Choose a source and file → 2. Map and preview → 3. Send to review</p></div></div>
     <div className="intake-panel-body">
@@ -38,16 +68,10 @@ export function CsvImport({ sources, customers, owner }: { sources: IntakeSource
       {!sources.length && <p className="muted">{owner ? "Create a source above to start." : "Ask the owner to create a spreadsheet source. You can then import files and review proposals."}</p>}
       {!!headers.length && <form key={`${file?.name}:${kind}`} onChange={() => { setRows(null); setResults(null); }} onSubmit={event => {
         event.preventDefault(); const data = new FormData(event.currentTarget);
-        const base = { kind, externalId: String(data.get("externalId")), amount: String(data.get("amount")), dueDate: String(data.get("dueDate")), ...(data.get("recordId") ? { recordId: String(data.get("recordId")) } : {}), ...(data.get("currency") ? { currency: String(data.get("currency")) } : {}) };
-        const selected: CsvMapping = kind === "invoice" ? { ...base, kind: "invoice", number: String(data.get("number")), customerId: String(data.get("customerId")), ...(data.get("customer") ? { customer: String(data.get("customer")) } : {}) } : { ...base, kind: "expense", label: String(data.get("label")), payee: String(data.get("payee")) };
+        const selected = readMappingForm(data, kind);
         setMapping(selected); setNotice(""); start(async () => { const result = await previewCsvAction(makeForm(selected)); if (result.ok) setRows(result.data); else setNotice(result.message); });
       }}>
-        <div className="intake-form-grid">
-          <label className="form-field"><span>Record kind</span><select className="field" value={kind} disabled={busy} onChange={event => setKind(event.target.value as "invoice" | "expense")}><option value="invoice">Customer invoices</option><option value="expense">Upcoming expenses</option></select></label>
-          {selectColumn("externalId", "Stable source row ID")}
-          {kind === "invoice" ? <>{selectColumn("number", "Invoice number")}<label className="form-field"><span>Customer for rows without a customer ID</span><select name="customerId" className="field" required disabled={busy} defaultValue=""><option value="">Select an existing customer</option>{customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select><small>Create missing customers using the existing invoice page.</small></label>{selectColumn("customer", "Existing PondoPath customer ID (optional)", false)}</> : <>{selectColumn("label", "Expense label")}{selectColumn("payee", "Payee / supplier")}</>}
-          {selectColumn("amount", "Total amount (PHP)")}{selectColumn("dueDate", "Original due date (YYYY-MM-DD)")}{selectColumn("recordId", "Existing PondoPath record ID (optional)", false)}{selectColumn("currency", "Currency column (optional; PHP only)", false)}
-        </div>
+        <ImportMappingFields headers={headers} customers={customers} kind={kind} onKindChange={setKind} disabled={busy} />
         <button className="button secondary" disabled={busy}>Preview rows</button>
       </form>}
       {notice && <p role="status">{notice}</p>}
