@@ -538,6 +538,54 @@ export type Database = {
           },
         ]
       }
+      intake_connector_runs: {
+        Row: {
+          business_id: string
+          counts: Json
+          error_code: string | null
+          id: string
+          received_at: string
+          result: string
+          run_id: string
+          source_id: string
+        }
+        Insert: {
+          business_id: string
+          counts?: Json
+          error_code?: string | null
+          id?: string
+          received_at?: string
+          result: string
+          run_id: string
+          source_id: string
+        }
+        Update: {
+          business_id?: string
+          counts?: Json
+          error_code?: string | null
+          id?: string
+          received_at?: string
+          result?: string
+          run_id?: string
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intake_connector_runs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_connector_runs_source_id_business_id_fkey"
+            columns: ["source_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "intake_sources"
+            referencedColumns: ["id", "business_id"]
+          },
+        ]
+      }
       intake_items: {
         Row: {
           business_id: string
@@ -622,27 +670,45 @@ export type Database = {
       intake_sources: {
         Row: {
           business_id: string
+          connector_key_hash: string | null
+          connector_settings: Json | null
+          connector_status: string | null
           created_at: string
           created_by: string
           id: string
           kind: string
           label: string
+          last_run_at: string | null
+          last_run_summary: Json | null
+          mapping: Json | null
         }
         Insert: {
           business_id: string
+          connector_key_hash?: string | null
+          connector_settings?: Json | null
+          connector_status?: string | null
           created_at?: string
           created_by: string
           id?: string
           kind: string
           label: string
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          mapping?: Json | null
         }
         Update: {
           business_id?: string
+          connector_key_hash?: string | null
+          connector_settings?: Json | null
+          connector_status?: string | null
           created_at?: string
           created_by?: string
           id?: string
           kind?: string
           label?: string
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          mapping?: Json | null
         }
         Relationships: [
           {
@@ -843,6 +909,14 @@ export type Database = {
         Returns: Json
       }
       check_missed_commitments: { Args: never; Returns: Json }
+      connector_ingest: {
+        Args: { p_key: string; p_run: Json; p_source_id: string }
+        Returns: Json
+      }
+      connector_source: {
+        Args: { p_key: string; p_source_id: string }
+        Returns: Json
+      }
       create_business_workspace: {
         Args: { p_display_name: string; p_name: string }
         Returns: string
@@ -851,10 +925,22 @@ export type Database = {
         Args: { p_kind: string; p_label: string }
         Returns: string
       }
+      create_sheet_connection: {
+        Args: { p_key_hash: string; p_label: string; p_settings: Json }
+        Returns: string
+      }
+      disconnect_connector: {
+        Args: { p_source_id: string }
+        Returns: undefined
+      }
       get_approved_reminder_text: { Args: { p_id: string }; Returns: Json }
       get_intake_bindings: {
         Args: { p_external_ids: string[]; p_source_id: string }
         Returns: Json
+      }
+      replace_connector_key: {
+        Args: { p_key_hash: string; p_source_id: string }
+        Returns: undefined
       }
       reserve_ai_request: {
         Args: {
@@ -872,6 +958,14 @@ export type Database = {
           p_review_version: number
         }
         Returns: number
+      }
+      save_connector_mapping: {
+        Args: { p_mapping: Json; p_source_id: string }
+        Returns: undefined
+      }
+      set_connector_paused: {
+        Args: { p_paused: boolean; p_source_id: string }
+        Returns: undefined
       }
       stage_intake: {
         Args: {
@@ -1024,4 +1118,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
