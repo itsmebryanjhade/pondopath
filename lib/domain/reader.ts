@@ -86,7 +86,8 @@ const typeOf = (text: string) => (Object.entries(TYPE_WORDS) as [Exclude<RowLabe
   .find(([, words]) => words.some(word => wordsOf(text).has(word)))?.[0];
 
 /** Labels every row with programmed rules in order: Type words, party column, negative amount, payment words. Conflicts ask the owner. */
-export function labelRows(file: CsvFile, mapping: AutoMapping): { row: number; externalId: string; label: RowLabel; reason: string }[] {
+export type LabelFields = Pick<AutoMapping, "externalId" | "amount" | "overrides"> & Partial<Pick<AutoMapping, "customer" | "payee" | "typeColumn" | "label">>;
+export function labelRows(file: CsvFile, mapping: LabelFields): { row: number; externalId: string; label: RowLabel; reason: string }[] {
   const cell = (values: string[], header?: string) => header && file.headers.includes(header) ? String(values[file.headers.indexOf(header)] ?? "").trim() : "";
   const partyColumns = mapping.customer && mapping.customer !== mapping.payee;
   return file.rows.map((values, index) => {
@@ -143,4 +144,16 @@ export function applyReader(file: CsvFile, mapping: AutoMapping): { file: CsvFil
     ...(mapping.currency ? { currency: mapping.currency } : {}), ...(mapping.filter ? { filter: mapping.filter } : {}),
   };
   return { file: result, mixed, payments, choose, excluded };
+}
+
+export type AutoFields = Partial<Record<"externalId" | "number" | "amount" | "dueDate" | "customer" | "payee" | "label" | "typeColumn", string>>;
+/** Turns column suggestions into mapping fields, with fallbacks the owner can change: due date ← date, invoice number ← row ID, payee/label ← nearest text column. */
+export function suggestAutoFields(suggestions: ColumnSuggestion[]): AutoFields {
+  const of = (role: ColumnRole) => suggestions.find(item => item.role === role)?.header;
+  const fields: AutoFields = {
+    externalId: of("externalId"), number: of("number") ?? of("externalId"), amount: of("amount"), dueDate: of("dueDate") ?? of("date"),
+    customer: of("customer"), payee: of("supplier") ?? of("customer") ?? of("description"),
+    label: of("description") ?? of("type") ?? of("supplier") ?? of("customer"), typeColumn: of("type"),
+  };
+  return Object.fromEntries(Object.entries(fields).filter(([, header]) => header)) as AutoFields;
 }

@@ -112,3 +112,14 @@ describe("row labels", () => {
     expect(read.file.headers).toEqual(["ID", "Type", "Description", "Amount", "Due", "Invoice No", "__pondopath_type"]);
   });
 });
+
+import { suggestAutoFields, suggestColumns as suggest } from "./reader";
+describe("suggested auto fields", () => {
+  it("turns column roles into mapping fields with sensible fallbacks", () => {
+    const fields = suggestAutoFields(suggest(["Ref", "Uri", "Kliyente", "Supplier", "Paliwanag", "Halaga", "Due Date"], [["SRC-1", "Benta", "A", "", "x", "100", "2026-11-20"]]));
+    expect(fields).toEqual({ externalId: "Ref", typeColumn: "Uri", customer: "Kliyente", payee: "Supplier", label: "Paliwanag", amount: "Halaga", dueDate: "Due Date", number: "Ref" });
+  });
+  it("falls back to the date column and the customer column when due date or supplier are missing", () => {
+    expect(suggestAutoFields(suggest(["ID", "Customer", "Amount", "Date"], []))).toMatchObject({ dueDate: "Date", payee: "Customer", label: "Customer", number: "ID" });
+  });
+});

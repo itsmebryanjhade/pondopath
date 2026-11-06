@@ -8,6 +8,7 @@ import { CommandError, type ActionResult } from "@/lib/domain/commands";
 import { CSV_LIMITS, csvMappingSchema, mapCsv, readCsv, type IntakeBinding } from "@/lib/domain/imports";
 import { stageIntakeBatch, reviewIntake } from "@/lib/server/intake";
 import { readXlsx } from "@/lib/domain/xlsx";
+import { applyReader, labelRows, suggestAutoFields, suggestColumns } from "@/lib/domain/reader";
 import { requireActor } from "@/lib/server/auth";
 import { getWorkspace } from "@/lib/server/workspace";
 import { createClient } from "@/lib/supabase/server";
@@ -43,7 +44,11 @@ async function csvFile(form: FormData) {
 export async function inspectCsvAction(form: FormData) {
   return perform(async () => {
     const { csv, sheets, sheet } = await csvFile(form);
-    return { headers: csv?.headers ?? [], sample: csv?.rows.slice(0, 3) ?? [], count: csv?.rows.length ?? 0, sheets, sheet };
+    // The reader's suggestions and labels are hints for the selector; the saved mapping is validated again on preview and staging.
+    const suggestions = csv ? suggestColumns(csv.headers, csv.rows.slice(0, 20)) : [];
+    const fields = suggestAutoFields(suggestions);
+    const labels = csv ? labelRows(csv, { externalId: fields.externalId ?? "", amount: fields.amount ?? "", overrides: {}, ...fields }).slice(0, 100) : [];
+    return { headers: csv?.headers ?? [], sample: csv?.rows.slice(0, 3) ?? [], rows: csv?.rows.slice(0, 100) ?? [], count: csv?.rows.length ?? 0, sheets, sheet, fields, labels };
   });
 }
 
@@ -62,14 +67,21 @@ async function prepareCsv(form: FormData) {
   if (bindings.error) throw CommandError.fromDatabase(bindings.error.message);
   const parsedBindings = z.array(z.strictObject({ externalId: z.string(), type: z.string(), recordId: z.uuid() })).safeParse(bindings.data);
   if (!parsedBindings.success) throw new CommandError("SERVICE_UNAVAILABLE");
-  let rows;
-  try { rows = mapCsv(csv, mapping, { ...workspace, bindings: parsedBindings.data as IntakeBinding[] }); }
+  let rows, held = { payments: [] as number[], choose: [] as number[] };
+  try {
+    const context = { ...workspace, bindings: parsedBindings.data as IntakeBinding[] };
+    if (mapping.kind === "auto") {
+      const read = applyReader(csv, mapping);
+      held = { payments: read.payments, choose: read.choose };
+      rows = mapCsv(read.file, read.mixed, context);
+    } else rows = mapCsv(csv, mapping, context);
+  }
   catch (error) { throw new CommandError("VALIDATION_ERROR", { mapping: error instanceof Error ? error.message : "Check the column mapping." }); }
-  return { file, bytes, mapping, rows, sheet, sourceId: sourceId as string };
+  return { file, bytes, mapping, rows, held, sheet, sourceId: sourceId as string };
 }
 
 export async function previewCsvAction(form: FormData) {
-  return perform(async () => { const { rows } = await prepareCsv(form); return rows; });
+  return perform(async () => { const { rows, held } = await prepareCsv(form); return { rows, held }; });
 }
 
 export async function stageCsvAction(form: FormData) {

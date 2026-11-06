@@ -6,8 +6,11 @@ import { inspectCsvAction, previewCsvAction, stageCsvAction, createCsvSourceActi
 import type { CsvMapping, CsvRow } from "@/lib/domain/imports";
 import type { IntakeSource, IntakeBatchResult } from "@/lib/server/intake";
 import { Field } from "./command-form";
+import { ImportSelector, readSelectorForm, selectorProblems, type SelectorLabel } from "./import-selector";
+import type { AutoFields } from "@/lib/domain/reader";
 
 export type MappingKind = "invoice" | "expense" | "mixed";
+type ReadKind = MappingKind | "auto";
 
 /** Column-mapping inputs shared by file imports and connected Sheets. Field names are read by `readMappingForm`. */
 export function ImportMappingFields({ headers, customers, kind, onKindChange, disabled = false, defaults = {} }: { headers: string[]; customers: { id: string; name: string }[]; kind: MappingKind; onKindChange: (kind: MappingKind) => void; disabled?: boolean; defaults?: Record<string, unknown> }) {
@@ -50,7 +53,9 @@ export function CsvImport({ sources, customers, owner }: { sources: IntakeSource
   const [headers, setHeaders] = useState<string[]>([]);
   const [sheets, setSheets] = useState<string[]>([]);
   const [sheet, setSheet] = useState("");
-  const [kind, setKind] = useState<MappingKind>("invoice");
+  const [kind, setKind] = useState<ReadKind>("auto");
+  const [preview, setPreview] = useState<{ rows: (string | number | boolean | null)[][]; labels: SelectorLabel[]; fields: AutoFields }>({ rows: [], labels: [], fields: {} });
+  const [held, setHeld] = useState<{ payments: number[]; choose: number[] } | null>(null);
   const [rows, setRows] = useState<CsvRow[] | null>(null);
   const [mapping, setMapping] = useState<CsvMapping | null>(null);
   const [results, setResults] = useState<IntakeBatchResult | null>(null);
@@ -63,7 +68,7 @@ export function CsvImport({ sources, customers, owner }: { sources: IntakeSource
       <p className="muted">For Excel, choose one worksheet and use plain values: formulas and linked workbooks are not supported. Store row IDs and invoice numbers as Text to preserve leading zeros.</p>
       <p><a href="/samples/pondopath-invoices.csv" download className="text-link">Download a fictional invoice CSV</a> · <a href="/samples/pondopath-invoices.xlsx" download className="text-link">Download the Excel version</a></p>
       {owner && <details><summary>Create a spreadsheet source</summary><form className="intake-source-form" onSubmit={event => { event.preventDefault(); const label = String(new FormData(event.currentTarget).get("label") ?? ""); start(async () => { const result = await createCsvSourceAction(label); if (result.ok) { setSourceId(result.data); setNotice("Source created. Reuse this source for future versions of the same spreadsheet, whether saved as CSV or Excel."); router.refresh(); } else setNotice(result.message); }); }}><Field name="label" label="Source name" disabled={busy} placeholder="Customer invoice spreadsheet" required maxLength={200} /><button disabled={busy} className="button secondary">Create source</button></form></details>}
-      <form className="intake-upload-form" onSubmit={event => { event.preventDefault(); setRows(null); setResults(null); setNotice(""); start(async () => { const result = await inspectCsvAction(makeForm()); if (result.ok) { setHeaders(result.data.headers); setSheets(result.data.sheets); setNotice(result.data.sheets.length && !result.data.sheet ? "Choose a worksheet, then read its columns." : `${result.data.count} rows found. Map the columns below.`); } else setNotice(result.message); }); }}>
+      <form className="intake-upload-form" onSubmit={event => { event.preventDefault(); setRows(null); setResults(null); setNotice(""); start(async () => { const result = await inspectCsvAction(makeForm()); if (result.ok) { setHeaders(result.data.headers); setSheets(result.data.sheets); setPreview({ rows: result.data.rows, labels: result.data.labels, fields: result.data.fields }); setNotice(result.data.sheets.length && !result.data.sheet ? "Choose a worksheet, then read its columns." : `${result.data.count} rows found. Map the columns below.`); } else setNotice(result.message); }); }}>
         <label className="form-field"><span>Spreadsheet source</span><select className="field" value={sourceId} disabled={busy} onChange={event => { setSourceId(event.target.value); setRows(null); setResults(null); }} required><option value="">Select a source</option>{sources.filter(source => ["manual_csv", "manual_xlsx"].includes(source.kind)).map(source => <option key={source.id} value={source.id}>{source.label}</option>)}</select><small>Reuse the same source and stable row IDs to avoid duplicate records, including when the spreadsheet moves between CSV and Excel.</small></label>
         <Field type="file" label="Spreadsheet file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required disabled={busy} onChange={event => { setFile(event.target.files?.[0] ?? null); setHeaders([]); setSheets([]); setSheet(""); setMapping(null); setRows(null); setResults(null); setNotice(""); }} />
         {!!sheets.length && <label className="form-field"><span>Worksheet</span><select className="field" value={sheet} disabled={busy} required onChange={event => { setSheet(event.target.value); setHeaders([]); setMapping(null); setRows(null); setResults(null); setNotice(""); }}><option value="">Select a worksheet</option>{sheets.map(name => <option key={name}>{name}</option>)}</select></label>}
@@ -72,15 +77,18 @@ export function CsvImport({ sources, customers, owner }: { sources: IntakeSource
       {!sources.length && <p className="muted">{owner ? "Create a source above to start." : "Ask the owner to create a spreadsheet source. You can then import files and review proposals."}</p>}
       {!!headers.length && <form key={`${file?.name}:${kind}`} onChange={() => { setRows(null); setResults(null); }} onSubmit={event => {
         event.preventDefault(); const data = new FormData(event.currentTarget);
-        const selected = readMappingForm(data, kind);
-        setMapping(selected); setNotice(""); start(async () => { const result = await previewCsvAction(makeForm(selected)); if (result.ok) setRows(result.data); else setNotice(result.message); });
+        if (kind === "auto") { const problems = selectorProblems(data, preview.labels); if (problems.length) { setNotice(problems.join(" ")); return; } }
+        const selected = kind === "auto" ? readSelectorForm(data, preview.labels) : readMappingForm(data, kind);
+        setMapping(selected); setNotice(""); start(async () => { const result = await previewCsvAction(makeForm(selected)); if (result.ok) { setRows(result.data.rows); setHeld(result.data.held); } else setNotice(result.message); });
       }}>
-        <ImportMappingFields headers={headers} customers={customers} kind={kind} onKindChange={setKind} disabled={busy} />
+        {kind === "auto"
+          ? <><ImportSelector headers={headers} rows={preview.rows} labels={preview.labels} fields={preview.fields} customers={customers} disabled={busy} /><p><button type="button" className="text-link" onClick={() => setKind("invoice")}>Set columns manually instead</button></p></>
+          : <><ImportMappingFields headers={headers} customers={customers} kind={kind} onKindChange={setKind} disabled={busy} /><p><button type="button" className="text-link" onClick={() => setKind("auto")}>Let PondoPath read the rows</button></p></>}
         <button className="button secondary" disabled={busy}>Preview rows</button>
       </form>}
       {notice && <p role="status">{notice}</p>}
       {rows && <div className="intake-preview">
-        <h3>Row preview</h3><p className="muted">{rows.filter(row => row.candidate && !["invalid", "duplicate"].includes(row.status)).length} valid rows · Invalid and duplicate rows stay out. Unchanged rows are checked again when staged. Missing rows never delete saved records.</p>
+        <h3>Row preview</h3>{held && (held.payments.length > 0 || held.choose.length > 0) && <p className="muted">{held.payments.length} payment {held.payments.length === 1 ? "row is" : "rows are"} not imported (record payments in Collections){held.choose.length ? ` · ${held.choose.length} unticked or unlabelled ${held.choose.length === 1 ? "row waits" : "rows wait"} for your choice` : ""}.</p>}<p className="muted">{rows.filter(row => row.candidate && !["invalid", "duplicate"].includes(row.status)).length} valid rows · Invalid and duplicate rows stay out. Unchanged rows are checked again when staged. Missing rows never delete saved records.</p>
         <div className="intake-table-scroll"><table className="intake-table"><thead><tr><th>Row / source ID</th><th>Result</th><th>Proposed values</th><th>Details</th></tr></thead><tbody>{rows.map(row => <tr key={row.row}><th scope="row">{row.row} · {row.externalId || "Missing ID"}</th><td>{row.status.replaceAll("_", " ")}</td><td>{row.candidate ? <>{row.candidate.type === "save_invoice" ? row.candidate.payload.number : row.candidate.payload.label}<br />PHP {(row.candidate.payload.amountCents / 100).toFixed(2)} · {row.candidate.payload.dueDate}</> : "Not accepted"}</td><td>{row.message}</td></tr>)}</tbody></table></div>
         <button className="button" disabled={busy || !mapping || !rows.some(row => row.candidate && !["invalid", "duplicate"].includes(row.status))} onClick={() => start(async () => { const result = await stageCsvAction(makeForm(mapping!)); if (result.ok) { setResults(result.data); setNotice("Rows processed. Open each pending item below to review and confirm it."); router.refresh(); } else setNotice(result.message); })}>{busy ? "Preparing proposals…" : "Send valid rows to Review Inbox"}</button>
       </div>}
