@@ -74,3 +74,36 @@ export async function reviewIntake(input: unknown) {
   if (error) throw CommandError.fromDatabase(error.message);
   return { message: value.decision === "reject" ? "Proposal rejected. Saved financial records were not changed." : "Proposal held for clarification." };
 }
+
+export function isBulkConfirmable(item: IntakeItem): boolean {
+  if (item.status !== "pending") return false;
+  try { parseIntakeCandidate(item.candidate); return true; } catch { return false; }
+}
+
+const bulkConfirmSchema = z.strictObject({
+  items: z.array(z.strictObject({ id: z.uuid(), reviewVersion: z.number().int().positive().max(2_147_483_647) })).min(1).max(50)
+    .refine(items => new Set(items.map(item => item.id.toLowerCase())).size === items.length),
+  revision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+});
+
+export async function confirmSelectedIntake(input: unknown): Promise<{ confirmed: string[]; failed: { id: string; code: string }[]; revision: number }> {
+  const parsed = bulkConfirmSchema.safeParse(input);
+  if (!parsed.success) throw new CommandError("VALIDATION_ERROR");
+  await requireActor();
+  const client = await createClient();
+  let revision = parsed.data.revision;
+  const confirmed: string[] = [], failed: { id: string; code: string }[] = [];
+  for (const item of parsed.data.items) {
+    try {
+      const { data, error } = await client.rpc("apply_intake", { p_item_id: item.id, p_review_version: item.reviewVersion, p_expected_revision: revision });
+      if (error) throw CommandError.fromDatabase(error.message);
+      const result = commandResultSchema.safeParse(data);
+      if (!result.success) throw new CommandError("SERVICE_UNAVAILABLE");
+      revision = result.data.revision;
+      confirmed.push(item.id);
+    } catch (error) {
+      failed.push({ id: item.id, code: error instanceof CommandError ? error.code : "SERVICE_UNAVAILABLE" });
+    }
+  }
+  return { confirmed, failed, revision };
+}

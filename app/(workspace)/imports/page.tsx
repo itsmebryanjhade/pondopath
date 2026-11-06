@@ -4,12 +4,13 @@ import { after } from "next/server";
 import { syncBusinessIfDue } from "@/lib/server/google-sync";
 import { z } from "zod";
 import { getWorkspace } from "@/lib/server/workspace";
-import { getIntakePage } from "@/lib/server/intake";
+import { getIntakePage, isBulkConfirmable } from "@/lib/server/intake";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { WorkspacePageHeading } from "@/components/workspace-page-heading";
 import WorkspaceLoading from "@/components/workspace-loading";
 import { CsvImport } from "@/components/csv-import";
 import { IntakeReview } from "@/components/intake-review";
+import { IntakeBulkConfirm } from "@/components/intake-bulk-confirm";
 import { SheetConnection } from "@/components/sheet-connection";
 import { GoogleConnect } from "@/components/google-connect";
 import { createClient } from "@/lib/supabase/server";
@@ -52,6 +53,7 @@ async function Inbox({ searchParams }: { searchParams: Promise<InboxParams> }) {
     </details>
     <nav aria-label="Review Inbox filters" className="intake-buttons"><Link className="button secondary" aria-current={!selected.success && state === "open" ? "page" : undefined} href="/imports">Pending reviews</Link><Link className="button secondary" aria-current={!selected.success && state === "resolved" ? "page" : undefined} href="/imports?state=resolved">Resolved and previous versions</Link><span className="muted">{selected.success ? "Selected proposal" : `${inbox.count} ${state === "open" ? "pending" : "resolved"} items · 20 per page`}</span></nav>
     {!inbox.items.length && <section className="records-panel"><div className="intake-panel-body"><h2>{state === "open" ? "No proposals waiting for review" : "No resolved proposals on this page"}</h2><p className="muted">Import a CSV or XLSX above to prepare proposals. Saved financial records change only after you confirm an individual item.</p></div></section>}
+    {state === "open" && inbox.items.some(isBulkConfirmable) && <IntakeBulkConfirm items={inbox.items} revision={workspace.revision} />}
     {inbox.items.map(item => <IntakeReview key={`${item.id}:${item.review_version}`} item={item} sourceLabel={sources.get(item.source_id) ?? "Source unavailable"} workspace={context} />)}
     {!selected.success && <nav className="intake-buttons" aria-label="Review Inbox pages">{page > 1 && <Link className="button secondary" href={`/imports?state=${state}&page=${page - 1}`}>Previous</Link>}{page * 20 < inbox.count && <Link className="button secondary" href={`/imports?state=${state}&page=${page + 1}`}>Next</Link>}</nav>}
   </WorkspaceShell>;

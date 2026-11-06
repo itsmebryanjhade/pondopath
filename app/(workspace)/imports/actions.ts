@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { CommandError, type ActionResult } from "@/lib/domain/commands";
 import { CSV_LIMITS, csvMappingSchema, mapCsv, readCsv, type IntakeBinding } from "@/lib/domain/imports";
-import { stageIntakeBatch, reviewIntake } from "@/lib/server/intake";
+import { stageIntakeBatch, reviewIntake, confirmSelectedIntake } from "@/lib/server/intake";
 import { readXlsx } from "@/lib/domain/xlsx";
 import { applyReader, labelRows, suggestAutoFields, suggestColumns } from "@/lib/domain/reader";
 import { requireActor } from "@/lib/server/auth";
@@ -120,4 +120,12 @@ export async function createCsvSourceAction(label: string) {
 
 export async function reviewIntakeAction(input: unknown) {
   return perform(async () => { const result = await reviewIntake(input); revalidatePath("/(workspace)", "layout"); return result; });
+}
+
+export async function confirmSelectedIntakeAction(input: unknown) {
+  return perform(async () => {
+    const result = await confirmSelectedIntake(input);
+    revalidatePath("/(workspace)", "layout");
+    return result;
+  });
 }

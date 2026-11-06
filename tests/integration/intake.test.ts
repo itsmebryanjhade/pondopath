@@ -2,9 +2,15 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { readXlsx } from "../../lib/domain/xlsx";
 import { readCsv, mapCsv, type CsvMapping } from "../../lib/domain/imports";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { admin, createTestBusiness, disposeTestBusiness, signInAs, type TestBusiness } from "./helpers";
+vi.mock("server-only", () => ({}));
+const bulkSession = vi.hoisted(() => ({ rpc: vi.fn(), actor: { userId: "", businessId: "", role: "finance" } }));
+vi.mock("../../lib/server/auth", () => ({ requireActor: async () => bulkSession.actor }));
+vi.mock("../../lib/supabase/server", () => ({ createClient: async () => ({ rpc: bulkSession.rpc }) }));
+import { confirmSelectedIntake } from "../../lib/server/intake";
+
 
 describe("review intake boundary", () => {
   let business: TestBusiness;
@@ -218,4 +224,73 @@ describe("review intake boundary", () => {
     expect((await owner.rpc("workspace_snapshot")).data.forecastInput.availableCents).toBe(before.forecastInput.availableCents);
   });
 
+
+  async function bulkProposals(prefix: string): Promise<string[]> {
+    const result = await owner.rpc("stage_intake_batch", { p_source_id: sourceId, p_rows: [1, 2, 3].map(index => ({
+      externalId: prefix + "-" + index, sourceVersion: "1", evidence: { row: index + 1 },
+      candidate: { type: "save_invoice", payload: { ...invoice(business.customerId).payload, number: prefix + "-" + index } },
+    })) });
+    expect(result.error).toBeNull();
+    const ids: string[] = result.data.map((row: { itemId: string; status: string }) => { expect(row.status).toBe("pending"); return row.itemId; });
+    expect(ids).toHaveLength(3);
+    return ids;
+  }
+
+  it("confirms selected items independently and isolates a stale one", async () => {
+    const ids = await bulkProposals("BULK-STALE");
+    const snapshot = await owner.rpc("workspace_snapshot");
+    expect(snapshot.error).toBeNull();
+    const revision = snapshot.data.revision;
+    const amended = await finance.rpc("amend_intake", {
+      p_item_id: ids[1], p_review_version: 1, p_expected_revision: revision,
+      p_candidate: { type: "save_invoice", payload: { ...invoice(business.customerId, 25_000).payload, number: "BULK-STALE-2" } },
+      p_note: "Checked the isolated fictional invoice.",
+    });
+    expect(amended.error).toBeNull();
+    expect(amended.data).toBe(2);
+    const before = await owner.from("cash_movements").select("id", { count: "exact", head: true }).eq("business_id", business.id);
+    expect(before.error).toBeNull();
+    bulkSession.actor = { userId: business.accounts.finance.id, businessId: business.id, role: "finance" };
+    bulkSession.rpc.mockImplementation((name: string, args: object) => finance.rpc(name, args));
+    expect(await confirmSelectedIntake({ items: ids.map(id => ({ id, reviewVersion: 1 })), revision })).toEqual({
+      confirmed: [ids[0], ids[2]], failed: [{ id: ids[1], code: "STALE_VERSION" }], revision: revision + 2,
+    });
+    const stored = await owner.from("intake_items").select("id,status").eq("business_id", business.id).in("id", ids);
+    expect(stored.error).toBeNull();
+    expect(Object.fromEntries(stored.data!.map(row => [row.id, row.status]))).toEqual({ [ids[0]]: "applied", [ids[1]]: "pending", [ids[2]]: "applied" });
+    const after = await owner.from("cash_movements").select("id", { count: "exact", head: true }).eq("business_id", business.id);
+    expect(after.error).toBeNull();
+    expect(after.count).toBe(before.count);
+    bulkSession.rpc.mockReset();
+  });
+
+  it("stops chaining when another session changes the business mid-batch", async () => {
+    const ids = await bulkProposals("BULK-CONCURRENT");
+    const snapshot = await owner.rpc("workspace_snapshot");
+    expect(snapshot.error).toBeNull();
+    const revision = snapshot.data.revision;
+    let financeChanged = false;
+    bulkSession.actor = { userId: business.accounts.owner.id, businessId: business.id, role: "owner" };
+    bulkSession.rpc.mockImplementation(async (name: string, args: { p_item_id?: string }) => {
+      const result = await owner.rpc(name, args);
+      if (args.p_item_id === ids[0] && !result.error && !financeChanged) {
+        const change = await finance.rpc("workspace_command", { p_command: {
+          requestId: randomUUID(), expectedRevision: result.data.revision, type: "save_customer",
+          payload: { name: "Concurrent fictional customer", contactName: "Test contact" },
+        } });
+        expect(change.error).toBeNull();
+        financeChanged = true;
+      }
+      return result;
+    });
+    expect(await confirmSelectedIntake({ items: ids.map(id => ({ id, reviewVersion: 1 })), revision })).toEqual({
+      confirmed: [ids[0]], failed: [{ id: ids[1], code: "STALE_VERSION" }, { id: ids[2], code: "STALE_VERSION" }], revision: revision + 1,
+    });
+    expect(financeChanged).toBe(true);
+    expect(bulkSession.rpc).toHaveBeenCalledTimes(3);
+    const stored = await owner.from("intake_items").select("id,status").eq("business_id", business.id).in("id", ids);
+    expect(stored.error).toBeNull();
+    expect(Object.fromEntries(stored.data!.map(row => [row.id, row.status]))).toEqual({ [ids[0]]: "applied", [ids[1]]: "pending", [ids[2]]: "pending" });
+    bulkSession.rpc.mockReset();
+  });
 });
