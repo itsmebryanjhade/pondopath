@@ -5,6 +5,7 @@ import { unstable_rethrow } from "next/navigation";
 import { CommandError, type ActionResult } from "@/lib/domain/commands";
 import { disconnectGoogle } from "@/lib/server/google-auth";
 import { connectGoogleFile, googleMessage, pickerSession, readGoogleSetup, saveGoogleSetup } from "@/lib/server/google-files";
+import { syncNow } from "@/lib/server/google-sync";
 
 async function perform<T>(operation: () => Promise<T>): Promise<ActionResult<T>> {
   try { return { ok: true, data: await operation() }; }
@@ -29,4 +30,7 @@ export async function createGoogleFileAction(fileId: string) {
 export async function readGoogleSetupAction(sourceId: string, tab: string) { return perform(() => readGoogleSetup(sourceId, tab)); }
 export async function saveGoogleSetupAction(sourceId: string, mapping: unknown) {
   return perform(async () => { await saveGoogleSetup(sourceId, mapping); revalidatePath("/imports"); });
+}
+export async function syncNowAction(sourceId: string) {
+  return perform(async () => { const summary = await syncNow(sourceId); revalidatePath("/imports"); return summary; });
 }

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createGoogleFileAction, disconnectGoogleAction, pickerSessionAction, readGoogleSetupAction, saveGoogleSetupAction } from "@/app/(workspace)/imports/google-actions";
+import { createGoogleFileAction, disconnectGoogleAction, pickerSessionAction, readGoogleSetupAction, saveGoogleSetupAction, syncNowAction } from "@/app/(workspace)/imports/google-actions";
 import { disconnectConnectorAction, setConnectorPausedAction } from "@/app/(workspace)/imports/connector-actions";
 import { googleMessage } from "@/lib/domain/google-messages";
 import type { AutoFields, AutoMapping } from "@/lib/domain/reader";
@@ -125,6 +125,13 @@ export function GoogleConnect({ owner, configured, connection, files, customers,
         return <article key={file.id} className="intake-connection">
           <h3>{file.label}{settings.tab ? ` · ${settings.tab}` : ""}</h3>
           <p className="muted">{file.connector_status === "disconnected" ? "Disconnected. History and proposals are kept." : waiting ? "Finish setup to start syncing." : syncSummary(file.last_run_summary, file.last_run_at, checkedAt)}</p>
+          {connected && !waiting && file.connector_status !== "disconnected" && <div className="intake-buttons">
+            <button className="button" disabled={busy} onClick={() => start(async () => {
+              const result = await syncNowAction(file.id);
+              setMessage(result.ok ? `${file.label}: ${syncSummary({ result: result.data.result, errorCode: result.data.errorCode, counts: result.data }, new Date().toISOString(), Date.now())}` : result.message);
+              router.refresh();
+            })}>{busy ? "Syncing…" : "Sync now"}</button>
+          </div>}
           {owner && file.connector_status !== "disconnected" && <div className="intake-buttons">
             {connected && <button className="button secondary" disabled={busy} onClick={() => readTab(file.id, [], settings.tab ?? "")}>{waiting ? "Finish setup" : "Change setup"}</button>}
             {!waiting && <button className="button secondary" disabled={busy} onClick={() => start(async () => { const result = await setConnectorPausedAction(file.id, file.connector_status !== "paused"); if (!result.ok) setMessage(result.message); router.refresh(); })}>{file.connector_status === "paused" ? "Resume" : "Pause"}</button>}

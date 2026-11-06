@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { after } from "next/server";
+import { syncBusinessIfDue } from "@/lib/server/google-sync";
 import { z } from "zod";
 import { getWorkspace } from "@/lib/server/workspace";
 import { getIntakePage } from "@/lib/server/intake";
@@ -38,6 +40,8 @@ async function Inbox({ searchParams }: { searchParams: Promise<InboxParams> }) {
   const inbox = await getIntakePage(page, state, selected.success ? selected.data : undefined);
   const [connections, google] = await Promise.all([getSheetConnections(workspace.actor.businessId), getGoogle(workspace.actor.businessId)]);
   const googleConfigured = !!(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_PICKER_API_KEY && process.env.GOOGLE_TOKEN_ENCRYPTION_KEY);
+  // Opening the inbox catches up connected Drive files after the response is sent; the page never waits for Google.
+  if (googleConfigured && google.connection?.status === "connected") { const businessId = workspace.actor.businessId; after(() => syncBusinessIfDue(businessId)); }
   const sources = new Map(inbox.sources.map(source => [source.id, source.label]));
   const context = { revision: workspace.revision, actor: workspace.actor, customers: workspace.customers, invoices: workspace.invoices, expenses: workspace.expenses, members: workspace.members };
   return <WorkspaceShell workspace={workspace} className="section-page imports-page" header={<WorkspacePageHeading title="Review Inbox" description="Review imported changes before they reach your invoices, expenses or cash plan." workspace={workspace} actions={<Link className="button secondary" href="/invoices">Customer invoices</Link>} />}>

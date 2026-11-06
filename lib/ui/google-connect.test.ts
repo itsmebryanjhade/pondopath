@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/app/(workspace)/imports/google-actions", () => ({ pickerSessionAction: vi.fn(), createGoogleFileAction: vi.fn(), readGoogleSetupAction: vi.fn(), saveGoogleSetupAction: vi.fn(), disconnectGoogleAction: vi.fn() }));
+vi.mock("@/app/(workspace)/imports/google-actions", () => ({ pickerSessionAction: vi.fn(), createGoogleFileAction: vi.fn(), readGoogleSetupAction: vi.fn(), saveGoogleSetupAction: vi.fn(), disconnectGoogleAction: vi.fn(), syncNowAction: vi.fn() }));
 vi.mock("@/app/(workspace)/imports/connector-actions", () => ({ setConnectorPausedAction: vi.fn(), disconnectConnectorAction: vi.fn() }));
 import { GoogleConnect, syncSummary, type DriveFile } from "@/components/google-connect";
 
@@ -41,6 +41,12 @@ describe("Connect Google screen", () => {
     expect(render({ configured: false, connection: null, files: [] })).toContain("Connect Google isn't set up on this server yet.");
     expect(render({ notice: "failed" })).toContain("Google wasn't connected");
     expect(render({ notice: "connected" })).toContain("Google is connected");
+  });
+  it("offers Sync now to every member for files that are set up", () => {
+    expect(render()).toContain("Sync now");
+    expect(render({ owner: false })).toContain("Sync now");
+    expect(render({ files: [{ ...file, connector_status: "awaiting_mapping" }] })).not.toContain("Sync now");
+    expect(render({ connection: { account_email: "owner@fictional.example", status: "needs_reconnect" } })).not.toContain("Sync now");
   });
   it("asks the owner to finish setup for a new file", () => {
     expect(render({ files: [{ ...file, connector_status: "awaiting_first_read", last_run_at: null, last_run_summary: null }] })).toContain("Finish setup");
