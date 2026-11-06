@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { readXlsx } from "./xlsx";
 import { describe, expect, it } from "vitest";
-import { readCsv, mapCsv, CSV_LIMITS, type CsvMapping } from "./imports";
+import { readCsv, mapCsv, csvMappingSchema, CSV_LIMITS, type CsvMapping } from "./imports";
 
 const customerId = "00000000-0000-4000-8000-000000000001";
 const mapping: CsvMapping = { kind: "invoice", externalId: "ID", number: "Invoice", amount: "Amount", dueDate: "Due", customerId, currency: "Currency" };
@@ -119,5 +119,22 @@ describe("mixed mapping and row filter", () => {
     const bindings = [{ externalId: "a", type: "save_invoice", recordId: "00000000-0000-4000-8000-000000000009" }];
     const [row] = mapCsv(sheet("a,Bill,,Rent,Landlord,20.00,2026-11-06,Unpaid"), mixed, { ...context, bindings });
     expect(row).toMatchObject({ status: "invalid", message: "This source ID already belongs to a different record kind." });
+  });
+});
+
+describe("auto mapping", () => {
+  const auto = { kind: "auto", externalId: "ID", amount: "Amount", dueDate: "Due", number: "Invoice", customerId, label: "Label", payee: "Payee",
+    columns: ["ID", "Amount", "Due", "Invoice", "Label", "Payee"], excludedIds: [], overrides: {} };
+  it("auto mapping parses and older mappings still parse", () => {
+    expect(csvMappingSchema.safeParse(auto).success).toBe(true);
+    expect(csvMappingSchema.safeParse(mapping).success).toBe(true);
+    expect(csvMappingSchema.safeParse({ ...auto, columns: Array.from({ length: 25 }, (_, i) => "C" + i) }).success).toBe(false);
+    expect(csvMappingSchema.safeParse({ ...auto, excludedIds: Array.from({ length: 501 }, (_, i) => "R" + i) }).success).toBe(false);
+  });
+  it("requires mapped columns to be ticked", () => {
+    expect(csvMappingSchema.safeParse({ ...auto, columns: ["ID", "Amount", "Due", "Invoice", "Label"] }).success).toBe(false);
+  });
+  it("mapCsv refuses an auto mapping directly", () => {
+    expect(() => mapCsv(csv("ID,Amount\n1,2"), auto as unknown as CsvMapping, context)).toThrow("Use the reader first.");
   });
 });

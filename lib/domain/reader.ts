@@ -1,5 +1,6 @@
 import { assertLocalDate } from "./dates";
 import { parseMoney } from "./money";
+import type { CsvFile, CsvMapping } from "./imports";
 
 /** Programmed reader: suggests what each imported column means. It never decides money values; the owner confirms every suggestion. */
 export type ColumnRole = "externalId" | "date" | "dueDate" | "customer" | "supplier" | "amount" | "type" | "description" | "number" | "ignore";
@@ -68,4 +69,78 @@ export function suggestColumns(headers: string[], samples: string[][]): ColumnSu
     result[candidate.index] = { header: headers[candidate.index], role: candidate.role, confidence: candidate.confidence };
   }
   return result;
+}
+
+export type RowLabel = "invoice" | "expense" | "payment" | "choose";
+export type AutoMapping = Extract<CsvMapping, { kind: "auto" }>;
+export type MixedMapping = Extract<CsvMapping, { kind: "mixed" }>;
+export const READER_TYPE_COLUMN = "__pondopath_type";
+
+const TYPE_WORDS: Record<Exclude<RowLabel, "choose">, string[]> = {
+  invoice: ["invoice", "sales", "sale", "sold", "benta", "receivable", "singil", "income"],
+  expense: ["bill", "bills", "expense", "expenses", "gastos", "gastusin", "purchase", "bayarin", "payable", "cost"],
+  payment: ["payment", "paid", "bayad", "nabayaran", "resibo", "receipt", "collection", "received", "remittance"],
+};
+const wordsOf = (text: string) => new Set(normalizeWords(text).split(" ").filter(Boolean));
+const typeOf = (text: string) => (Object.entries(TYPE_WORDS) as [Exclude<RowLabel, "choose">, string[]][])
+  .find(([, words]) => words.some(word => wordsOf(text).has(word)))?.[0];
+
+/** Labels every row with programmed rules in order: Type words, party column, negative amount, payment words. Conflicts ask the owner. */
+export function labelRows(file: CsvFile, mapping: AutoMapping): { row: number; externalId: string; label: RowLabel; reason: string }[] {
+  const cell = (values: string[], header?: string) => header && file.headers.includes(header) ? String(values[file.headers.indexOf(header)] ?? "").trim() : "";
+  const partyColumns = mapping.customer && mapping.customer !== mapping.payee;
+  return file.rows.map((values, index) => {
+    const externalId = cell(values, mapping.externalId);
+    const base = { row: file.rowNumbers?.[index] ?? index + 2, externalId };
+    const override = mapping.overrides[externalId];
+    if (override) return { ...base, label: override, reason: "Changed by you" };
+    const typeText = cell(values, mapping.typeColumn);
+    const fromType = typeText ? typeOf(typeText) : undefined;
+    if (fromType === "payment") return { ...base, label: "payment", reason: `Type says “${typeText}”` };
+    const signals: { label: "invoice" | "expense"; reason: string }[] = [];
+    if (fromType) signals.push({ label: fromType, reason: `Type says “${typeText}”` });
+    if (partyColumns) {
+      const customer = cell(values, mapping.customer), supplier = cell(values, mapping.payee);
+      if (customer && !supplier) signals.push({ label: "invoice", reason: `${mapping.customer} filled in` });
+      if (supplier && !customer) signals.push({ label: "expense", reason: `${mapping.payee} filled in` });
+    }
+    if (cell(values, mapping.amount).startsWith("-")) signals.push({ label: "expense", reason: "Negative amount" });
+    const labels = new Set(signals.map(signal => signal.label));
+    if (labels.size === 1) return { ...base, label: signals[0].label, reason: signals.map(signal => signal.reason).join("; ") };
+    if (labels.size > 1) return { ...base, label: "choose", reason: signals.map(signal => signal.reason).join(" but ") };
+    if (typeOf(cell(values, mapping.label)) === "payment") return { ...base, label: "payment", reason: "Description mentions a payment" };
+    return { ...base, label: "choose", reason: typeText ? `Type “${typeText}” is not recognised` : "Nothing shows whether this is money in or out" };
+  });
+}
+
+/** Applies the owner's setup and the labels, producing a file and mixed mapping that the existing mapCsv path understands. */
+export function applyReader(file: CsvFile, mapping: AutoMapping): { file: CsvFile; mixed: MixedMapping; payments: number[]; choose: number[]; excluded: number } {
+  const labels = labelRows(file, mapping);
+  const counts = new Map<string, number>();
+  for (const { externalId } of labels) if (externalId) counts.set(externalId, (counts.get(externalId) ?? 0) + 1);
+  const keep = mapping.columns.map(header => file.headers.indexOf(header));
+  const amountAt = mapping.columns.indexOf(mapping.amount);
+  const result: CsvFile = { headers: [...mapping.columns, READER_TYPE_COLUMN], rows: [], rowNumbers: [], ...(file.nonTextCells ? { nonTextCells: [] } : {}) };
+  const payments: number[] = [], choose: number[] = [];
+  let excluded = 0;
+  labels.forEach(({ row, externalId, label }, index) => {
+    if (mapping.excludedIds.includes(externalId)) { excluded++; return; }
+    // Repeated IDs always reach mapCsv so that both rows are reported as duplicates rather than one being silently dropped.
+    const duplicate = (counts.get(externalId) ?? 0) > 1;
+    if (!duplicate && label === "payment") { payments.push(row); return; }
+    if (!duplicate && label === "choose") { choose.push(row); return; }
+    const values = keep.map(at => at < 0 ? "" : file.rows[index][at] ?? "");
+    // An expense written as a negative amount is money out; the record stores the positive amount.
+    if (label === "expense" && amountAt >= 0) values[amountAt] = values[amountAt].trim().replace(/^-/, "");
+    result.rows.push([...values, label]);
+    result.rowNumbers!.push(row);
+    result.nonTextCells?.push([...keep.map(at => at >= 0 && !!file.nonTextCells?.[index]?.[at]), false]);
+  });
+  const mixed: MixedMapping = {
+    kind: "mixed", externalId: mapping.externalId, amount: mapping.amount, dueDate: mapping.dueDate, typeColumn: READER_TYPE_COLUMN,
+    invoiceValues: ["invoice"], expenseValues: ["expense"], number: mapping.number, customerId: mapping.customerId, label: mapping.label, payee: mapping.payee,
+    ...(mapping.customer ? { customer: mapping.customer } : {}), ...(mapping.recordId ? { recordId: mapping.recordId } : {}),
+    ...(mapping.currency ? { currency: mapping.currency } : {}), ...(mapping.filter ? { filter: mapping.filter } : {}),
+  };
+  return { file: result, mixed, payments, choose, excluded };
 }

@@ -17,9 +17,21 @@ export const csvMappingSchema = z.discriminatedUnion("kind", [
     kind: z.literal("mixed"), externalId: column, amount: column, dueDate: column, typeColumn: column, invoiceValues: typeValues, expenseValues: typeValues,
     number: column, customerId: z.uuid(), customer: column.optional(), label: column, payee: column, recordId: column.optional(), currency: column.optional(), filter: rowFilter,
   }),
+  // The reader labels each row; the owner's ticked columns, left-out rows and label changes are keyed by the row's stable ID.
+  z.strictObject({
+    kind: z.literal("auto"), externalId: column, amount: column, dueDate: column, number: column, customerId: z.uuid(), customer: column.optional(),
+    label: column, payee: column, recordId: column.optional(), currency: column.optional(), typeColumn: column.optional(), filter: rowFilter,
+    columns: z.array(column).min(1).max(24), excludedIds: z.array(z.string().trim().min(1).max(200)).max(500),
+    overrides: z.record(z.string().trim().min(1).max(200), z.enum(["invoice", "expense"])).refine(value => Object.keys(value).length <= 500, "Too many label changes."),
+  }),
 ]).superRefine((mapping, context) => {
   if (mapping.kind === "mixed" && mapping.expenseValues.some(value => mapping.invoiceValues.some(other => sameValue(value, other))))
     context.addIssue({ code: "custom", path: ["expenseValues"], message: "A Type value cannot mean both invoice and expense." });
+  if (mapping.kind === "auto") {
+    const used = [mapping.externalId, mapping.amount, mapping.dueDate, mapping.number, mapping.customer, mapping.label, mapping.payee, mapping.recordId, mapping.currency, mapping.typeColumn, mapping.filter?.column];
+    for (const header of used) if (header && !mapping.columns.includes(header))
+      context.addIssue({ code: "custom", path: ["columns"], message: `Tick the column “${header}”; it is used in the mapping.` });
+  }
 });
 export type CsvMapping = z.infer<typeof csvMappingSchema>;
 export type IntakeBinding = { externalId: string; type: string; recordId: string };
@@ -68,6 +80,7 @@ export function validateImportRows(records: string[][]): CsvFile {
 
 export function mapCsv(file: CsvFile, input: CsvMapping, context: ImportContext): CsvRow[] {
   const mapping = csvMappingSchema.parse(input);
+  if (mapping.kind === "auto") throw new Error("Use the reader first.");
   const fallbackCustomer = mapping.kind === "expense" ? undefined : mapping.customerId;
   if (fallbackCustomer && !context.customers.some(customer => customer.id === fallbackCustomer)) throw new Error("Select an existing customer in your business.");
   const numberColumn = mapping.kind === "expense" ? undefined : mapping.number;
