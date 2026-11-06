@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { readXlsx } from "./xlsx";
 import { describe, expect, it } from "vitest";
 import { readCsv, mapCsv, CSV_LIMITS, type CsvMapping } from "./imports";
 
@@ -54,3 +56,29 @@ describe("bounded CSV proposals", () => {
     expect(() => readCsv(new Uint8Array(CSV_LIMITS.bytes + 1))).toThrow();
   });
 });
+
+it("holds numeric spreadsheet identifiers instead of silently dropping their formatting", () => {
+  const file = { ...csv("ID,Invoice,Amount,Due,Currency\n1,INV-A,10.00,2026-11-05,PHP"), nonTextCells: [[true, false, true, false, false]] };
+  const [row] = mapCsv(file, mapping, context);
+  expect(row.status).toBe("invalid");
+  expect(row.message).toMatch(/text/i);
+  expect(row.candidate).toBeUndefined();
+});
+
+it("retains physical worksheet row numbers after empty rows are omitted", () => {
+  const file = { ...csv("ID,Invoice,Amount,Due,Currency\n0001,INV-A,10.00,2026-11-05,PHP"), rowNumbers: [7] };
+  expect(mapCsv(file, mapping, context)[0].row).toBe(7);
+});
+
+it("produces the same literal proposals from the matching CSV and Excel samples", async () => {
+  const csvRows = mapCsv(readCsv(readFileSync("public/samples/pondopath-invoices.csv")), mappingForSample(), context);
+  const workbook = await readXlsx(readFileSync("public/samples/pondopath-invoices.xlsx"), "Invoices");
+  const excelRows = mapCsv(workbook.file!, mappingForSample(), context);
+  expect(excelRows.map(row => row.status)).toEqual(["new", "new", "invalid", "duplicate", "duplicate"]);
+  expect(excelRows[0].candidate?.payload).toMatchObject({ number: "SAMPLE-INV-001", amountCents: 1_250_000, dueDate: "2026-11-10" });
+  expect(excelRows).toEqual(csvRows);
+});
+
+function mappingForSample(): CsvMapping {
+  return { kind: "invoice", externalId: "Source ID", number: "Invoice number", amount: "Amount PHP", dueDate: "Original due", customerId, currency: "Currency" };
+}

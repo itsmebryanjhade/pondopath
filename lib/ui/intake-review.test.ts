@@ -2,11 +2,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { IntakeReview } from "@/components/intake-review";
+import { CsvImport } from "@/components/csv-import";
 import type { IntakeItem } from "@/lib/server/intake";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/app/(workspace)/imports/actions", () => ({ reviewIntakeAction: vi.fn() }));
+vi.mock("@/app/(workspace)/imports/actions", () => ({ reviewIntakeAction: vi.fn(), inspectCsvAction: vi.fn(), previewCsvAction: vi.fn(), stageCsvAction: vi.fn(), createCsvSourceAction: vi.fn() }));
 vi.mock("@/app/(workspace)/actions", () => ({ executeWorkspaceAction: vi.fn() }));
 
 it("shows the actual saved record for a newly applied proposal and keeps its source evidence", () => {
@@ -26,4 +27,17 @@ it("shows the actual saved record for a newly applied proposal and keeps its sou
   expect(html).toContain("fictional.csv");
   expect(html).toContain(`/invoices/${invoice.id}`);
   expect(html).not.toContain("Confirm and apply");
+});
+
+it("lets finance reuse CSV and XLSX sources and choose either supported file format", () => {
+  const html = renderToStaticMarkup(createElement(CsvImport, {
+    sources: [
+      { id: "00000000-0000-4000-8000-000000000001", kind: "manual_csv", label: "Existing CSV source" },
+      { id: "00000000-0000-4000-8000-000000000002", kind: "manual_xlsx", label: "Workbook source" },
+    ], customers: uiWorkspace().customers, owner: false,
+  }));
+  expect(html).toContain("Existing CSV source");
+  expect(html).toContain("Workbook source");
+  expect(html).toMatch(/accept="[^"]*\.csv[^"]*\.xlsx/);
+  expect(html).not.toContain("Create source");
 });

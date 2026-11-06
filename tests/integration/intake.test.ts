@@ -1,4 +1,7 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { readXlsx } from "../../lib/domain/xlsx";
+import { readCsv, mapCsv, type CsvMapping } from "../../lib/domain/imports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { admin, createTestBusiness, disposeTestBusiness, signInAs, type TestBusiness } from "./helpers";
@@ -186,4 +189,33 @@ describe("review intake boundary", () => {
     expect((await owner.from("intake_items").select("status").eq("id", change.data).single()).data?.status).toBe("superseded");
     expect((await finance.rpc("apply_intake", { p_item_id: change.data, p_review_version: 1, p_expected_revision: applied.data.revision })).error).not.toBeNull();
   });
+  it("replays the same reviewed source row across CSV and XLSX without a second invoice or cash write", async () => {
+    const mapping: CsvMapping = { kind: "invoice", externalId: "Source ID", number: "Invoice number", amount: "Amount PHP", dueDate: "Original due", customerId: business.customerId, currency: "Currency" };
+    const context = { customers: [{ id: business.customerId }], invoices: [], expenses: [], bindings: [] };
+    const workbook = await readXlsx(readFileSync("public/samples/pondopath-invoices.xlsx"), "Invoices");
+    const csvCandidate = mapCsv(readCsv(readFileSync("public/samples/pondopath-invoices.csv")), mapping, context)[0].candidate!;
+    const excelCandidate = mapCsv(workbook.file!, mapping, context)[0].candidate!;
+    expect(excelCandidate).toEqual(csvCandidate);
+    expect(excelCandidate.payload).toMatchObject({ amountCents: 1_250_000, dueDate: "2026-11-10" });
+    const source = await owner.rpc("create_intake_source", { p_kind: "manual_csv", p_label: "CSV and XLSX replay proof" });
+    expect(source.error).toBeNull();
+    const row = (candidate: typeof csvCandidate, filename: string) => ({
+      externalId: "sample-001", sourceVersion: createHash("sha256").update(JSON.stringify(candidate)).digest("hex"),
+      candidate, evidence: { filename, row: 2 },
+    });
+    const before = (await owner.rpc("workspace_snapshot")).data;
+    const first = await finance.rpc("stage_intake_batch", { p_source_id: source.data, p_rows: [row(csvCandidate, "fictional.csv")] });
+    expect(first.error).toBeNull();
+    expect(first.data?.[0]).toMatchObject({ status: "pending" });
+    const itemId = first.data?.[0]?.itemId;
+    expect((await owner.rpc("workspace_snapshot")).data.forecastInput.availableCents).toBe(before.forecastInput.availableCents);
+    const applied = await finance.rpc("apply_intake", { p_item_id: itemId, p_review_version: 1, p_expected_revision: before.revision });
+    expect(applied.error).toBeNull();
+    const repeated = await finance.rpc("stage_intake_batch", { p_source_id: source.data, p_rows: [row(excelCandidate, "fictional.xlsx")] });
+    expect(repeated.error).toBeNull();
+    expect(repeated.data?.[0]).toMatchObject({ itemId, status: "applied", replayed: true });
+    expect((await owner.from("invoices").select("id").eq("business_id", business.id).eq("number", "SAMPLE-INV-001")).data).toHaveLength(1);
+    expect((await owner.rpc("workspace_snapshot")).data.forecastInput.availableCents).toBe(before.forecastInput.availableCents);
+  });
+
 });

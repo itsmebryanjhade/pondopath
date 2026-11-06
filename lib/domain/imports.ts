@@ -4,7 +4,7 @@ import { checkedSum, parseMoney } from "./money";
 import { parseIntakeCandidate, type IntakeCandidate } from "./intake";
 
 export const CSV_LIMITS = { bytes: 512 * 1024, rows: 100, columns: 24, recordBytes: 16 * 1024 } as const;
-export type CsvFile = { headers: string[]; rows: string[][] };
+export type CsvFile = { headers: string[]; rows: string[][]; rowNumbers?: number[]; nonTextCells?: boolean[][] };
 const column = z.string().trim().min(1).max(200);
 export const csvMappingSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("invoice"), externalId: column, number: column, amount: column, dueDate: column, customerId: z.uuid(), customer: column.optional(), recordId: column.optional(), currency: column.optional() }),
@@ -33,11 +33,16 @@ export function readCsv(bytes: Uint8Array): CsvFile {
   try {
     records = parse(text, { bom: true, skip_empty_lines: true, relax_column_count: true, max_record_size: CSV_LIMITS.recordBytes, to: CSV_LIMITS.rows + 2 });
   } catch { throw new Error("The CSV has invalid quoting or a row larger than 16 KiB."); }
+  return validateImportRows(records);
+}
+
+export function validateImportRows(records: string[][]): CsvFile {
   const [rawHeaders, ...rows] = records;
   if (!rawHeaders?.length || !rows.length || rows.length > CSV_LIMITS.rows) throw new Error("Include a header and 1–100 data rows per import.");
   const headers = rawHeaders.map(value => value.trim());
   if (headers.length > CSV_LIMITS.columns || headers.some(value => !value || value.length > 200) || new Set(headers).size !== headers.length)
     throw new Error("Use up to 24 unique, nonempty column headers (maximum 200 characters each).");
+  if (rows.some(row => new TextEncoder().encode(row.join("\0")).length > CSV_LIMITS.recordBytes)) throw new Error("Each data row must fit within 16 KiB.");
   return { headers, rows };
 }
 
@@ -51,9 +56,12 @@ export function mapCsv(file: CsvFile, input: CsvMapping, context: ImportContext)
     const fields = Object.fromEntries(Object.values(columns).filter((header): header is string => !!header).map(header => [header, values[file.headers.indexOf(header)] ?? ""]));
     const value = (header?: string) => header ? (fields[header] ?? "").trim() : "";
     const externalId = value(mapping.externalId);
-    const result: CsvRow = { row: index + 2, externalId, status: "invalid", message: "", fields };
+    const result: CsvRow = { row: file.rowNumbers?.[index] ?? index + 2, externalId, status: "invalid", message: "", fields };
     try {
       if (values.length !== file.headers.length) throw new Error("This row has a different number of columns than the header.");
+      for (const header of [mapping.externalId, mapping.recordId, mapping.kind === "invoice" ? mapping.number : undefined]) {
+        if (header && value(header) && file.nonTextCells?.[index]?.[file.headers.indexOf(header)]) throw new Error("Store identifiers as Text in Excel: " + header + ".");
+      }
       if (!externalId || externalId.length > 200) throw new Error("A stable source row ID (up to 200 characters) is required.");
       if (mapping.currency && value(mapping.currency) !== "PHP") throw new Error("Only PHP amounts are supported.");
       const binding = context.bindings.find(item => item.externalId === externalId);
