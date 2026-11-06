@@ -4,7 +4,7 @@ This page routes to recorded decisions and evidence; it does not claim new verif
 
 Deliver one reviewed feature slice at a time. Task D's code gate passed on 3 November (271 unit/UI tests, 112 integration tests, typecheck, lint and production build on Node 24); its phone-width check is explicitly deferred by Bryan. Reuse `docs/mvp-runtime-evidence.json` and run focused checks for later changes. Task 12 demo/deployment preparation remains on hold until requested; do not repeat the broad gate without a new change, failure or user request.
 
-**Current order (6 November):** hackathon demo first — D1 finish Task 17 (Google Sheet intake through n8n, about 80%) with *Confirm selected*, D2 smart mapping, D3 Connect Google (sign-in and file picker for Sheets and CSV/XLSX in Drive), D4 demo preparation. Microsoft, accounting/POS sign-ins, import presets, photo capture and messages follow after the hackathon. See [plan](../tasks/plan.md), [checklist](../tasks/todo.md) and [connector landscape research](research/connector-landscape-2026-11.md).
+**Current order (6 November):** hackathon demo first — D1 close Task 17 (Google Sheet intake through n8n, kept as an optional operator route), D2 Connect Google with the column/row selector and the row reader (which absorbs smart mapping), D3 *Confirm selected*, D4 demo preparation. Microsoft, accounting/POS sign-ins, import presets, photo capture and messages follow after the hackathon. See [plan](../tasks/plan.md), [checklist](../tasks/todo.md) and [connector landscape research](research/connector-landscape-2026-11.md).
 
 ## Sources of current scope
 

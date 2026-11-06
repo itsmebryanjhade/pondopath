@@ -7,10 +7,10 @@ Target (decided by Bryan, 6 November): finish a focused hackathon demo with easy
 | Order | Milestone | Current state |
 | --- | --- | --- |
 | — | Task 16: XLSX import into the Review Inbox | Done — 6 November (`a9d3c01`); owning checks on Node 24 |
-| D1 | Task 17: Google Sheet intake (n8n operator route) + "Confirm selected" | In progress (~80%): endpoint, storage, connection screen, mapping, status, pause and workflow work end to end; review fixes applied (`e894485`, `f2a7746`). Remaining: edited-row and un-share proofs, plan Task 8 "Confirm selected", records. See the [Task 17 plan](../docs/superpowers/plans/2026-11-06-google-sheet-intake.md) and its progress ledger. |
-| D2 | Smart mapping (auto-matched columns, owner confirms) | Pending — needs a short design and plan before coding |
-| D3 | Connect Google: sign-in + Google Picker (`drive.file`) for Sheets and Excel/CSV files in Drive, Sync now, scheduled sync | Pending — design and plan before coding; first verify `drive.file` reads of a picked Sheet; create the OAuth client (Testing mode) |
-| D4 | Demo preparation (Task 12) and final candidate check (R4) | Pending — after D1–D3 |
+| D1 | Close Task 17: Google Sheet intake through n8n (optional operator route) | Close with a short record, no more n8n runs (decided 6 November). Proven live: first read, mixed mapping with row filter, 4 staged and 1 filtered, repeat run staged nothing, pause/resume. The edited-row and access-error proofs move to D2 (same connector pipeline). See the [Task 17 plan](../docs/superpowers/plans/2026-11-06-google-sheet-intake.md). |
+| D2 | Connect Google + selector and reader: sign-in + Google Picker (`drive.file`) for Sheets and Excel/CSV files in Drive; tick columns/rows; rows auto-labelled invoice/expense/payment; Sync now, Supabase Cron and inbox-open sync | Spec written ([design](../docs/superpowers/specs/2026-11-06-connect-google-design.md)), awaiting Bryan's review; plan next. First verify `drive.file` reads of a picked Sheet; Bryan creates the OAuth client (Testing mode). Includes the edited-row and access-error proofs. |
+| D3 | Confirm selected (confirm several clean inbox rows at once) | Pending; shared by every source (formerly Task 17 plan Task 8) |
+| D4 | Demo preparation (Task 12) and final candidate check (R4) | Pending, after D1–D3 |
 
 ## After the hackathon (agreed, not part of the demo claim)
 
