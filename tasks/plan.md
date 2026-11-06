@@ -36,7 +36,7 @@ The existing Review Inbox, CSV pipeline and next-action worklist provide the fou
 | 6 | Task 21 — Named accounting/POS | Identify the actual product and access/export first; reuse CSV/XLSX where a supported export satisfies the requirement |
 | 7 | R4–R8 — Full completion verification and handoff | After implementation gates and R2/R3, identify the final candidate, verify its intended environment/worker paths and rehearse the complete advertised scope |
 
-**Next ready feature: XLSX import.** Provider documentation/access preflights may run alongside that work. Receipt-image work depends on the inbox, not on finishing every file connector; it can proceed independently when its contract and file ownership are clear. Shared schema, financial-command and inbox edits remain coordinated and sequential.
+**XLSX import is delivered (6 November). Next: the Task 17 n8n/Google Sheet runtime and access preflight.** Provider documentation/access preflights may run alongside other work. Receipt-image work depends on the inbox, not on finishing every file connector; it can proceed independently when its contract and file ownership are clear. Shared schema, financial-command and inbox edits remain coordinated and sequential.
 
 The integration rows are coordination milestones, not permission to implement a large feature in one patch. Before coding a milestone, read its original task, inspect current callers and split its parser, service/API, UI and verification work into small end-to-end slices. Keep each implementation task focused on at most roughly five files and meaningful acceptance/failure checks. Keep the original task pending until its actual evidence passes.
 

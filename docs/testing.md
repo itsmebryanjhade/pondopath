@@ -25,6 +25,8 @@ Missing test configuration fails the integration command. The suite signs in act
 
 The 3 November code gate passed on Node 24.22.1: 271 unit/UI tests, 112 integration tests, typecheck, lint and the Webpack production build. See `taskDGate` in the [runtime evidence](mvp-runtime-evidence.json). The 390px phone check is explicitly deferred by the owner; this code gate is not a production-readiness claim. Development email confirmation and [leaked-password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) remain wider-launch prerequisites.
 
+Task 16 (XLSX import) owning checks passed on 6 November with Node 24.22.1: 75 unit/UI tests in `lib/domain/xlsx.test.ts`, `lib/domain/imports.test.ts` and `lib/ui/intake-review.test.ts`; 8 tests in `tests/integration/intake.test.ts`, including CSV/XLSX replay; typecheck; and lint of project source, plus one browser upload review. Full lint also reports two errors in the ignored local `.taste-skill/check-production-css.cjs` helper, which is not project source. This is a focused feature check, not a new full gate.
+
 ## Build and runtime notes
 
 The production build downloads Google Fonts and needs network access. Next.js Cache Components and Partial Prefetching remain enabled. Node-RED will run separately from Next.js/Vercel. Read [AGENTS.md](../AGENTS.md) before implementation.

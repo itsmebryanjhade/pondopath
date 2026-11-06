@@ -384,11 +384,15 @@ Progress (2 November): Task C completed the Review Inbox, source metadata, edita
 
 **Dependencies:** 15. **Files:** XLSX parser adapter, sheet selection/preview, same normalized candidate contract and owning tests. Reuse the CSV mapping, comparison, Review Inbox and application path.
 
-- [ ] Test a workbook with multiple sheets, date cells, leading-zero IDs, empty rows, formulas/cached values, duplicate records, invalid/corrupt content and compressed-file resource limits.
-- [ ] Evaluate a maintained, compatible XLSX reader and its license before installation. Support XLSX only initially; do not execute macros, formulas or external workbook links. Unsupported/unevaluated values remain errors for review.
-  - License check, 6 November (from installed package metadata, recorded after installation): `read-excel-file` 9.3.10, `fflate` 0.8.3 and `saxen` 11.1.0 are MIT. Transitive dependencies: `unzipper-esm` 0.13.3, `worker-f` 0.1.21 and `node-int64` 0.4.0 are MIT; `graceful-fs` 4.2.11 is ISC. The project's own bounded ZIP check runs before the reader. The no-macro/formula/external-link behavior still needs review evidence.
-- [ ] Verify the same fictional dataset gives equivalent candidates through CSV and XLSX, with repeat-apply protection across formats. Run only the owning parser/intake checks and one browser upload review.
-  - Browser upload review, 6 November (local dev server, demo owner, existing "Fictional CSV walkthrough" source): the sample CSV and the sample XLSX (worksheet "Invoices") produced identical previews: sample-001 unchanged, sample-002 new, one invalid amount, two duplicates. Staging the XLSX rows on the same source reported both as "previously received; no duplicate" and added no Review Inbox item. No browser console errors. The unit checks (75) ran on Node 26; the integration test and a Node 24 run remain outstanding.
+**Status — 6 November:** complete (commit `a9d3c01`). Evidence below and in [testing](../../testing.md).
+
+- [x] Test a workbook with multiple sheets, date cells, leading-zero IDs, empty rows, formulas/cached values, duplicate records, invalid/corrupt content and compressed-file resource limits.
+- [x] Evaluate a maintained, compatible XLSX reader and its license before installation. Support XLSX only initially; do not execute macros, formulas or external workbook links. Unsupported/unevaluated values remain errors for review.
+  - License check, 6 November (from installed package metadata, recorded after installation): `read-excel-file` 9.3.10, `fflate` 0.8.3 and `saxen` 11.1.0 are MIT. Transitive dependencies: `unzipper-esm` 0.13.3, `worker-f` 0.1.21 and `node-int64` 0.4.0 are MIT; `graceful-fs` 4.2.11 is ISC. The project's own bounded ZIP check runs before the reader.
+  - Combined code/security review, 6 November: no security blockers. Its four findings were fixed with tests: Excel error and TRUE/FALSE cells are rejected; an unrecognized `date1904` value is rejected; ordinary formatting, hyperlinks, charts and conditional formatting are accepted with specific messages for real rejections; one spreadsheet source covers both formats. Macro parts, external-workbook links and cell formulas (with or without cached values) remain rejected.
+- [x] Verify the same fictional dataset gives equivalent candidates through CSV and XLSX, with repeat-apply protection across formats. Run only the owning parser/intake checks and one browser upload review.
+  - Browser upload review, 6 November (local dev server, demo owner, existing "Fictional CSV walkthrough" source): the sample CSV and the sample XLSX (worksheet "Invoices") produced identical previews: sample-001 unchanged, sample-002 new, one invalid amount, two duplicates. Staging the XLSX rows on the same source reported both as "previously received; no duplicate" and added no Review Inbox item. No browser console errors.
+  - Owning checks on Node 24.22.1: 75 unit/UI tests (`xlsx`, `imports`, `intake-review`), 8 intake integration tests including the CSV/XLSX replay case, typecheck and lint of project source passed.
 
 ### Task 17: Connect one Google Sheet through n8n
 

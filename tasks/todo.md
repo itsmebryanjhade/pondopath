@@ -8,7 +8,7 @@ Track implementation acceptance in the existing [Tasks 16–21](../docs/superpow
 
 | Original task | Milestone | Current state |
 | --- | --- | --- |
-| 16 | XLSX import into the existing Review Inbox | Pending — next ready feature |
+| 16 | XLSX import into the existing Review Inbox | Done — 6 November (`a9d3c01`); owning checks on Node 24 |
 | 17 | n8n intake from one selected Google Sheet | Pending — runtime/access preflight |
 | 18 | Selected Google Drive file | Pending — provider-specific access and proof |
 | 18 | Selected OneDrive file | Pending — provider-specific access and proof |
