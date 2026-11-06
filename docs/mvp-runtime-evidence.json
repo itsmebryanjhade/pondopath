@@ -85,5 +85,58 @@
       "Fresh provider-retention or Node-RED dependency audit"
     ],
     "frameworkFeedback": "No new verified Next.js feedback candidate in this pass."
+  },
+  "r3PhoneCheck": {
+    "verifiedAt": "2026-11-06",
+    "status": "passed_after_scroll_offset_fix",
+    "environment": "Local dev server (next dev), built-in browser with emulated 390x844 viewport (devicePixelRatio 2), signed in as the fictional demo owner. Not a production build or physical device.",
+    "viewport": {
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "documentClientWidth": 390
+    },
+    "pages": {
+      "overview": {
+        "scrollWidth": 390,
+        "horizontalOverflow": false
+      },
+      "forecast": {
+        "scrollWidth": 390,
+        "horizontalOverflow": false
+      },
+      "followups": {
+        "scrollWidth": 390,
+        "horizontalOverflow": false
+      }
+    },
+    "navigation": "The mobile tab row (Overview, Cash, Invoices, Expenses, Forecast) fits within 356px without scrolling; Forecast was opened by tapping its tab. Follow-ups is reached from the notifications menu's 'View follow-ups' link, as on desktop; tapped at 390px.",
+    "menus": "Notifications, quick-add and account menus each open at full width (16-374px) with no overflow. Closed menu contents are hidden, not focusable and do not widen the page.",
+    "assistantOverlap": "The fixed AI assistant launcher (229-374px, top 781px) floats over content while scrolling, but the end of Overview, Forecast and Follow-ups scrolls clear of it; no interactive control is covered at the page end.",
+    "chartControls": "Overview and Forecast charts, legend and money cards fit. 'Compare a scenario' fields span 37-353px. Chart point targets are 11px but about 67px apart, meeting the WCAG 2.2 target-spacing exception.",
+    "keyboard": "Tab order at 390px: skip link, search, quick add, notifications, account, the five tabs, refresh, then page content; each showed a visible focus outline and stayed in view. The skip link is fixed above the top bar (z-index 100 vs 50).",
+    "defectFixed": "At 1050px and below the sticky top bar is 124px tall but in-page targets used a 78px scroll margin, so 'Compare a scenario' left the 'Scenario planning' heading under the bar (heading 96-118px). app/workspace.css now uses 140px at 1050px and below; after the fix the heading starts at 158px. Desktop (1200px, 61px bar) keeps 78px.",
+    "checksRun": "Browser measurements and interactions above. No automated test covers this CSS; a production build was not run while the dev server shares .next.",
+    "devOnly": "The Next.js development indicator (bottom-left) is development-only and was ignored."
+  },
+  "r2ReminderCheck": {
+    "verifiedAt": "2026-11-06",
+    "status": "passed_clipboard_in_browser_two_session_by_integration_tests",
+    "clipboardDenied": {
+      "environment": "Local dev server, built-in browser, fictional demo owner, demo invoice TEST-INV-001.",
+      "setup": "Saved, submitted and approved a reminder through the UI (version-checked approval). The reminder remains approved on the demo invoice; no message was sent.",
+      "method": "navigator.clipboard.writeText was replaced with one that rejects with NotAllowedError (emulating denied clipboard permission); the real 'Copy approved text' button was then clicked.",
+      "result": "Status message (role=status) explained the block and that copying does not send. A read-only textarea labelled 'Approved text to copy manually' showed the exact approved text (250 characters, identical). Tab from the copy button reached the textarea, which selected all text on focus and showed a visible focus ring.",
+      "network": "Only the same-origin server-action request for the approval recheck; no outbound message request."
+    },
+    "twoSession": {
+      "decision": "Bryan chose integration tests instead of a two-browser owner/finance walkthrough on 6 November.",
+      "runtime": "Node 24.22.1",
+      "results": {
+        "unit": "lib/domain/reminders.test.ts 3/3 passed",
+        "integration": "tests/integration/reminders.test.ts 4/4 passed"
+      },
+      "coverage": "Separately signed-in owner and finance clients: finance approval is FORBIDDEN; owner approval from a stale revision is rejected (STALE_VERSION) without erasing the submission; copy after a reference-date change returns stale with no text and clears approval; a partial receipt clears approval and the new balance is used; approved text is returned only by the server recheck and manual send is recorded as unverified.",
+      "notCovered": "No browser UI walkthrough with two simultaneous sessions. A contact-detail change before copy is covered by the approval-basis unit test (contact version is part of the digest), not by a dedicated integration case."
+    }
   }
 }

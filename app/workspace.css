@@ -114,6 +114,8 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .field { border-radius: 10px; border-color: #c8d2c9; }
 .workspace-root :focus-visible { outline: 2px solid #28734f; outline-offset: 3px; }
 .workspace-root details, .workspace-root [id] { scroll-margin-top: 78px; }
+/* At 1050px and below the sticky top bar adds the tab row (124px tall), so in-page targets must clear it. */
+@media (max-width: 1050px) { .workspace-root details, .workspace-root [id], .workspace-root .intake-item { scroll-margin-top: 140px; } }
 .workspace-root .dashboard-heading { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
 .dashboard-heading h1 { margin: 0; font-size: clamp(25px, 2vw, 31px); font-weight: 700; letter-spacing: -.04em; }
 .dashboard-heading p { color: var(--muted); margin-top: 5px; font-size: 14px; }

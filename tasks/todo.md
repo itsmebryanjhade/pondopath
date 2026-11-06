@@ -37,12 +37,16 @@ The R-tasks below retain the baseline and final-completion checks. R2/R3 can be 
 
 **Description:** Finish the outstanding clipboard-denied and separate-session checks from original Task 8. Repair only a demonstrated failure.
 
+**Status — 6 November:** passed; no product fix was needed. See `r2ReminderCheck` in [runtime evidence](../docs/mvp-runtime-evidence.json).
+
 **Acceptance criteria:**
-- [ ] A denied clipboard still exposes a usable, accessible manual-copy path for the current approved draft.
-- [ ] Separate owner/finance sessions enforce exact-version approval and reject stale copy/approval after a relevant record change; copying sends no message.
+- [x] A denied clipboard still exposes a usable, accessible manual-copy path for the current approved draft.
+- [x] Separate owner/finance sessions enforce exact-version approval and reject stale copy/approval after a relevant record change; copying sends no message.
 
 **Verification:**
-- [ ] Exercise the actual browser fallback and two-session flow with fictional records. If a fix is needed, first reproduce it with an owning test; run `npm run test:unit -- lib/domain/reminders.test.ts` and `npm run test:integration -- tests/integration/reminders.test.ts` when their behavior is affected, using the isolated fixture rules.
+- [x] Exercise the actual browser fallback and two-session flow with fictional records. If a fix is needed, first reproduce it with an owning test; run `npm run test:unit -- lib/domain/reminders.test.ts` and `npm run test:integration -- tests/integration/reminders.test.ts` when their behavior is affected, using the isolated fixture rules.
+  - Browser: the blocked-clipboard fallback was exercised on fictional `TEST-INV-001` as the demo owner.
+  - Two sessions: at Bryan's direction, verified by the owning tests on Node 24.22.1 (unit 3/3, integration 4/4) with separately signed-in owner and finance accounts. A simultaneous two-browser UI walkthrough was not performed.
 
 **Dependencies:** R1. **Files likely touched:** `components/reminder-panel.tsx`, `lib/domain/reminders.test.ts`, `tests/integration/reminders.test.ts`, `docs/mvp-runtime-evidence.json` (product files only for a demonstrated failure). **Estimated scope:** Medium, up to 4 files.
 
@@ -50,12 +54,15 @@ The R-tasks below retain the baseline and final-completion checks. R2/R3 can be 
 
 **Description:** Finish the deferred narrow-screen check against the current UI, including navigation and assistant overlap.
 
+**Status — 6 November:** passed after one CSS fix; see `r3PhoneCheck` in [runtime evidence](../docs/mvp-runtime-evidence.json). The check ran on the local dev server in an emulated 390×844 browser viewport, not on a physical phone or a production build.
+
 **Acceptance criteria:**
-- [ ] A real browser reports the intended approximately 390px CSS viewport and no unintended horizontal overflow on the relevant Overview, Forecast and Follow-ups states; a clamped wider preview does not count.
-- [ ] Navigation, financial values, chart controls and assistant actions remain reachable without overlap, with keyboard/focus behavior preserved.
+- [x] A real browser reports the intended approximately 390px CSS viewport and no unintended horizontal overflow on the relevant Overview, Forecast and Follow-ups states; a clamped wider preview does not count.
+- [x] Navigation, financial values, chart controls and assistant actions remain reachable without overlap, with keyboard/focus behavior preserved.
 
 **Verification:**
-- [ ] Record actual viewport/document measurements and screenshots; exercise the affected interactions. If a defect requires code changes, run its owning UI test and targeted lint/typecheck. An unavailable viewport leaves this gate unverified.
+- [x] Record actual viewport/document measurements and screenshots; exercise the affected interactions. If a defect requires code changes, run its owning UI test and targeted lint/typecheck. An unavailable viewport leaves this gate unverified.
+  - Measurements are recorded in the evidence file. Screenshots were captured during the session but are not stored in the repository. The one defect, in-page links hiding section headings under the 124px phone top bar, was fixed in `app/workspace.css` and re-measured in the browser. No automated test covers that stylesheet, and ESLint/typecheck do not apply to CSS.
 
 **Dependencies:** R1. **Files likely touched:** `components/workspace-shell.tsx`, one affected component/owning test if a defect is demonstrated, `docs/mvp-runtime-evidence.json`. **Estimated scope:** Medium, up to 4 files.
 

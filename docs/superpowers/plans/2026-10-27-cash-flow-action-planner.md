@@ -286,6 +286,7 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 - [x] Add a deterministic non-AI reminder template, editable preview, owner review controls and copy action using the server-checked approved text. Draft for the outstanding balance; never the original total after a part payment. Avoid claiming email/phone validation establishes delivery.
 - [x] Verify owner-only direct approval, stale revision/reference-date handling, rejection and manual-send reporting with channel/user-entered time. The mobile browser view shows that copying does not send. Run reminder/access/payment tests and browser checks.
 - [ ] Exercise the clipboard-denied fallback and a separate-session UI flow. The server-side copy recheck, stale-reference invalidation and stale-revision behavior are covered by integration tests.
+  - 6 November (R2): the clipboard-denied fallback passed in the browser. At Bryan's direction, the separate-session rules were accepted on the owner/finance integration tests (4/4 on Node 24) instead of a two-browser UI walkthrough, which is why this box stays open.
 - [x] Commit `feat: review and approve accurate payment reminders`.
 
 ### Task 9: Add bounded AI assistance and evaluate it
