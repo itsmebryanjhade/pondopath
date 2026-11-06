@@ -6,10 +6,21 @@ import { parseIntakeCandidate, type IntakeCandidate } from "./intake";
 export const CSV_LIMITS = { bytes: 512 * 1024, rows: 100, columns: 24, recordBytes: 16 * 1024 } as const;
 export type CsvFile = { headers: string[]; rows: string[][]; rowNumbers?: number[]; nonTextCells?: boolean[][] };
 const column = z.string().trim().min(1).max(200);
+const rowFilter = z.strictObject({ column, value: z.string().trim().min(1).max(200) }).optional();
+const typeValues = z.array(z.string().trim().min(1).max(100)).min(1).max(10);
+/** Case-insensitive, trimmed comparison shared by the Type column and the row filter. */
+const sameValue = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 export const csvMappingSchema = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("invoice"), externalId: column, number: column, amount: column, dueDate: column, customerId: z.uuid(), customer: column.optional(), recordId: column.optional(), currency: column.optional() }),
-  z.strictObject({ kind: z.literal("expense"), externalId: column, label: column, payee: column, amount: column, dueDate: column, recordId: column.optional(), currency: column.optional() }),
-]);
+  z.strictObject({ kind: z.literal("invoice"), externalId: column, number: column, amount: column, dueDate: column, customerId: z.uuid(), customer: column.optional(), recordId: column.optional(), currency: column.optional(), filter: rowFilter }),
+  z.strictObject({ kind: z.literal("expense"), externalId: column, label: column, payee: column, amount: column, dueDate: column, recordId: column.optional(), currency: column.optional(), filter: rowFilter }),
+  z.strictObject({
+    kind: z.literal("mixed"), externalId: column, amount: column, dueDate: column, typeColumn: column, invoiceValues: typeValues, expenseValues: typeValues,
+    number: column, customerId: z.uuid(), customer: column.optional(), label: column, payee: column, recordId: column.optional(), currency: column.optional(), filter: rowFilter,
+  }),
+]).superRefine((mapping, context) => {
+  if (mapping.kind === "mixed" && mapping.expenseValues.some(value => mapping.invoiceValues.some(other => sameValue(value, other))))
+    context.addIssue({ code: "custom", path: ["expenseValues"], message: "A Type value cannot mean both invoice and expense." });
+});
 export type CsvMapping = z.infer<typeof csvMappingSchema>;
 export type IntakeBinding = { externalId: string; type: string; recordId: string };
 export type ImportContext = {
@@ -19,7 +30,7 @@ export type ImportContext = {
   bindings: IntakeBinding[];
 };
 export type CsvRow = {
-  row: number; externalId: string; status: "new" | "changed" | "unchanged" | "needs_match" | "duplicate" | "invalid";
+  row: number; externalId: string; status: "new" | "changed" | "unchanged" | "needs_match" | "duplicate" | "invalid" | "filtered";
   message: string; fields: Record<string, string>; candidate?: IntakeCandidate;
 };
 
@@ -48,31 +59,46 @@ export function validateImportRows(records: string[][]): CsvFile {
 
 export function mapCsv(file: CsvFile, input: CsvMapping, context: ImportContext): CsvRow[] {
   const mapping = csvMappingSchema.parse(input);
-  if (mapping.kind === "invoice" && !context.customers.some(customer => customer.id === mapping.customerId)) throw new Error("Select an existing customer in your business.");
-  const { kind: _kind, customerId: _customerId, ...columns } = { customerId: undefined, ...mapping };
-  void _kind; void _customerId;
-  for (const header of Object.values(columns)) if (header && !file.headers.includes(header)) throw new Error(`Column “${header}” is missing.`);
+  const fallbackCustomer = mapping.kind === "expense" ? undefined : mapping.customerId;
+  if (fallbackCustomer && !context.customers.some(customer => customer.id === fallbackCustomer)) throw new Error("Select an existing customer in your business.");
+  const numberColumn = mapping.kind === "expense" ? undefined : mapping.number;
+  const { kind: _kind, customerId: _customerId, invoiceValues: _invoiceValues, expenseValues: _expenseValues, filter, ...columns } =
+    { customerId: undefined, invoiceValues: undefined, expenseValues: undefined, filter: undefined, ...mapping };
+  void _kind; void _customerId; void _invoiceValues; void _expenseValues;
+  const mappedHeaders = [...Object.values(columns), filter?.column].filter((header): header is string => !!header);
+  for (const header of mappedHeaders) if (!file.headers.includes(header)) throw new Error(`Column “${header}” is missing.`);
   const rows = file.rows.map((values, index): CsvRow => {
-    const fields = Object.fromEntries(Object.values(columns).filter((header): header is string => !!header).map(header => [header, values[file.headers.indexOf(header)] ?? ""]));
+    const fields = Object.fromEntries(mappedHeaders.map(header => [header, values[file.headers.indexOf(header)] ?? ""]));
     const value = (header?: string) => header ? (fields[header] ?? "").trim() : "";
     const externalId = value(mapping.externalId);
     const result: CsvRow = { row: file.rowNumbers?.[index] ?? index + 2, externalId, status: "invalid", message: "", fields };
+    if (filter && !sameValue(value(filter.column), filter.value)) return { ...result, status: "filtered", message: "Skipped by the row filter." };
     try {
       if (values.length !== file.headers.length) throw new Error("This row has a different number of columns than the header.");
-      for (const header of [mapping.externalId, mapping.recordId, mapping.kind === "invoice" ? mapping.number : undefined]) {
-        if (header && value(header) && file.nonTextCells?.[index]?.[file.headers.indexOf(header)]) throw new Error("Store identifiers as Text in Excel: " + header + ".");
+      for (const header of [mapping.externalId, mapping.recordId, numberColumn]) {
+        if (header && value(header) && file.nonTextCells?.[index]?.[file.headers.indexOf(header)]) throw new Error("Store identifiers as text in the spreadsheet: " + header + ".");
       }
       if (!externalId || externalId.length > 200) throw new Error("A stable source row ID (up to 200 characters) is required.");
       if (mapping.currency && value(mapping.currency) !== "PHP") throw new Error("Only PHP amounts are supported.");
+      let rowKind: "invoice" | "expense";
+      if (mapping.kind !== "mixed") rowKind = mapping.kind;
+      else {
+        const type = value(mapping.typeColumn);
+        if (mapping.invoiceValues.some(item => sameValue(item, type))) rowKind = "invoice";
+        else if (mapping.expenseValues.some(item => sameValue(item, type))) rowKind = "expense";
+        else throw new Error(`Unknown type '${type}'.`);
+      }
       const binding = context.bindings.find(item => item.externalId === externalId);
-      if (binding && binding.type !== `save_${mapping.kind}`) throw new Error("This source ID already belongs to a different record kind.");
+      if (binding && binding.type !== `save_${rowKind}`) throw new Error("This source ID already belongs to a different record kind.");
       const explicitId = value(mapping.recordId);
       if (explicitId && binding && binding.recordId !== explicitId) throw new Error("The record ID conflicts with the previously applied source row.");
       const id = explicitId || binding?.recordId;
       const common = { ...(id ? { id } : {}), amountCents: parseMoney(value(mapping.amount)), dueDate: value(mapping.dueDate) };
-      const candidate = parseIntakeCandidate(mapping.kind === "invoice"
+      const candidate = parseIntakeCandidate(rowKind === "invoice" && mapping.kind !== "expense"
         ? { type: "save_invoice", payload: { ...common, number: value(mapping.number), customerId: value(mapping.customer) || mapping.customerId } }
-        : { type: "save_expense", payload: { ...common, label: value(mapping.label), payee: value(mapping.payee) } });
+        : mapping.kind !== "invoice"
+          ? { type: "save_expense", payload: { ...common, label: value(mapping.label), payee: value(mapping.payee) } }
+          : null);
       if (candidate.type === "save_invoice" && !context.customers.some(customer => customer.id === candidate.payload.customerId)) throw new Error("Customer ID is not in your business. Select a customer or correct this row.");
       const current = candidate.type === "save_invoice"
         ? context.invoices.find(item => id ? item.id === id : item.number === candidate.payload.number)
@@ -88,7 +114,7 @@ export function mapCsv(file: CsvFile, input: CsvMapping, context: ImportContext)
   const ids = new Map<string, number>();
   const identities = new Map<string, number>();
   for (const row of rows) {
-    if (row.externalId) ids.set(row.externalId, (ids.get(row.externalId) ?? 0) + 1);
+    if (row.externalId && row.status !== "filtered") ids.set(row.externalId, (ids.get(row.externalId) ?? 0) + 1);
     if (row.candidate) {
       const identity = row.candidate.payload.id || (row.candidate.type === "save_invoice" ? row.candidate.payload.number : JSON.stringify(row.candidate.payload));
       identities.set(identity, (identities.get(identity) ?? 0) + 1);

@@ -82,3 +82,42 @@ it("produces the same literal proposals from the matching CSV and Excel samples"
 function mappingForSample(): CsvMapping {
   return { kind: "invoice", externalId: "Source ID", number: "Invoice number", amount: "Amount PHP", dueDate: "Original due", customerId, currency: "Currency" };
 }
+
+describe("mixed mapping and row filter", () => {
+  const mixed = {
+    kind: "mixed", externalId: "ID", amount: "Amount", dueDate: "Due", typeColumn: "Type",
+    invoiceValues: ["Invoice", "AR"], expenseValues: ["Bill"],
+    number: "Invoice", customerId, label: "Label", payee: "Payee",
+  } as CsvMapping;
+  const sheet = (rows: string) => csv(`ID,Type,Invoice,Label,Payee,Amount,Due,Status\n${rows}`);
+
+  it("routes each row by its Type value", () => {
+    const rows = mapCsv(sheet("a,Invoice,INV-A,,,10.00,2026-11-05,Unpaid\nb, bill ,,Rent,Landlord,20.00,2026-11-06,Unpaid"), mixed, context);
+    expect(rows.map(row => row.candidate?.type)).toEqual(["save_invoice", "save_expense"]);
+    expect(rows[1].candidate?.payload).toMatchObject({ label: "Rent", payee: "Landlord", amountCents: 2000 });
+  });
+
+  it("marks an unknown Type invalid", () => {
+    const [row] = mapCsv(sheet("a,Misc,INV-A,,,10.00,2026-11-05,Unpaid"), mixed, context);
+    expect(row).toMatchObject({ status: "invalid", message: "Unknown type 'Misc'." });
+  });
+
+  it("rejects overlapping Type value lists", async () => {
+    const { csvMappingSchema } = await import("./imports");
+    expect(csvMappingSchema.safeParse(mixed).success).toBe(true);
+    expect(csvMappingSchema.safeParse({ ...mixed, invoiceValues: ["AR"], expenseValues: [" ar"] }).success).toBe(false);
+  });
+
+  it("skips rows that do not match the filter, trimming and ignoring case", () => {
+    const filtered = { ...mixed, filter: { column: "Status", value: "Unpaid" } } as CsvMapping;
+    const rows = mapCsv(sheet("a,Invoice,INV-A,,,10.00,2026-11-05, unpaid \nb,Invoice,INV-B,,,10.00,2026-11-05,TRUE\nb,Invoice,INV-C,,,10.00,2026-11-05,Paid"), filtered, context);
+    expect(rows.map(row => row.status)).toEqual(["new", "filtered", "filtered"]);
+    expect(rows[1].candidate).toBeUndefined();
+  });
+
+  it("keeps the existing kind error when an applied row's kind changes", () => {
+    const bindings = [{ externalId: "a", type: "save_invoice", recordId: "00000000-0000-4000-8000-000000000009" }];
+    const [row] = mapCsv(sheet("a,Bill,,Rent,Landlord,20.00,2026-11-06,Unpaid"), mixed, { ...context, bindings });
+    expect(row).toMatchObject({ status: "invalid", message: "This source ID already belongs to a different record kind." });
+  });
+});
