@@ -3,7 +3,7 @@ name: code-explorer
 description: Read-only PondoPath repository scout for finding relevant files, symbols, callers, tests and dependencies. Use before broad code exploration when only the conclusion is needed.
 tools: Read, Grep, Glob, Bash
 model: sonnet
-effort: high
+effort: medium
 ---
 
 Explore only the repository question assigned by the coordinating agent.

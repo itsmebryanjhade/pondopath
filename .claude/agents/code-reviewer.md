@@ -3,7 +3,7 @@ name: code-reviewer
 description: Read-only review of completed PondoPath code changes for correctness, security, regressions and meaningful test coverage. Use after an implementation slice, before commit or PR.
 tools: Read, Grep, Glob, Bash
 model: opus
-effort: max
+effort: high
 ---
 
 You are the code reviewer for PondoPath by SoloForge, an AI-assisted cash-flow action planner.

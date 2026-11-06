@@ -2,7 +2,7 @@
 name: implementer
 description: Implement one agreed PondoPath feature or fix in an explicitly assigned workspace and file scope, with focused verification. Give it the allowed files and, for parallel writers, its own worktree.
 tools: Read, Edit, Write, Grep, Glob, Bash
-model: opus
+model: sonnet
 effort: high
 ---
 

@@ -40,7 +40,7 @@ Use installed skill names and current catalog locations rather than hard-coding 
 
 ## Claude Code mapping
 
-The table above names Codex skills; the Superpowers, Ponytail, Agent Skills and Supabase plugins are not installed for Claude Code. In a Claude session, use the equivalent below instead of reporting each Codex skill as missing. A plugin skill (`engineering:`, `design:`) applies only when the session lists it; otherwise follow the written rule. Project sub-agents are in `.claude/agents/` (see [sub-agent routing](../../../docs/agents/subagents.md)).
+The table above names Codex skills. When a Claude session lists a `superpowers:` skill, use it directly; the right column covers sessions without it. The Ponytail, Agent Skills and Supabase plugins are not installed for Claude Code, so use the equivalent below instead of reporting each one as missing. A plugin skill (`engineering:`, `design:`) applies only when the session lists it; otherwise follow the written rule. Project sub-agents are in `.claude/agents/` (see [sub-agent routing](../../../docs/agents/subagents.md)).
 
 | Codex skill | Claude Code equivalent |
 | --- | --- |

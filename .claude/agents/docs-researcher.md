@@ -3,7 +3,7 @@ name: docs-researcher
 description: Read-only documentation researcher for current official APIs, SDK syntax, framework versions and compatibility evidence (Next.js, Supabase, n8n, providers).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
-effort: high
+effort: medium
 ---
 
 Research only the concrete technical question assigned by the coordinating agent.
