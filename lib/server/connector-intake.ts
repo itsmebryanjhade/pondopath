@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { connectorEnvelopeSchema, connectorReadSchema, normalizeConnectorRows, CONNECTOR_LIMITS } from "@/lib/domain/connector-rows";
-import { csvMappingSchema, mapCsv, type CsvMapping, type IntakeBinding } from "@/lib/domain/imports";
+import { csvMappingSchema, mapCsv, type CsvMapping, type CsvRow, type IntakeBinding } from "@/lib/domain/imports";
+import { applyReader } from "@/lib/domain/reader";
 import type { IntakeCandidate } from "@/lib/domain/intake";
 import type { Json } from "@/lib/database.types";
 
@@ -14,6 +15,8 @@ const countsSchema = z.object({
   invalid: z.array(z.object({ row: z.number().int().positive(), reason: z.string().max(50) })).max(500),
   missing: z.number().int().min(0).max(500), morePending: z.boolean(),
   missingHeaders: z.array(z.string().max(200)).max(24).optional(),
+  // Reader mappings only: payment rows held for Collections and rows waiting for the owner's label.
+  payments: z.number().int().min(0).max(500).optional(), choose: z.array(z.number().int().positive()).max(500).optional(),
 });
 // Compact JSON budget for the header/sample capture; jsonb text adds separators, and SQL checks 24,576 bytes.
 const FIRST_READ_BUDGET = 20_000;
@@ -54,15 +57,45 @@ function safeReason(message: string) {
   return "Check this row's amount, date and mapped values.";
 }
 
+type AdminClient = ReturnType<typeof createAdminClient>;
+type Door = {
+  via: string;
+  source(client: AdminClient): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  ingest(client: AdminClient, run: Json): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  envelope: z.ZodType<z.infer<typeof connectorEnvelopeSchema>>;
+};
+
+/** n8n door: a Google Sheet connection proven by its per-source key. */
 export async function ingestConnectorRead(sourceId: string, key: string, input: unknown): Promise<ConnectorRunSummary> {
   if (!z.uuid().safeParse(sourceId).success || !/^[A-Za-z0-9_-]{32,200}$/.test(key)) throw new Error("UNAUTHENTICATED");
+  return ingestCore(sourceId, input, {
+    via: "google_sheet_connector", envelope: connectorEnvelopeSchema,
+    source: client => client.rpc("connector_source", { p_source_id: sourceId, p_key: key }),
+    ingest: (client, run) => client.rpc("connector_ingest", { p_source_id: sourceId, p_key: key, p_run: run }),
+  });
+}
+
+// The app's own Google reader reports its own error codes (for example FILE_ACCESS_LOST), never file content.
+const googleEnvelope = z.union([connectorEnvelopeSchema, z.strictObject({ runId: z.string().trim().min(1).max(200), error: z.string().regex(/^[A-Z_]{1,64}$/) })]) as unknown as z.ZodType<z.infer<typeof connectorEnvelopeSchema>>;
+
+/** Google door: a Drive file connection, called only by the app's server code with the service role. */
+export async function ingestGoogleRead(sourceId: string, input: unknown): Promise<ConnectorRunSummary> {
+  if (!z.uuid().safeParse(sourceId).success) throw new Error("UNAUTHENTICATED");
+  return ingestCore(sourceId, input, {
+    via: "google_drive_connector", envelope: googleEnvelope,
+    source: client => client.rpc("google_file_source", { p_source_id: sourceId }),
+    ingest: (client, run) => client.rpc("google_file_ingest", { p_source_id: sourceId, p_run: run }),
+  });
+}
+
+async function ingestCore(sourceId: string, input: unknown, door: Door): Promise<ConnectorRunSummary> {
   const client = createAdminClient();
-  const sourceResult = await client.rpc("connector_source", { p_source_id: sourceId, p_key: key });
+  const sourceResult = await door.source(client);
   if (sourceResult.error?.message === "UNAUTHENTICATED") throw new Error("UNAUTHENTICATED");
   const parsedSource = sourceSchema.safeParse(sourceResult.data);
   if (sourceResult.error || !parsedSource.success) fail();
   const source = parsedSource.data!;
-  const envelope = connectorEnvelopeSchema.safeParse(input);
+  const envelope = door.envelope.safeParse(input);
   if (!envelope.success) throw new Error("INVALID_REQUEST");
   const parsedRead = connectorReadSchema.safeParse(envelope.data);
   const read = parsedRead.success ? parsedRead.data : envelope.data;
@@ -92,7 +125,7 @@ export async function ingestConnectorRead(sourceId: string, key: string, input: 
       else {
         const mapping = parsedMapping.data;
         const mapped = columns(mapping);
-        const required = [...mapped.map(([, header]) => header), ...(mapping.filter ? [mapping.filter.column] : [])];
+        const required = [...mapped.map(([, header]) => header), ...(mapping.filter ? [mapping.filter.column] : []), ...(mapping.kind === "auto" ? mapping.columns : [])];
         const missingHeaders = [...new Set(required.filter(header => !file!.headers.includes(header)))];
         if (missingHeaders.length) {
           // Send the current headers so the owner can remap to a renamed column.
@@ -117,10 +150,20 @@ export async function ingestConnectorRead(sourceId: string, key: string, input: 
           const present = new Set(file.rows.map(values => values[file!.headers.indexOf(mapping.externalId)]?.trim()).filter(Boolean).map(id => rowIdentity(id!)));
           summary.missing = seen.filter(id => !present.has(id)).length;
           seen = [...present];
-          const proposals = mapCsv(file, mapping, { customers, invoices, expenses, bindings: [...bindings.values()] });
+          const context = { customers, invoices, expenses, bindings: [...bindings.values()] };
+          let proposals: CsvRow[];
+          if (mapping.kind === "auto") {
+            // The reader holds payment rows and unlabelled rows back; only invoices and expenses reach the inbox.
+            const labelled = applyReader(file, mapping);
+            summary.payments = labelled.payments.length;
+            summary.choose = labelled.choose.slice(0, 500);
+            proposals = mapCsv(labelled.file, labelled.mixed, context);
+          } else proposals = mapCsv(file, mapping, context);
+          const indexByRow = new Map(file.rowNumbers!.map((row, index) => [row, index]));
           const labels: Record<string, string> = { externalId: "Row ID", recordId: "Record ID", number: "Invoice number", amount: "Amount", dueDate: "Due date", customer: "Customer", label: "Label", payee: "Payee", currency: "Currency" };
           rows = [];
-          for (const [index, proposal] of proposals.entries()) {
+          for (const proposal of proposals) {
+            const index = indexByRow.get(proposal.row) ?? -1;
             if (proposal.status === "filtered") { summary.skippedByFilter++; continue; }
             const checkbox = mapped.find(([field, header]) => field !== "typeColumn" && file!.booleanCells[index]?.[file!.headers.indexOf(header)]);
             if (checkbox || !proposal.candidate || ["invalid", "duplicate"].includes(proposal.status)) {
@@ -132,7 +175,7 @@ export async function ingestConnectorRead(sourceId: string, key: string, input: 
             const fingerprint = candidateFingerprint(value);
             if (existing.has(JSON.stringify([proposal.externalId, fingerprint])) || proposal.status === "unchanged") { summary.unchanged++; continue; }
             if (rows.length === CONNECTOR_LIMITS.stagedPerRead) { summary.morePending = true; continue; }
-            rows.push({ externalId: proposal.externalId, sourceVersion: fingerprint, candidate: value, evidence: { via: "google_sheet_connector", runId: read.runId, sheetRow: proposal.row, fields: proposal.fields } });
+            rows.push({ externalId: proposal.externalId, sourceVersion: fingerprint, candidate: value, evidence: { via: door.via, runId: read.runId, sheetRow: proposal.row, fields: proposal.fields } });
           }
           summary.staged = rows.length;
         } catch (error) {
@@ -146,10 +189,11 @@ export async function ingestConnectorRead(sourceId: string, key: string, input: 
   }
   const send = (run: { result: string; errorCode?: string; rows?: StagedRow[] }) => {
     const counts = { read: summary.read, staged: run.rows?.length ?? 0, unchanged: summary.unchanged, skippedByFilter: summary.skippedByFilter, invalid: summary.invalid, missing: summary.missing, morePending: summary.morePending, seen,
-      ...(summary.missingHeaders ? { missingHeaders: summary.missingHeaders } : {}) };
-    return client.rpc("connector_ingest", { p_source_id: sourceId, p_key: key, p_run: {
+      ...(summary.missingHeaders ? { missingHeaders: summary.missingHeaders } : {}),
+      ...(summary.payments !== undefined ? { payments: summary.payments, choose: summary.choose ?? [] } : {}) };
+    return door.ingest(client, {
       runId: read.runId, result: run.result, counts, ...(run.errorCode ? { errorCode: run.errorCode } : {}), ...(firstRead ? { firstRead } : {}), ...(run.rows?.length ? { rows: run.rows } : {}),
-    } as unknown as Json });
+    } as unknown as Json);
   };
   let result = await send({ result: summary.result, errorCode: summary.errorCode, rows });
   // The database refuses to stage when the connecting owner is no longer an owner; record that so the owner sees it.

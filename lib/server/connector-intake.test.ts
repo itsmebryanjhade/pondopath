@@ -17,7 +17,7 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({
     return query;
   },
 }) }));
-import { candidateFingerprint, ingestConnectorRead } from "./connector-intake";
+import { candidateFingerprint, ingestConnectorRead, ingestGoogleRead } from "./connector-intake";
 const businessId = "10000000-0000-4000-8000-000000000001";
 const sourceId = "20000000-0000-4000-8000-000000000001";
 const customerId = "30000000-0000-4000-8000-000000000001";
@@ -36,8 +36,8 @@ beforeEach(() => {
   state.source = { businessId, status: "active", mapping, settings: {}, connectedBy: "40000000-0000-4000-8000-000000000001" };
   state.tables = { customers: [{ id: customerId, business_id: businessId }], invoices: [], expenses: [], intake_items: [], intake_sources: [{ id: sourceId, business_id: businessId, last_run_summary: null }], intake_connector_runs: [] };
   state.rpc.mockImplementation(async (name: string, args: { p_run?: { result: string; counts: object; errorCode?: string; rows?: { externalId: string }[] } }) => {
-    if (name === "connector_source") return { data: state.source, error: null };
-    if (name === "connector_ingest") return { data: { replayed: false, result: args.p_run!.result, counts: args.p_run!.counts, errorCode: args.p_run!.errorCode ?? null, results: (args.p_run!.rows ?? []).map(row => ({ externalId: row.externalId, itemId: "50000000-0000-4000-8000-000000000001", status: "pending", replayed: false })) }, error: null };
+    if (name === "connector_source" || name === "google_file_source") return { data: state.source, error: null };
+    if (name === "connector_ingest" || name === "google_file_ingest") return { data: { replayed: false, result: args.p_run!.result, counts: args.p_run!.counts, errorCode: args.p_run!.errorCode ?? null, results: (args.p_run!.rows ?? []).map(row => ({ externalId: row.externalId, itemId: "50000000-0000-4000-8000-000000000001", status: "pending", replayed: false })) }, error: null };
     throw new Error("Unexpected RPC: " + name);
   });
 });
@@ -168,5 +168,44 @@ describe("connector review fixes", () => {
     state.rpc.mockImplementation(async (name: string, args: { p_run?: { rows?: unknown[] } }) =>
       name === "connector_ingest" && args.p_run?.rows?.length ? { data: null, error: { message: "FORBIDDEN" } } : original(name, args));
     expect(await ingestConnectorRead(sourceId, key, read())).toMatchObject({ result: "failed", errorCode: "CONNECTED_OWNER_REMOVED" });
+  });
+
+  describe("reader mapping and the Google door", () => {
+    const autoHeaders = ["ID", "Type", "Customer", "Supplier", "Desc", "Amount", "Due", "Invoice"];
+    const auto = { kind: "auto", externalId: "ID", amount: "Amount", dueDate: "Due", number: "Invoice", customerId, customer: "Customer", label: "Desc", payee: "Supplier",
+      typeColumn: "Type", columns: autoHeaders, excludedIds: [], overrides: {} };
+    const autoRead = (amountA = 100) => ({ runId: "g-1", headers: autoHeaders, rowNumbers: [2, 3, 4, 5], rows: [
+      ["a", "Invoice", "", "", "Design", amountA, 46346, "INV-a"], ["b", "Bill", "", "Juan Supplies", "Paper", 50, 46347, ""],
+      ["c", "Bayad", "", "", "Payment", 20, 46348, ""], ["d", "Misc", "", "", "Unclear", 10, 46349, ""]] });
+    const googleRun = () => state.rpc.mock.calls.find(call => call[0] === "google_file_ingest")?.[1];
+    it("auto mapping stages invoices and expenses, never payment or choose rows, and counts them", async () => {
+      state.source.mapping = auto;
+      const result = await ingestGoogleRead(sourceId, autoRead());
+      expect(result).toMatchObject({ result: "staged", staged: 2, payments: 1, choose: [5] });
+      expect(googleRun().p_run.rows.map((row: { externalId: string; candidate: { type: string } }) => [row.externalId, row.candidate.type]))
+        .toEqual([["a", "save_invoice"], ["b", "save_expense"]]);
+    });
+    it("the Google door never sends a key and marks its evidence", async () => {
+      state.source.mapping = auto;
+      await ingestGoogleRead(sourceId, autoRead());
+      expect(state.rpc.mock.calls.map(call => call[0])).toEqual(["google_file_source", "google_file_ingest"]);
+      expect(state.rpc.mock.calls.every(call => !("p_key" in call[1]))).toBe(true);
+      expect(googleRun().p_run.rows[0].evidence.via).toBe("google_drive_connector");
+    });
+    it("records Google read errors as failed runs", async () => {
+      expect(await ingestGoogleRead(sourceId, { runId: "g-2", error: "FILE_ACCESS_LOST" })).toMatchObject({ result: "failed", errorCode: "FILE_ACCESS_LOST", staged: 0 });
+      await expect(ingestGoogleRead(sourceId, { runId: "g-3", error: "not a code" })).rejects.toThrow("INVALID_REQUEST");
+    });
+    it("an edited row gives exactly one changed proposal and a repeat read stages nothing", async () => {
+      state.source.mapping = auto;
+      await ingestGoogleRead(sourceId, autoRead());
+      for (const row of googleRun().p_run.rows) state.tables.intake_items.push({ business_id: businessId, source_id: sourceId, external_id: row.externalId, source_version: row.sourceVersion, status: "pending", candidate: row.candidate, outcome: null, observed_at: "2026-11-06T00:00:00Z" });
+      state.rpc.mockClear();
+      expect(await ingestGoogleRead(sourceId, { ...autoRead(9000), runId: "g-4" })).toMatchObject({ staged: 1 });
+      expect(googleRun().p_run.rows.map((row: { externalId: string }) => row.externalId)).toEqual(["a"]);
+      for (const row of googleRun().p_run.rows) state.tables.intake_items.push({ business_id: businessId, source_id: sourceId, external_id: row.externalId, source_version: row.sourceVersion, status: "pending", candidate: row.candidate, outcome: null, observed_at: "2026-11-06T00:01:00Z" });
+      state.rpc.mockClear();
+      expect(await ingestGoogleRead(sourceId, { ...autoRead(9000), runId: "g-5" })).toMatchObject({ staged: 0, unchanged: 2 });
+    });
   });
 });
