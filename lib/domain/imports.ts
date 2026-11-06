@@ -47,13 +47,22 @@ export function readCsv(bytes: Uint8Array): CsvFile {
   return validateImportRows(records);
 }
 
+export function checkImportHeaders(rawHeaders: string[]): string[] {
+  const headers = rawHeaders.map(value => value.trim());
+  if (!headers.length || headers.length > CSV_LIMITS.columns || headers.some(value => !value || value.length > 200) || new Set(headers).size !== headers.length)
+    throw new Error("Use up to 24 unique, nonempty column headers (maximum 200 characters each).");
+  return headers;
+}
+
+export function checkImportRowBytes(rows: string[][]) {
+  if (rows.some(row => new TextEncoder().encode(row.join("\0")).length > CSV_LIMITS.recordBytes)) throw new Error("Each data row must fit within 16 KiB.");
+}
+
 export function validateImportRows(records: string[][]): CsvFile {
   const [rawHeaders, ...rows] = records;
   if (!rawHeaders?.length || !rows.length || rows.length > CSV_LIMITS.rows) throw new Error("Include a header and 1–100 data rows per import.");
-  const headers = rawHeaders.map(value => value.trim());
-  if (headers.length > CSV_LIMITS.columns || headers.some(value => !value || value.length > 200) || new Set(headers).size !== headers.length)
-    throw new Error("Use up to 24 unique, nonempty column headers (maximum 200 characters each).");
-  if (rows.some(row => new TextEncoder().encode(row.join("\0")).length > CSV_LIMITS.recordBytes)) throw new Error("Each data row must fit within 16 KiB.");
+  const headers = checkImportHeaders(rawHeaders);
+  checkImportRowBytes(rows);
   return { headers, rows };
 }
 
