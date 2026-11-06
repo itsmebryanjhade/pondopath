@@ -89,7 +89,7 @@
   "r3PhoneCheck": {
     "verifiedAt": "2026-11-06",
     "status": "passed_after_scroll_offset_fix",
-    "environment": "Local dev server (next dev), built-in browser with emulated 390x844 viewport (devicePixelRatio 2), signed in as the fictional demo owner. Not a production build or physical device.",
+    "environment": "Local dev server (next dev), built-in browser with emulated 390x844 viewport (devicePixelRatio 2), signed in to Bryan's ordinary development workspace (owner role, fictional test records; not the seeded SoloForge Demo Services workspace). Not a production build or physical device.",
     "viewport": {
       "innerWidth": 390,
       "innerHeight": 844,
@@ -122,8 +122,8 @@
     "verifiedAt": "2026-11-06",
     "status": "passed_clipboard_in_browser_two_session_by_integration_tests",
     "clipboardDenied": {
-      "environment": "Local dev server, built-in browser, fictional demo owner, demo invoice TEST-INV-001.",
-      "setup": "Saved, submitted and approved a reminder through the UI (version-checked approval). The reminder remains approved on the demo invoice; no message was sent.",
+      "environment": "Local dev server, built-in browser, Bryan's ordinary development workspace (owner role, fictional test records; not the seeded SoloForge Demo Services workspace), invoice TEST-INV-001.",
+      "setup": "Saved, submitted and approved a reminder through the UI (version-checked approval). The reminder remains approved on that invoice; no message was sent.",
       "method": "navigator.clipboard.writeText was replaced with one that rejects with NotAllowedError (emulating denied clipboard permission); the real 'Copy approved text' button was then clicked.",
       "result": "Status message (role=status) explained the block and that copying does not send. A read-only textarea labelled 'Approved text to copy manually' showed the exact approved text (250 characters, identical). Tab from the copy button reached the textarea, which selected all text on focus and showed a visible focus ring.",
       "network": "Only the same-origin server-action request for the approval recheck; no outbound message request."

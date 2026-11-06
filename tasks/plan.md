@@ -22,7 +22,7 @@ All imported/extracted information goes through the shared human-review boundary
 
 The [recorded 3 November gate](../docs/mvp-runtime-evidence.json) passed 271 unit/UI tests, 112 integration tests, typecheck, lint and a production build. These are historical results, not a new gate for the expanded application.
 
-The existing Review Inbox, CSV pipeline and next-action worklist provide the foundation for the remaining intake features. Known baseline verification gaps are phone layout/assistant overlap, clipboard-denied fallback and separate-session reminder behavior. Keep those tracked in R2/R3 without making unrelated feature work wait for a calendar-based release freeze.
+The existing Review Inbox, CSV pipeline and next-action worklist provide the foundation for the remaining intake features. The former baseline gaps were closed on 6 November: R3 (phone layout/assistant overlap, with one scroll-offset fix) and R2 (clipboard-denied fallback in the browser; separate-session reminder rules on the owner/finance integration tests at Bryan's direction). See the [runtime evidence](../docs/mvp-runtime-evidence.json).
 
 ## Implementation sequence
 
@@ -54,6 +54,24 @@ Reuse existing evidence when its scope still matches. Run focused checks after e
 - Keep one scheduler responsible for each job. Node-RED retains missed-commitment follow-ups unless a separately reviewed migration is chosen; n8n handles source intake without duplicating that job.
 - Coordinator owns dependencies, source contracts and evidence. Use the explorer/docs researcher for narrow questions, the architect for nontrivial boundary decisions, one implementer per assigned slice, and the existing GPT-6 Sol/max reviewer for consequential fixes. Use the security auditor where the change warrants it.
 - Parallelize independent investigation or explicitly isolated slices. Serialize shared browser interaction and shared-file/schema edits; do not launch every specialist for each task.
+
+## Working environment and fictional data (R1, 6 November)
+
+Recorded from the repository and local configuration; only variable names were inspected, never secret values.
+
+| Area | Current state |
+| --- | --- |
+| Application | Local Next.js dev server at `http://localhost:3000` (`.claude/launch.json` → `npm run dev`). No Vercel project is linked in this checkout and nothing is deployed. |
+| Node | Node 24 is required. The machine default is v26.12.0; the already-installed Node 24.22.1 binary is used for recorded checks without changing the global default. |
+| Database | The authorized Supabase development project **soloforge-cashflow-dev** (Singapore), configured in `.env.local`. See [database](../docs/database.md). |
+| Integration tests | `.env.test.local` (`TEST_ENVIRONMENT=isolated-development`) targets the same development project. Each run creates and removes its own unrelated test business and owner/finance accounts; shared workspaces are never reset. |
+| Fictional workspaces | **SoloForge Demo Services**, from `scripts/seed-demo.mjs`: Demo Owner/Demo Finance accounts, fixed reference date 2026-10-29, used for the scripted demo numbers. **Bryan's ordinary development workspace**: current date, fictional test records (for example `TEST-INV-001` and the "Fictional CSV walkthrough" source), used for the Task 16 and R2/R3 browser checks. |
+| Sample files | `public/samples/pondopath-invoices.csv` and `.xlsx`, both fictional. |
+| AI | OpenRouter is configured (key, model and provider names in `.env.local`). A `GEMINI_API_KEY` entry also exists locally but no application code reads it. |
+| Worker | Node-RED in `automation/` with `.env.automation.local`; loopback-only editor, run manually. See its [runbook](../automation/README.md). |
+| Not installed or unverified | n8n (not installed); Google Sheets/Drive and Microsoft OneDrive access; Messenger Page, Viber business/bot and SMS provider access; receipt-image provider; the accounting/POS product; the final hosting target. |
+
+The fictional-data boundary applies to every environment above. No real customer data, public exposure, purchases or provider sign-ups are authorized by this record.
 
 ## Decisions and access still needed
 

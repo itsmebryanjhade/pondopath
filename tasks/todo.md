@@ -24,12 +24,16 @@ The R-tasks below retain the baseline and final-completion checks. R2/R3 can be 
 
 **Description:** Record the complete approved feature scope and available development environment. Keep the fictional-data boundary and identify provider/environment questions as they become relevant.
 
+**Status — 6 November:** drafted in [the plan](plan.md) ("Full target" and "Working environment and fictional data"); awaiting Bryan's confirmation.
+
 **Acceptance criteria:**
-- [ ] Full approved scope is recorded, including XLSX, n8n, file sources, images, message channels and an identified accounting/POS path; calendar-based feature deferrals are removed.
-- [ ] Fictional fixtures and the available working environment are identified; unverified provider access/allowances are recorded without blocking unrelated ready work.
+- [x] Full approved scope is recorded, including XLSX, n8n, file sources, images, message channels and an identified accounting/POS path; calendar-based feature deferrals are removed.
+  - The accounting/POS product itself is not yet chosen; the plan records identifying it as the first step of Task 21.
+- [x] Fictional fixtures and the available working environment are identified; unverified provider access/allowances are recorded without blocking unrelated ready work.
 
 **Verification:**
 - [ ] Compare the working boundary with Bryan's current direction and the PRD; check the links. No application suite is needed for this document task.
+  - Links checked on 6 November. Bryan's confirmation that the recorded scope matches his current direction is still needed.
 
 **Dependencies:** None. **Files likely touched:** `tasks/plan.md`, `docs/demo-and-verification.md`. **Estimated scope:** Small, 1–2 files.
 
@@ -45,7 +49,7 @@ The R-tasks below retain the baseline and final-completion checks. R2/R3 can be 
 
 **Verification:**
 - [x] Exercise the actual browser fallback and two-session flow with fictional records. If a fix is needed, first reproduce it with an owning test; run `npm run test:unit -- lib/domain/reminders.test.ts` and `npm run test:integration -- tests/integration/reminders.test.ts` when their behavior is affected, using the isolated fixture rules.
-  - Browser: the blocked-clipboard fallback was exercised on fictional `TEST-INV-001` as the demo owner.
+  - Browser: the blocked-clipboard fallback was exercised on fictional `TEST-INV-001` in Bryan's ordinary development workspace (owner role, fictional test records; not the seeded SoloForge Demo Services workspace).
   - Two sessions: at Bryan's direction, verified by the owning tests on Node 24.22.1 (unit 3/3, integration 4/4) with separately signed-in owner and finance accounts. A simultaneous two-browser UI walkthrough was not performed.
 
 **Dependencies:** R1. **Files likely touched:** `components/reminder-panel.tsx`, `lib/domain/reminders.test.ts`, `tests/integration/reminders.test.ts`, `docs/mvp-runtime-evidence.json` (product files only for a demonstrated failure). **Estimated scope:** Medium, up to 4 files.
