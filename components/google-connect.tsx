@@ -33,7 +33,7 @@ export function syncSummary(summary: unknown, at: string | null, now: number): s
 }
 
 type PickerData = { action: string; docs?: { id: string }[] };
-type GoogleGlobal = { picker: { PickerBuilder: new () => { addView(view: unknown): unknown; setOAuthToken(token: string): unknown; setDeveloperKey(key: string): unknown; setAppId(id: string): unknown; setCallback(fn: (data: PickerData) => void): unknown; build(): { setVisible(v: boolean): void } }; DocsView: new (id?: unknown) => { setMimeTypes(types: string): unknown; setIncludeFolders(v: boolean): unknown }; ViewId: { DOCS: unknown }; Action: { PICKED: string } } };
+type GoogleGlobal = { picker: { PickerBuilder: new () => { addView(view: unknown): unknown; setOAuthToken(token: string): unknown; setDeveloperKey(key: string): unknown; setAppId(id: string): unknown; setCallback(fn: (data: PickerData) => void): unknown; build(): { setVisible(v: boolean): void } }; DocsView: new (id?: unknown) => { setMimeTypes(types: string): unknown; setIncludeFolders(v: boolean): unknown; setMode(mode: unknown): unknown }; DocsUploadView: new () => unknown; DocsViewMode: { LIST: unknown }; ViewId: { DOCS: unknown }; Action: { PICKED: string } } };
 declare global { interface Window { gapi?: { load(name: string, done: () => void): void }; google?: GoogleGlobal } }
 
 /** Loads Google's Picker script only after the owner asks to choose a file. */
@@ -68,10 +68,13 @@ export function GoogleConnect({ owner, configured, connection, files, customers,
     if (!session.ok) { setMessage(session.message); return; }
     let google: GoogleGlobal;
     try { google = await loadPicker(); } catch { setMessage(googleMessage("GOOGLE_UNAVAILABLE")); return; }
+    // A flat, searchable list of the owner's spreadsheets (no folders to dig through), plus an Upload tab
+    // for an Excel or CSV file that is only on their computer: Google stores it in their Drive so it can keep syncing.
     const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
-    view.setMimeTypes(PICKER_MIMES); view.setIncludeFolders(true);
+    view.setMimeTypes(PICKER_MIMES); view.setIncludeFolders(false); view.setMode(google.picker.DocsViewMode.LIST);
+    const upload = new google.picker.DocsUploadView();
     const builder = new google.picker.PickerBuilder() as unknown as Record<string, (value: unknown) => unknown> & { build(): { setVisible(v: boolean): void } };
-    builder.addView(view); builder.setOAuthToken(session.data.token); builder.setDeveloperKey(session.data.pickerKey); builder.setAppId(session.data.projectNumber);
+    builder.addView(view); builder.addView(upload); builder.setOAuthToken(session.data.token); builder.setDeveloperKey(session.data.pickerKey); builder.setAppId(session.data.projectNumber);
     builder.setCallback((data: unknown) => {
       const picked = data as PickerData;
       if (picked.action !== google.picker.Action.PICKED || !picked.docs?.[0]) return;
