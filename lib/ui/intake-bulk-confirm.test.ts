@@ -15,9 +15,14 @@ describe("Review Inbox bulk selection", () => {
   it("offers labelled checkboxes only for pending, parseable items", () => {
     const html = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1"), item("2", "needs_match"), item("3", "applied"), item("4", "pending", {} as typeof invoice)], revision: 0 }));
     expect(html.match(/type="checkbox"/g)).toHaveLength(1);
-    expect(html).toContain('aria-label="Select ROW-1 for confirming"');
-    for (const suffix of ["2", "3", "4"]) expect(html).not.toContain("Select ROW-" + suffix + " for confirming");
+    // The wrapping label names each checkbox with the full row description.
+    expect(html).toMatch(/<label[^>]*><input type="checkbox"[^>]*\/>Invoice Fictional[^<]*Source row ROW-1/);
+    for (const suffix of ["2", "3", "4"]) expect(html).not.toContain("Source row ROW-" + suffix + " ·");
     expect(html).toContain("Select all clean");
+  });
+  it("describes each row with its number, amount, due date and file so repeated source IDs can be told apart", () => {
+    const html = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1")], revision: 0, sourceLabels: { "20000000-0000-4000-8000-000000000002": "Fictional ledger" } }));
+    for (const text of ["Fictional", "125.00", "due 2026-11-10", "Source row ROW-1", "Fictional ledger"]) expect(html).toContain(text);
   });
   it("disables confirmation when nothing is selected", () => {
     const html = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1")], revision: 0 }));

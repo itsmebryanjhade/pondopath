@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { confirmSelectedIntakeAction } from "@/app/(workspace)/imports/actions";
-import { parseIntakeCandidate } from "@/lib/domain/intake";
+import { parseIntakeCandidate, type IntakeCandidate } from "@/lib/domain/intake";
+import { formatPHP } from "@/lib/domain/money";
 import type { confirmSelectedIntake, IntakeItem } from "@/lib/server/intake";
 
 type BulkResult = Awaited<ReturnType<typeof confirmSelectedIntake>>;
@@ -14,16 +15,22 @@ export function IntakeBulkResult({ result, items }: { result: BulkResult; items:
   </div>;
 }
 
-export function IntakeBulkConfirm({ items, revision }: { items: IntakeItem[]; revision: number }) {
+/** What the person is confirming, so rows with the same source ID from different files can be told apart. */
+function describe(item: IntakeItem, candidate: IntakeCandidate, sourceLabels: Record<string, string>) {
+  const title = candidate.type === "save_invoice" ? `Invoice ${candidate.payload.number}` : `Expense ${candidate.payload.label}`;
+  return `${title} · ${formatPHP(candidate.payload.amountCents)} · due ${candidate.payload.dueDate} · Source row ${item.external_id} · ${sourceLabels[item.source_id] ?? "Source unavailable"}`;
+}
+
+export function IntakeBulkConfirm({ items, revision, sourceLabels = {} }: { items: IntakeItem[]; revision: number; sourceLabels?: Record<string, string> }) {
   const router = useRouter();
   const [busy, start] = useTransition();
   const [selection, setSelection] = useState<string[]>([]);
   const [result, setResult] = useState<BulkResult | null>(null);
   const [notice, setNotice] = useState("");
   // Keep this check local: the equivalent server helper belongs to a server-only module.
-  const clean = items.filter(item => {
-    if (item.status !== "pending") return false;
-    try { parseIntakeCandidate(item.candidate); return true; } catch { return false; }
+  const clean = items.flatMap(item => {
+    if (item.status !== "pending") return [];
+    try { return [{ ...item, summary: describe(item, parseIntakeCandidate(item.candidate), sourceLabels) }]; } catch { return []; }
   });
   const selected = clean.filter(item => selection.includes(item.id));
   return <section className="records-panel" aria-label="Confirm selected proposals"><div className="intake-panel-body">
@@ -36,7 +43,7 @@ export function IntakeBulkConfirm({ items, revision }: { items: IntakeItem[]; re
         router.refresh();
       });
     }}>
-      {clean.map(item => <label className="intake-confirm" key={item.id}><input type="checkbox" aria-label={"Select " + item.external_id + " for confirming"} disabled={busy} checked={selection.includes(item.id)} onChange={event => setSelection(current => event.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} />Source row {item.external_id}</label>)}
+      {clean.map(item => <label className="intake-confirm" key={item.id}><input type="checkbox" disabled={busy} checked={selection.includes(item.id)} onChange={event => setSelection(current => event.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} />{item.summary}</label>)}
       <div className="intake-buttons"><button type="button" className="button secondary" disabled={busy} onClick={() => setSelection(clean.map(item => item.id))}>Select all clean</button><button className="button" disabled={busy || selected.length === 0}>Confirm selected ({selected.length})</button></div>
     </form>
     {result && <IntakeBulkResult result={result} items={items} />}
