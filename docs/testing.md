@@ -29,6 +29,8 @@ Task 16 (XLSX import) owning checks passed on 6 November with Node 24.22.1: 75 u
 
 Connect Google (demo item D2) checks passed on 6 November with Node 24.22.1: 476 unit/UI tests, 130 integration tests (including `tests/integration/google-connect.test.ts`), typecheck and the Webpack production build. The live proof with Bryan's Google test account (sign-in, picking, setup, sync, repeat sync, edited row, recovery) is recorded as `connectGoogleProof` in the [runtime evidence](mvp-runtime-evidence.json), including what was not checked.
 
+Add records (workspace piece 1) checks passed on 7 November with Node 24: 548 unit/UI tests, `tests/integration/intake.test.ts` 10/10, typecheck and the production build (`/add` listed). Browser, with the fictional `public/samples/pondopath-mixed.csv`: drag over any page shows "Drop to import" and hides on leave, dragged text is ignored, a `.pdf` gives the notice toast, a drop on Overview opens `/add` and reaches the Check step in about 1.8 seconds with "We found 4 invoices and 2 expenses.", no horizontal overflow at desktop or 375px, and 44px buttons. Not done in the browser: pressing Send (it would add proposals to the shared workspace; staging is covered by the intake integration tests), a real Google sign-in, and an emulated reduced-motion pass.
+
 ## Build and runtime notes
 
 The production build downloads Google Fonts and needs network access. Next.js Cache Components and Partial Prefetching remain enabled. Node-RED will run separately from Next.js/Vercel. Read [AGENTS.md](../AGENTS.md) before implementation.
