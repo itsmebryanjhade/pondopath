@@ -19,13 +19,13 @@ const steps = [
 ] as const;
 
 const features = [
-  ["calendar", "30-day cash forecast", "See the earliest shortfall, biggest gap and the records behind it."],
-  ["receipt", "Collections workspace", "Keep unpaid, due and overdue invoices beside their next action."],
-  ["arrowIn", "Reply to cash impact", "Review an English, Tagalog or Taglish reply before its proposed update is saved."],
-  ["sparkle", "What-if comparison", "Move a payment from Friday to Monday without changing real records."],
-  ["alert", "Owner-approved reminders", "Edit, approve, then copy a draft into the channel your team already uses."],
-  ["arrowRight", "Missed-promise follow-ups", "Create a task when a promised date passes without a recorded payment."],
-  ["more", "Full history", "See who changed what, when it changed and why."],
+  ["calendar", "30-day cash forecast", "See the earliest shortfall, biggest gap and the records behind it.", []],
+  ["receipt", "Collections workspace", "Keep unpaid, due and overdue invoices beside their next action.", ["Unpaid", "Due", "Overdue"]],
+  ["arrowIn", "Reply to cash impact", "Review an English, Tagalog or Taglish reply before its proposed update is saved.", ["English", "Tagalog", "Taglish"]],
+  ["sparkle", "What-if comparison", "Move a payment from Friday to Monday without changing real records.", ["Friday \u2192 Monday"]],
+  ["alert", "Owner-approved reminders", "Edit, approve, then copy a draft into the channel your team already uses.", ["Edit", "Approve", "Copy"]],
+  ["arrowRight", "Missed-promise follow-ups", "Create a task when a promised date passes without a recorded payment.", ["Task created"]],
+  ["more", "Full history", "See who changed what, when it changed and why.", ["Who", "When", "Why"]],
 ] as const;
 
 const controls = [
@@ -213,11 +213,22 @@ export default function Home() {
         <ViewportSection id="features" className={`${styles.section} ${styles.featuresSection}`} activeClassName={styles.sectionMotion} aria-labelledby="features-heading">
           <SectionHeading id="features-heading" eyebrow="Built around the work" title="The cash plan stays connected to the records behind it." />
           <div className={styles.featureGrid}>
-            {features.map(([icon, title, body], index) => (
-              <article className={styles.featureCard} key={title} style={stagger(index)}>
-                <span className={styles.cardIcon}><DashboardIcon name={icon} /></span>
-                <h3>{title}</h3>
-                <p>{body}</p>
+            {features.map(([icon, title, body, chips], index) => (
+              <article className={`${styles.featureCard} ${index === 0 ? styles.featureWide : ""}`} key={title} style={stagger(index)}>
+                <div className={styles.featureBody}>
+                  <span className={styles.cardIcon}><DashboardIcon name={icon} /></span>
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                  {chips.length > 0 && <ul className={styles.featureChips}>{chips.map((chip) => <li key={chip}>{chip}</li>)}</ul>}
+                </div>
+                {index === 0 && (
+                  <svg className={styles.featureChart} viewBox="0 0 260 112" aria-hidden="true" focusable="false">
+                    <line className={styles.featureZero} x1="0" y1="64" x2="260" y2="64" />
+                    <path className={styles.featureLine} pathLength="1" d="M4 26 C40 24 70 30 100 50 S150 98 176 92 S236 46 256 38" fill="none" />
+                    <circle className={styles.featureDot} cx="150" cy="88" r="5" />
+                    <text className={styles.featureNote} x="160" y="106">Below zero Friday</text>
+                  </svg>
+                )}
               </article>
             ))}
           </div>
