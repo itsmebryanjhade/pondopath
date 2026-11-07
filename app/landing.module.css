@@ -232,12 +232,6 @@
   100% { color: var(--red-700); transform: scale(1); }
 }
 .featureCard { min-width: 0; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-soft); }
-.stepGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 48px 0 0; padding: 0; list-style: none; }
-.stepGrid li { position: relative; padding: 28px 26px 0; border-top: 1px solid var(--line-dark); }
-.stepGrid li::before { position: absolute; top: -4px; left: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--green-500); content: ""; }
-.stepGrid li:first-child { padding-left: 0; }
-.stepGrid li span { color: var(--green-700); font-size: 12px; font-weight: 700; }
-.stepGrid li p { margin-top: 16px; color: var(--ink-soft); font-size: 14px; line-height: 1.75; }
 .featuresSection { max-width: none; background: radial-gradient(circle at 8% 12%, rgb(211 233 218 / 55%), transparent 22%), #f4f6f2; padding-inline: max(40px, calc((100vw - 1360px) / 2)); }
 .featureGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 44px; }
 .featureCard { background: var(--surface); box-shadow: var(--shadow-sm); transition: transform 180ms ease, box-shadow 180ms ease; }
@@ -314,7 +308,6 @@
   .cashRail > li:not(:first-child) { padding-left: 24px; }
   .problemFooter { align-items: flex-start; flex-direction: column; gap: 16px; }
   .audienceGrid { grid-template-columns: 1fr; }
-  .stepGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 0; }
   .featureGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .exampleSection, .plannedSection, .faqSection { grid-template-columns: 1fr; gap: 40px; }
   .controlSection { grid-template-columns: 1fr; gap: 48px; padding: 68px 24px; }
@@ -365,10 +358,6 @@
   .cashRail li > strong { font-size: 2rem; }
   .shortfallMarker { max-width: 320px; margin-top: 16px; }
   .problemSources { gap: 10px 18px; }
-  .stepGrid { grid-template-columns: 1fr; gap: 0; }
-  .stepGrid li, .stepGrid li:first-child { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 22px 0; }
-  .stepGrid li::before { display: none; }
-  .stepGrid li p { margin-top: 0; }
   .featureGrid { grid-template-columns: 1fr; }
   .featureCard { padding: 22px; }
   .controlSection { padding: 58px 18px; }
@@ -398,8 +387,7 @@
 .plannedSection li.liveItem span { background: var(--green-100); color: var(--green-700); }
 .liveItem strong { font-size: 13px; }
 .liveItem small { color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
-.sectionMotion .stepGrid li, .sectionMotion .featureCard, .sectionMotion .controlList li, .sectionMotion .recordList li { animation: reveal-up 560ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 70ms) backwards; }
-.sectionMotion .stepGrid li::before { animation: dot-pop 420ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 70ms + 220ms) backwards; }
+.sectionMotion .stepCard, .sectionMotion .featureCard, .sectionMotion .controlList li, .sectionMotion .recordList li { animation: reveal-up 560ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 70ms) backwards; }
 @keyframes reveal-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes dot-pop { from { transform: scale(0); } to { transform: scale(1); } }
 
@@ -431,6 +419,25 @@
 .compareVisible.compareRisk .compareResult strong { animation: shortfall-emphasis 720ms cubic-bezier(.2, .8, .2, 1) 1000ms backwards; }
 @keyframes bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 @media (max-width: 860px) { .compareGrid { grid-template-columns: 1fr; } }
+
+.howSection { padding-block: 68px; }
+.stepGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 36px 0 0; padding: 0; list-style: none; }
+.stepCard { position: relative; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-sm); transition: transform 180ms ease, box-shadow 180ms ease; }
+.stepCard:hover { box-shadow: var(--shadow-float); transform: translateY(-2px); }
+.stepTop { display: flex; align-items: center; justify-content: space-between; }
+.stepIcon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; background: var(--green-100); color: var(--green-700); }
+.stepCard:nth-child(2) .stepIcon { background: var(--blue-100); color: var(--blue-700); }
+.stepCard:nth-child(3) .stepIcon { background: var(--purple-100); color: var(--purple-700); }
+.stepCard:nth-child(4) .stepIcon { background: var(--amber-100); color: var(--amber-700); }
+.stepNumber { color: var(--line-dark); font-family: var(--font-landing-heading), sans-serif; font-size: 28px; font-weight: 750; letter-spacing: -.04em; }
+.stepCard h3 { margin-top: 18px; font-size: 16px; letter-spacing: -.02em; }
+.stepCard p { margin-top: 8px; color: var(--ink-soft); font-size: 13px; line-height: 1.65; }
+.stepWho { align-self: flex-start; margin-top: auto; padding: 4px 9px; border-radius: 999px; background: var(--green-50); color: var(--green-700); font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.stepCard p + .stepWho { margin-top: 16px; }
+.sectionMotion .stepIcon { animation: dot-pop 460ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 70ms + 220ms) backwards; }
+.sectionMotion .stepWho { animation: reveal-up 480ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 70ms + 420ms) backwards; }
+@media (max-width: 1180px) { .stepGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .stepGrid { grid-template-columns: 1fr; } .howSection { padding-block: 52px; } }
 
 @media (prefers-reduced-motion: reduce) {
   .landing *, .landing *::before, .landing *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }

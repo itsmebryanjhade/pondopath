@@ -12,11 +12,11 @@ const bodyFont = DM_Sans({ subsets: ["latin"], display: "swap" });
 const headingFont = Manrope({ subsets: ["latin"], display: "swap", variable: "--font-landing-heading" });
 
 const steps = [
-  "Enter unpaid invoices, expenses and opening cash.",
-  "See your 30-day forecast with the earliest shortage and its amount.",
-  "Paste a customer reply. PondoPath proposes a date and amount update, and you confirm it.",
-  "Follow up with owner-approved reminders and automatic checks on missed promises.",
-];
+  ["receipt", "Enter your records", "Add unpaid invoices, expenses and opening cash, or bring them in from a file.", "You"],
+  ["calendar", "See your 30-day forecast", "The earliest shortage and its amount appear right away, calculated by programmed rules.", "Automatic"],
+  ["sparkle", "Turn replies into updates", "Paste a customer reply. PondoPath proposes a new date and amount for you to review.", "You confirm"],
+  ["bell", "Follow up with confidence", "Send owner-approved reminders and get a task when a promised date passes.", "Owner approves"],
+] as const;
 
 const features = [
   ["calendar", "30-day cash forecast", "See the earliest shortfall, biggest gap and the records behind it."],
@@ -195,11 +195,16 @@ export default function Home() {
           </div>
         </ViewportSection>
 
-        <ViewportSection id="how-it-works" className={styles.section} activeClassName={styles.sectionMotion} aria-labelledby="workflow-heading">
+        <ViewportSection id="how-it-works" className={`${styles.section} ${styles.howSection}`} activeClassName={styles.sectionMotion} aria-labelledby="workflow-heading">
           <SectionHeading id="workflow-heading" eyebrow="How it works" title="From scattered records to today’s next action." description="One reviewable workflow. Your team confirms every change." />
           <ol className={styles.stepGrid}>
-            {steps.map((step, index) => (
-              <li key={step} style={stagger(index)}><span>0{index + 1}</span><p>{step}</p></li>
+            {steps.map(([icon, title, body, who], index) => (
+              <li className={styles.stepCard} key={title} style={stagger(index)}>
+                <div className={styles.stepTop}><span className={styles.stepIcon}><DashboardIcon name={icon} size={20} /></span><span className={styles.stepNumber}>0{index + 1}</span></div>
+                <h3>{title}</h3>
+                <p>{body}</p>
+                <span className={styles.stepWho}>{who}</span>
+              </li>
             ))}
           </ol>
           <p className={styles.audienceLine}>Made for finance and admin staff, owners and managers, and owner-operators who do both.</p>
