@@ -577,6 +577,11 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .add-overlay-box { display: grid; justify-items: center; gap: 8px; padding: 32px 48px; border: 2px dashed #9cd3ae; border-radius: 20px; text-align: center; }
 .add-overlay-box strong { font-size: 22px; }
 .add-overlay-box span { color: #cfe5d6; font-size: 13px; }
+.add-google { animation: add-in 300ms cubic-bezier(.2, .8, .2, 1) both; }
+.add-adjust { border: 1px solid #e3e7e1; border-radius: 12px; background: #fff; }
+.add-adjust > summary { min-height: 44px; padding: 12px 14px; color: #173e2d; cursor: pointer; font-size: 14px; font-weight: 600; }
+.add-adjust[open] > summary { border-bottom: 1px solid #edf0eb; }
+.add-adjust > .import-selector { padding: 14px; }
 @keyframes add-pop { from { opacity: 0; transform: scale(.5); } }
 @keyframes add-in { from { opacity: 0; transform: translateY(10px); } }
 @keyframes add-fade { from { opacity: 0; } }
