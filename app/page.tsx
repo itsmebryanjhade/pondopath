@@ -4,6 +4,7 @@ import { DM_Sans, Manrope } from "next/font/google";
 import { DashboardIcon } from "@/components/dashboard-icon";
 import { LandingMobileMenu } from "@/components/landing-mobile-menu";
 import { LandingPreview } from "@/components/landing-preview";
+import { CONTACT_EMAIL } from "@/components/legal-page";
 import { ProductBrand } from "@/components/product-brand";
 import { CountUpAmount, MotionListItem, ViewportSection } from "@/components/viewport-motion";
 import styles from "./landing.module.css";
@@ -81,6 +82,8 @@ const timelines = [
     resultLabel: "Friday shortfall", result: 40_000, note: "The balance recovers Monday, but payroll day still needs action.",
   },
 ] as const;
+
+const ctaPoints = ["Free during the pilot", "No card needed", "Your team confirms every change"];
 
 const stagger = (index: number) => ({ "--i": index }) as CSSProperties;
 
@@ -311,19 +314,32 @@ export default function Home() {
           </div>
         </ViewportSection>
 
-        <section id="faq" className={`${styles.section} ${styles.faqSection}`} aria-labelledby="faq-heading">
-          <SectionHeading id="faq-heading" eyebrow="FAQ" title="Straight answers before you start." />
+        <ViewportSection id="faq" className={`${styles.section} ${styles.faqSection}`} activeClassName={styles.sectionMotion} aria-labelledby="faq-heading">
+          <div className={styles.faqIntro}>
+            <SectionHeading id="faq-heading" eyebrow="FAQ" title="Straight answers before you start." />
+            <div className={styles.faqHelp}>
+              <span className={styles.cardIcon}><DashboardIcon name="bell" /></span>
+              <div><strong>Still have a question?</strong><p>Email us at <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</p></div>
+            </div>
+          </div>
           <div className={styles.faqList}>
-            {faqs.map(([question, answer]) => (
-              <details key={question}><summary>{question}<DashboardIcon name="chevron" /></summary><p>{answer}</p></details>
+            {faqs.map(([question, answer], index) => (
+              <details key={question} style={stagger(index)}><summary>{question}<span className={styles.faqToggle} aria-hidden="true" /></summary><p>{answer}</p></details>
             ))}
           </div>
-        </section>
+        </ViewportSection>
 
-        <section className={styles.finalCta} aria-labelledby="cta-heading">
-          <div><p className={styles.eyebrow}>Your next cash decision</p><h2 id="cta-heading">Ready to see your next 30 days?</h2></div>
-          <div><Link className={styles.lightButton} href="/signup">Create workspace <Arrow /></Link><Link className={styles.darkOutlineButton} href="/login">Log in</Link></div>
-        </section>
+        <ViewportSection className={styles.finalCta} activeClassName={styles.ctaMotion} aria-labelledby="cta-heading">
+          <div className={styles.ctaCopy}>
+            <p className={styles.eyebrow}>Your next cash decision</p>
+            <h2 id="cta-heading">Ready to see your next 30 days?</h2>
+            <p>Create your workspace and see your first forecast.</p>
+            <ul className={styles.ctaPoints}>
+              {ctaPoints.map((point, index) => <li key={point} style={stagger(index)}><SafetyIcon name="check" />{point}</li>)}
+            </ul>
+          </div>
+          <div className={styles.ctaActions}><Link className={styles.lightButton} href="/signup">Create workspace <Arrow /></Link><Link className={styles.darkOutlineButton} href="/login">Log in</Link></div>
+        </ViewportSection>
       </main>
 
       <footer className={styles.footer}>
