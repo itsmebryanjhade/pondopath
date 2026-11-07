@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
-import { CheckSummary, ChoiceCards, DoneState, DropArea, ManualLinks, StepIndicator } from "@/components/add-records-parts";
+import { CheckSummary, ChoiceCards, DoneState, DropArea, StepIndicator } from "@/components/add-records-parts";
 
 const BANNED = /KiB|UTF|row ID|YYYY|source/i;
 const html = (element: ReturnType<typeof createElement>) => renderToStaticMarkup(element).replaceAll("&#x27;", "'");
@@ -59,13 +59,6 @@ describe("Add records building blocks", () => {
     expect(closed).not.toContain("href=");
     const open = html(createElement(ChoiceCards, { googleOpen: false, onConnectGoogle: vi.fn(), manualOpen: true, onManual: vi.fn() }));
     expect(open.match(/aria-expanded="true"/g)).toHaveLength(1);
-  });
-  it("ManualLinks keeps the old Quick add shortcuts in plain words", () => {
-    const markup = html(createElement(ManualLinks));
-    expect(markup).toMatch(/href="\/invoices#new-invoice"[^>]*>[\s\S]*?Add an invoice/);
-    expect(markup).toMatch(/href="\/expenses#new-expense"[^>]*>[\s\S]*?Add an expense/);
-    expect(markup).toMatch(/href="\/invoices\?filter=unpaid"[^>]*>[\s\S]*?Record a payment you received/);
-    expect(visibleText(markup)).not.toMatch(/verified|Quick add/i);
   });
   it("marks where focus goes after each step change", () => {
     const check = html(createElement(CheckSummary, { summary: "We found 1 invoice.", held: "", headers: ["Ref"], rows: [{ cells: ["A"], label: "invoice" }] }));

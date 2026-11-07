@@ -2,27 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { ActivityFilter, ActivityRow } from "@/lib/ui/cash-overview";
+import type { ActivityFilter, ActivityRow, InvoiceListItem } from "@/lib/ui/cash-overview";
 import { filterActivityRows } from "@/lib/ui/cash-overview";
 import { formatPHP } from "@/lib/domain/money";
 import { formatPlanDate } from "@/lib/display";
 import { DashboardIcon } from "./dashboard-icon";
+import { InvoiceDrawer } from "./invoice-drawer";
 
 const filters: { value: ActivityFilter; label: string }[] = [{ value: "all", label: "All" }, { value: "invoices", label: "Invoices" }, { value: "expenses", label: "Expenses" }, { value: "attention", label: "Needs attention" }];
 
-export function CashActivity({ rows }: { rows: ActivityRow[] }) {
+export function CashActivity({ rows, invoices = [] }: { rows: ActivityRow[]; invoices?: InvoiceListItem[] }) {
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [page, setPage] = useState(1);
   const matching = filterActivityRows(rows, filter);
   const pages = Math.max(1, Math.ceil(matching.length / 6));
   const current = Math.min(page, pages);
   const visible = matching.slice((current - 1) * 6, current * 6);
+  const open = (row: ActivityRow) => (row.kind === "invoice" ? `${row.href}?from=overview` : row.href);
   const attentionCount = rows.filter((row) => row.needsAttention).length;
   return (
     <section id="cash-activity" className="activity-panel" aria-labelledby="activity-heading">
       <div className="activity-head">
         <div><h2 id="activity-heading">Cash-flow activity</h2><p>Customer invoices and unpaid expenses that need a next step.</p></div>
-        <Link className="text-button" href="/invoices">Review invoices <DashboardIcon name="arrowRight" size={16} /></Link>
+        <InvoiceDrawer invoices={invoices} />
       </div>
       <div className="table-tools">
         <div className="filter-tabs" role="group" aria-label="Filter cash-flow activity">
@@ -35,11 +37,11 @@ export function CashActivity({ rows }: { rows: ActivityRow[] }) {
           <caption className="sr-only">Unpaid customer invoices and expenses, with source records and reviewed receipt expectations</caption>
           <thead><tr><th scope="col">Customer / payee</th><th scope="col" className="num">Outstanding</th><th scope="col">Original due</th><th scope="col">Expected payment</th><th scope="col">Status</th><th scope="col">Next action</th></tr></thead>
           <tbody>{visible.map((row) => <tr key={`${row.kind}-${row.id}`}>
-            <th scope="row"><div className="entity"><span aria-hidden="true" className={`entity-logo ${row.kind}`}>{row.label.trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</span><div><Link href={row.href}><strong>{row.label}</strong></Link><span>{row.reference}</span></div></div></th>
+            <th scope="row"><div className="entity"><span aria-hidden="true" className={`entity-logo ${row.kind}`}>{row.label.trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</span><div><Link href={open(row)}><strong>{row.label}</strong></Link><span>{row.reference}</span></div></div></th>
             <td className="num"><strong className="amount">{formatPHP(row.amountCents)}</strong><span className="cell-sub">{row.kind === "invoice" ? "Invoice" : "Expense"}</span></td>
             <td>{formatPlanDate(row.dueDate)}</td><td>{row.expected}</td>
             <td><span className={`status ${row.tone === "upcoming" ? "scheduled" : row.tone}`}><i />{row.status}</span></td>
-            <td><Link className="action-link" href={row.href} aria-label={`Review ${row.kind}: ${row.reference}`}>Review {row.kind}<DashboardIcon name="arrowRight" size={14} /></Link></td>
+            <td><Link className="row-action" href={open(row)} aria-label={`Review ${row.kind}: ${row.reference}`}>Review<DashboardIcon name="arrowRight" size={14} /></Link></td>
           </tr>)}</tbody>
         </table>
       </div>

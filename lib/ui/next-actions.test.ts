@@ -212,3 +212,43 @@ describe("NextActions source links", () => {
     expect(html).toContain("No date set");
   });
 });
+
+describe("NextActions makes the next step obvious", () => {
+  it("names the customer and amount in a plain headline and keeps a person's own instruction", () => {
+    const workspace = uiWorkspace();
+    const promise = expectation(workspace);
+    workspace.expectations = [promise];
+    workspace.forecastInput.invoices[0].expectation = { id: promise.id, date: promise.expected_date, remainingCents: promise.remaining_cents, kind: "commitment", needsReview: false };
+    workspace.followups = [followup(workspace, { expectation_id: promise.id })];
+    const [action] = buildNextActions(workspace);
+    expect(action.headline).toBe("Check if Demo customer paid ₱50,000");
+    expect(action.detail).toBe("DEMO-001 · promised 28 Oct");
+    // The headline already covers a missed promise, so the saved note is not repeated.
+    expect(action.note).toBeUndefined();
+  });
+  it("asks for a payment date in plain words when none is set", () => {
+    const workspace = uiWorkspace();
+    workspace.forecastInput.invoices[0].expectation = null;
+    expect(buildNextActions(workspace)[0].headline).toBe("Ask Demo customer when they'll pay ₱50,000");
+  });
+  it("marks the first item, shows the count, flags lateness and highlights the viewer's own tasks", () => {
+    const workspace = uiWorkspace();
+    workspace.followups = [followup(workspace, { due_date: "2026-10-27" })];
+    workspace.forecastInput.invoices[0].expectation = null;
+    const html = renderToStaticMarkup(createElement(NextActions, { workspace })).replaceAll("&#x27;", "'");
+    expect(html).toContain("Do this first");
+    expect(html).toContain("2 to do");
+    expect(html).toMatch(/class="next-chip is-mine"><span class="sr-only">Assigned to <\/span>You</);
+    expect(html).toMatch(/class="next-chip due-late"[^>]*>Follow-up late since 27 Oct/);
+    expect(html).toContain("Next step: Check whether the customer paid");
+    expect(html.match(/class="next-actions-item[^"]*is-first/g)).toHaveLength(1);
+  });
+  it("says everything is done when nothing is waiting", () => {
+    const workspace = uiWorkspace();
+    workspace.invoices = []; workspace.forecastInput.invoices = [];
+    const html = renderToStaticMarkup(createElement(NextActions, { workspace }));
+    expect(html).toContain("All caught up");
+    expect(html).not.toContain("to do");
+  });
+});
+

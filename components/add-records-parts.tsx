@@ -89,17 +89,6 @@ export function ChoiceCards({ googleOpen, onConnectGoogle, manualOpen, onManual 
   );
 }
 
-/** The shortcuts that used to live in the header's Quick add menu. */
-export function ManualLinks() {
-  return (
-    <ul className="add-manual">
-      <li><Link href="/invoices#new-invoice"><span className="add-card-icon"><Icon name="file" /></span><span><strong>Add an invoice</strong><small>Money a customer owes you</small></span></Link></li>
-      <li><Link href="/expenses#new-expense"><span className="add-card-icon"><Icon name="upload" /></span><span><strong>Add an expense</strong><small>A bill you need to pay</small></span></Link></li>
-      <li><Link href="/invoices?filter=unpaid"><span className="add-card-icon"><Icon name="download" /></span><span><strong>Record a payment you received</strong><small>Pick the invoice it paid</small></span></Link></li>
-    </ul>
-  );
-}
-
 export type PreviewRow = { cells: string[]; label?: RowLabel };
 const CHIP: Partial<Record<RowLabel, string>> = { invoice: "Invoice", expense: "Expense", payment: "Payment", choose: "Needs you" };
 

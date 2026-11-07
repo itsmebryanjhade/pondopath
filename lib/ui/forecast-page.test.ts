@@ -25,28 +25,28 @@ describe("source Forecast layout preserves calculated risk", () => {
     expect(html).toContain('id="forecast-main-chart-fill"');
     expect(html.match(/<tbody>([\s\S]+?)<\/tbody>/)?.[1].match(/<tr/g)).toHaveLength(30);
     expect(html).toContain("data-scenario=");
-    expect(html).toContain(`/invoices/${uiWorkspace().invoices[0].id}?plan=edit#collection-plan`);
-    expect(html).toContain("Review expected payment for");
+    expect(html).toContain("Before you trust this forecast");
+    expect(html).not.toContain("Compare a scenario");
   });
   it("keeps incomplete promises and overdue due-now expenses visible", async () => {
     const workspace = uiWorkspace();
     workspace.forecastInput.invoices[0].expectation!.remainingCents = 3_000_000;
     workspace.forecastInput.expenses[0].dueDate = "2026-10-28";
     const html = await render(workspace);
-    expect(html).toContain("Incomplete plan: 1 unpaid invoices");
-    expect(html).toContain("1 overdue expenses treated as due now");
-    expect(html).toContain("Largest projected shortfall");
-    expect(html).toContain("Zero cash leaves no buffer");
+    expect(html).toContain("Incomplete plan: 1 unpaid invoice has money with no expected date");
+    expect(html).toContain(`/invoices/${workspace.invoices[0].id}?plan=edit#collection-plan`);
+    expect(html).toContain("1 overdue bill is counted as due today");
+    expect(html).toContain("isn’t money received");
   });
   it("provides a clear scenario empty state without hiding a negative end balance", async () => {
     const workspace = uiWorkspace();
     workspace.invoices = [];
     workspace.forecastInput.invoices = [];
     const html = await render(workspace);
-    expect(html).toContain("No unpaid invoices are available");
+    expect(html).toContain("No unpaid invoices to try");
     expect(html).not.toContain("data-scenario=");
     expect(html).toContain("-₱40,000.00");
     expect(html).toContain('class="num forecast-below-zero"');
-    expect(html).not.toContain("Review expected payment for");
+    expect(html).not.toContain("Update date");
   });
 });

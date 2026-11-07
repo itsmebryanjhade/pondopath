@@ -16,7 +16,7 @@ import { z } from "zod";
 
 type InvoiceDetailProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ history?: string; movement?: string; plan?: string }>;
+  searchParams: Promise<{ history?: string; movement?: string; plan?: string; from?: string }>;
 };
 
 export default async function InvoiceDetail({ params, searchParams }: InvoiceDetailProps) {
@@ -41,8 +41,9 @@ export default async function InvoiceDetail({ params, searchParams }: InvoiceDet
   if (query.movement && !movements.length) notFound();
   return (
     <WorkspaceShell workspace={workspace}>
-      <Link className="back-link" href="/invoices">
-        ← Customer invoices
+      {/* Opened from the Overview: go back there, not to the Invoices list. */}
+      <Link className="back-link" href={query.from === "overview" ? "/overview#cash-activity" : "/invoices"}>
+        {query.from === "overview" ? "← Back to overview" : "← Customer invoices"}
       </Link>
       <div className="page-heading">
         <div>

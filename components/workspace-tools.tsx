@@ -6,9 +6,10 @@ import Link from "next/link";
 import { DashboardIcon } from "./dashboard-icon";
 import type { ActivityRow } from "@/lib/ui/cash-overview";
 import { filterActivityRows } from "@/lib/ui/cash-overview";
+import { RefreshRecords } from "./refresh-records";
 
-export function WorkspaceTools({ rows, name, role, businessName, accountActions, brand }: {
-  rows: ActivityRow[]; name: string; role: string; businessName: string;
+export function WorkspaceTools({ rows, name, role, businessName, accountActions, brand, planDate }: {
+  rows: ActivityRow[]; name: string; role: string; businessName: string; planDate?: string;
   accountActions: React.ReactNode; brand: React.ReactNode;
 }) {
   const [query, setQuery] = useState("");
@@ -54,6 +55,10 @@ export function WorkspaceTools({ rows, name, role, businessName, accountActions,
       <div className="nav-wrap">
         <div className="mobile-brand">{brand}</div>
         <div className="nav-actions">
+        {planDate && <div className="topbar-plan">
+          <span className="topbar-date" title="Plan date, Philippine time"><DashboardIcon name="calendar" size={15} />{planDate} · PHT</span>
+          <RefreshRecords compact />
+        </div>}
         <button ref={searchToggle} type="button" className="icon-button mobile-search-toggle" aria-label="Search records" aria-controls="workspace-record-search" aria-expanded={mobileSearchOpen} onClick={() => { closeMenus(); setMobileSearchOpen(!mobileSearchOpen); }}><DashboardIcon name="search" size={17} /></button>
         <div id="workspace-record-search" className={`workspace-search search${mobileSearchOpen ? " mobile-search-open" : ""}`} role="search" aria-label="Find an invoice or expense" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setQuery(""); }}>
           <DashboardIcon name="search" size={17} /><input ref={searchInput} type="search" aria-label="Search invoices and expenses" placeholder="Search your records" value={query} onChange={(event) => setQuery(event.target.value)} />

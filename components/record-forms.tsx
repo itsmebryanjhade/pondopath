@@ -203,11 +203,14 @@ export function ExpenseForm({
   );
 }
 
-export function OpeningCashForm({ workspace }: Context) {
+/** Opening cash: how much the business had at the start of one day. Two fields, saved once; it locks after the first payment. */
+export function OpeningCashForm({ workspace, onSaved, onCancel }: Context & { onSaved?: () => void; onCancel?: () => void }) {
   return (
     <CommandForm
       revision={workspace.revision}
-      label="Set opening cash"
+      label="Save opening cash"
+      onSaved={onSaved}
+      secondary={onCancel && <button type="button" className="button secondary" onClick={onCancel}>Cancel</button>}
       build={(data) => ({
         type: "set_opening_cash",
         payload: {
@@ -216,24 +219,22 @@ export function OpeningCashForm({ workspace }: Context) {
         },
       })}
     >
-      <p className="muted">
-        Cash available at the start of the cutoff date, before any movements entered for that date.
-        This baseline locks after the first actual payment.
-      </p>
       <div className="form-grid">
         <Field
-          label="Opening cash (PHP)"
+          label="Cash you had (PHP)"
           name="amount"
           inputMode="decimal"
           defaultValue={decimal(workspace.business.opening_cash_cents)}
+          help="Bank and cash on hand together. Use 0 if you're starting fresh."
           required
         />
         <Field
-          label="Opening cutoff date"
+          label="At the start of"
           name="date"
           type="date"
           defaultValue={workspace.business.opening_date}
           max={workspace.forecastInput.referenceDate}
+          help="Payments from this day on are counted after it."
           required
         />
       </div>

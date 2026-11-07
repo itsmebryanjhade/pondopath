@@ -28,29 +28,38 @@ describe("Cash page source layout with saved balances", () => {
     workspace.forecastInput.availableCents = 5_500_000;
     const html = renderToStaticMarkup(CashPosition({ workspace, receipts: [movement(1)], payments: [], openingControls }));
     expect(html).toContain('class="section-feature"');
-    expect(html.match(/class="section-metric"/g)).toHaveLength(3);
+    // The three metric cards were removed; their figures appear once, in the cash strip.
+    expect(html).not.toContain('class="section-metric"');
     expect(html).toContain("₱55,000.00");
     expect(html).toContain("₱20,000.00");
     expect(html).toContain("₱5,000.00");
-    expect(html).toContain("Customer promises do not change this balance");
-    expect(html).toContain('href="/payments"');
+    expect(html).toContain("Customer promises don’t count until they’re paid");
+    // Payment history now sits on this page beside the balance; no button sends people to another page.
+    expect(html).toContain('id="payment-history"');
     expect(html).toContain("Payment history");
+    expect(html).not.toContain('href="/payments"');
     expect(html).not.toContain("Bank balances");
     expect(html).toContain("Set opening cash");
+    // Opening cash + received − paid out = available now, shown as one strip.
+    const math = html.slice(html.indexOf("How your available cash is worked out"));
+    expect([...math.matchAll(/<strong class="num[^"]*">(₱[\d,.]+)<\/strong>/g)].slice(0, 4).map((m) => m[1])).toEqual(["₱40,000.00", "₱20,000.00", "₱5,000.00", "₱55,000.00"]);
   });
 
-  it("shows the latest five retained entries, with a void clearly separated from received cash", () => {
+  it("lists every retained entry newest first, with a void kept visible and linked to its record", () => {
     const receipts = Array.from({ length: 6 }, (_, i) => movement(i));
     receipts[5].voided_at = "2026-10-29T06:00:00Z";
     receipts[5].void_reason = "Duplicate entry";
     const html = renderToStaticMarkup(CashPosition({ workspace: uiWorkspace(), receipts, payments: [], openingControls }));
-    expect(html.match(/class="record-row"/g)).toHaveLength(5);
+    expect(html.match(/class="history-row/g)).toHaveLength(6);
     expect(html.indexOf("Receipt 5")).toBeLessThan(html.indexOf("Receipt 4"));
-    expect(html).not.toContain("Receipt 0");
-    expect(html).toContain("Voided receipt");
-    expect(html).toContain("Duplicate entry");
+    expect(html).toContain("Ref Receipt 0");
+    // Rows lead with the customer, not the reference.
+    expect(html).toContain("<strong>Demo customer</strong>");
+    expect(html).toContain("Voided: Duplicate entry");
     expect(html).toContain("?movement=movement-5#movement-movement-5");
-    expect(html).toContain("Latest 5 entries by time recorded");
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain("+₱1,000.00");
+    expect(html).not.toContain("Latest 5 entries");
   });
 
   it("keeps the baseline locked and owner-only, and handles empty and negative balances", () => {
@@ -58,14 +67,16 @@ describe("Cash page source layout with saved balances", () => {
     workspace.actor.role = "finance";
     workspace.forecastInput.availableCents = -100_000;
     let html = renderToStaticMarkup(CashPosition({ workspace, receipts: [], payments: [], openingControls }));
-    expect(html).toContain("Only the owner can set opening cash");
+    expect(html).toContain("Only the owner can change opening cash");
     expect(html).not.toContain("Set opening cash");
-    expect(html).toContain("No actual cash movements recorded yet");
+    expect(html).toContain("No payments recorded yet");
+    expect(html).toContain("Record money received");
     expect(html).toContain("-₱1,000.00");
     workspace.actor.role = "owner";
     workspace.business.opening_locked_at = "2026-10-29T01:00:00Z";
     html = renderToStaticMarkup(CashPosition({ workspace, receipts: [], payments: [], openingControls }));
-    expect(html).toContain("Locked after the first actual movement");
+    expect(html).toContain("Locked because a payment has been recorded");
+    expect(html).toContain('href="#payment-history"');
     expect(html).not.toContain("Set opening cash");
   });
 });

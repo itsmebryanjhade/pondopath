@@ -8,7 +8,7 @@ import type { AutoFields } from "@/lib/domain/reader";
 import type { CsvMapping } from "@/lib/domain/imports";
 import { takePendingFile } from "@/lib/ui/pending-file";
 import { PENDING_FILE_EVENT } from "@/lib/ui/pending-file-event";
-import { CheckSummary, ChoiceCards, DoneState, DropArea, ManualLinks, StepIndicator } from "./add-records-parts";
+import { CheckSummary, ChoiceCards, DoneState, DropArea, StepIndicator } from "./add-records-parts";
 import { ImportSelector, readSelectorForm, selectorProblems, type SelectorLabel } from "./import-selector";
 import { useToast } from "./toast-host";
 
@@ -51,7 +51,7 @@ export function countSelection(form: FormData, labels: SelectorLabel[]): { invoi
 type Read = { id: number; sourceId: string; file: File; sheet: string; sheets: string[]; headers: string[]; rows: (string | number | boolean | null)[][]; fields: AutoFields; labels: SelectorLabel[] };
 type Phase = { step: "file" } | { step: "check"; read: Read } | { step: "done"; fresh: number; already: number; skipped: number };
 
-export function AddRecords({ customers, googleSlot, googleOpenAtStart = false }: { customers: { id: string; name: string }[]; googleSlot: ReactNode; googleOpenAtStart?: boolean }) {
+export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStart = false }: { customers: { id: string; name: string }[]; googleSlot: ReactNode; manualSlot?: ReactNode; googleOpenAtStart?: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const [busy, start] = useTransition();
@@ -147,7 +147,7 @@ export function AddRecords({ customers, googleSlot, googleOpenAtStart = false }:
           <ChoiceCards googleOpen={googleOpen} onConnectGoogle={() => setGoogleOpen((open) => !open)} manualOpen={manualOpen} onManual={() => setManualOpen((open) => !open)} />
         </div>
         {busy && <p role="status" className="muted">Reading your file…</p>}
-        {manualOpen && <div className="add-google"><ManualLinks /></div>}
+        {manualOpen && <div className="add-google">{manualSlot}</div>}
         {googleOpen && <div className="add-google">{googleSlot}</div>}
       </>}
 

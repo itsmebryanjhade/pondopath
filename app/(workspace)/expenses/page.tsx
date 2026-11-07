@@ -115,7 +115,7 @@ export default async function Expenses({ searchParams }: ExpensePageProps) {
         <h2>Keep the payment dates visible</h2>
         <p>Overdue unpaid bills are included as due now on {formatPlanDate(workspace.forecastInput.referenceDate)}. Their original due dates stay in the records.</p>
         <p>Record a payment only after checking that money was paid. Partial payments reduce the unpaid amount and the planned outflow together.</p>
-        <Link className="expense-source-link" href="/payments">Review verified payments <DashboardIcon name="arrowRight" size={15} /></Link>
+        <Link className="expense-source-link" href="/cash#payment-history">Review verified payments <DashboardIcon name="arrowRight" size={15} /></Link>
         <div className="source-note"><span>Based on</span><strong>Saved expense records</strong></div>
       </aside>
       </section>

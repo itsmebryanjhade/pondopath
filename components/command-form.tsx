@@ -79,11 +79,17 @@ export function CommandForm({
   build,
   children,
   label = "Save changes",
+  onSaved,
+  secondary,
 }: {
   revision: number;
   build: (data: FormData) => { type: WorkspaceCommand["type"]; payload: object };
   children: ReactNode;
   label?: string;
+  /** Called after a confirmed save, for example to close an inline editor. */
+  onSaved?: () => void;
+  /** An extra control shown beside the save button, such as Cancel. */
+  secondary?: ReactNode;
 }) {
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
@@ -145,6 +151,7 @@ export function CommandForm({
         );
         form.current?.reset();
         router.refresh();
+        onSaved?.();
       } else {
         setFailure(result);
         if (result.code !== "SERVICE_UNAVAILABLE") submitted.current = null;
@@ -208,14 +215,17 @@ export function CommandForm({
           {notice}
         </p>
       )}
-      <button
-        className="button"
-        type={uncertain ? "button" : "submit"}
-        onClick={uncertain ? submit : undefined}
-        disabled={pending || conflict}
-      >
-        {pending ? "Confirming save…" : uncertain ? "Retry original request" : label}
-      </button>
+      <div className={secondary ? "form-actions" : undefined}>
+        <button
+          className="button"
+          type={uncertain ? "button" : "submit"}
+          onClick={uncertain ? submit : undefined}
+          disabled={pending || conflict}
+        >
+          {pending ? "Confirming save…" : uncertain ? "Retry original request" : label}
+        </button>
+        {secondary}
+      </div>
     </form>
   );
 }

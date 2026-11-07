@@ -12,6 +12,7 @@ import { FileDropOverlay } from "./file-drop-overlay";
 import { MobileTabBar } from "./mobile-tab-bar";
 import { SidebarToggle } from "./sidebar-toggle";
 import { ToastHost } from "./toast-host";
+import { formatPlanDate } from "@/lib/display";
 
 const font = DM_Sans({ subsets: ["latin"], display: "swap" });
 const headingFont = Manrope({ subsets: ["latin"], display: "swap", variable: "--font-workspace-heading" });
@@ -34,7 +35,7 @@ export function WorkspaceFrame({ workspace, children }: {
     <FileDropOverlay />
     <div data-ui className={`${font.className} ${headingFont.variable} workspace-root app-shell`}>
       <a className="skip-link" href="#workspace-main">Skip to cash plan</a>
-      <WorkspaceTools rows={rows} name={name} role={role} businessName={workspace.business.name} accountActions={accountActions} brand={<ProductBrand />} />
+      <WorkspaceTools rows={rows} name={name} role={role} businessName={workspace.business.name} accountActions={accountActions} brand={<ProductBrand />} planDate={formatPlanDate(workspace.forecastInput.referenceDate, true)} />
       <div className="workspace">
       <aside id="workspace-sidebar" className="side-nav" aria-label="Workspace navigation">
         <div className="side-brand"><ProductBrand showAttribution={false} /><SidebarToggle /></div>
