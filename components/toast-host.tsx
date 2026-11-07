@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { dismissToast, pushToast, type Toast } from "@/lib/ui/toasts";
+import { dismissToast, pushToast, toastIcon, type Toast } from "@/lib/ui/toasts";
 
 const TOAST_MS = 5000;
-type ToastApi = { show: (message: string, action?: Toast["action"]) => void };
+type ToastApi = { show: (message: string, action?: Toast["action"], tone?: Toast["tone"]) => void };
 const ToastContext = createContext<ToastApi>({ show: () => {} });
 
 export const useToast = () => useContext(ToastContext);
@@ -17,7 +17,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
   }, [toast.id, onDismiss]);
   return (
     <div className="toast">
-      <span className="toast-check" aria-hidden="true">✓</span>
+      <span className={`toast-check ${toast.tone ?? "success"}`} aria-hidden="true">{toastIcon(toast.tone)}</span>
       <span className="toast-message">{toast.message}</span>
       {toast.action && <Link className="toast-action" href={toast.action.href} onClick={() => onDismiss(toast.id)}>{toast.action.label}</Link>}
       <button type="button" className="toast-dismiss" aria-label="Dismiss" onClick={() => onDismiss(toast.id)}>×</button>
@@ -31,7 +31,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
   const nextId = useRef(1);
   const dismiss = useCallback((id: number) => setToasts((list) => dismissToast(list, id)), []);
   const api = useMemo<ToastApi>(() => ({
-    show: (message, action) => setToasts((list) => pushToast(list, { message, action }, nextId.current++)),
+    show: (message, action, tone) => setToasts((list) => pushToast(list, { message, action, tone }, nextId.current++)),
   }), []);
   return (
     <ToastContext.Provider value={api}>

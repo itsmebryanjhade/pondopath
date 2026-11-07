@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ensureFileSourceAction, inspectCsvAction, previewCsvAction, stageCsvAction } from "@/app/(workspace)/imports/actions";
-import { countLabels, fileKind, heldLine, plainImportError, summaryLine } from "@/lib/domain/add-records";
+import { countLabels, fileKind, heldLine, plainImportError, previewCell, previewColumns, summaryLine } from "@/lib/domain/add-records";
 import type { AutoFields } from "@/lib/domain/reader";
 import type { CsvMapping } from "@/lib/domain/imports";
 import { takePendingFile } from "@/lib/ui/pending-file";
@@ -112,8 +112,11 @@ export function AddRecords({ customers, googleSlot, googleOpenAtStart = false }:
             <select className="field" value={phase.read.sheet} disabled={busy} onChange={(event) => read(phase.read.file, event.target.value)}>
               {phase.read.sheets.map((sheet) => <option key={sheet}>{sheet}</option>)}
             </select></label>}
-          <CheckSummary summary={summaryLine(counts)} held={heldLine(counts)} headers={phase.read.headers}
-            rows={phase.read.rows.map((cells, index) => ({ cells: cells.map((cell) => String(cell ?? "")), label: labels[index]?.label }))} />
+          {(() => {
+            const groups = previewColumns(phase.read.headers, phase.read.fields);
+            return <CheckSummary summary={summaryLine(counts)} held={heldLine(counts)} headers={groups.map((group) => group.title)}
+              rows={phase.read.rows.map((cells, index) => ({ cells: groups.map((group) => previewCell(cells, group.columns)), label: labels[index]?.label }))} />;
+          })()}
           <details ref={adjust} className="add-adjust" open={needsAttention({ fields: phase.read.fields, labels: phase.read.labels, customers: customers.length })}>
             <summary>Check columns and rows</summary>
             <ImportSelector headers={phase.read.headers} rows={phase.read.rows} labels={phase.read.labels} fields={phase.read.fields} customers={customers}

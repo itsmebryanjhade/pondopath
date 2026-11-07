@@ -6,11 +6,11 @@ import { labelRows, type AutoFields, type AutoMapping, type RowLabel } from "@/l
 export type SelectorLabel = { row: number; externalId: string; label: RowLabel; reason: string };
 type Customer = { id: string; name: string };
 
-const ID_MESSAGE = "Choose the column that stays the same when a row is edited (for example an invoice or reference number). Without it, an edited row would look new and could be imported twice.";
+const ID_MESSAGE = "Pick the column that names each row, like an invoice or reference number. It stops an edited row from being added twice.";
 const ROLE_FIELDS: { name: keyof AutoFields; label: string; required: boolean }[] = [
-  { name: "externalId", label: "Row ID (stays the same when a row is edited)", required: true },
+  { name: "externalId", label: "Which column names each row?", required: true },
   { name: "amount", label: "Amount (PHP)", required: true },
-  { name: "dueDate", label: "Due date (YYYY-MM-DD)", required: true },
+  { name: "dueDate", label: "Due date", required: true },
   { name: "number", label: "Invoice number", required: true },
   { name: "customer", label: "Customer column (optional)", required: false },
   { name: "payee", label: "Supplier / payee column", required: true },

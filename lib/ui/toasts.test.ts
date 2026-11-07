@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { dismissToast, pushToast, type Toast } from "./toasts";
+import { dismissToast, pushToast, toastIcon, type Toast } from "./toasts";
 import { ToastHost } from "@/components/toast-host";
 
 describe("toasts", () => {
@@ -24,5 +24,11 @@ describe("toasts", () => {
     expect(html).toContain("<p>page</p>");
     expect(html.match(/role="status"/g)).toHaveLength(1);
     expect(html).toContain('aria-live="polite"');
+  });
+  it("uses a check only for successes, so a refusal never looks like success", () => {
+    expect(toastIcon(undefined)).toBe("✓");
+    expect(toastIcon("success")).toBe("✓");
+    expect(toastIcon("notice")).toBe("!");
+    expect(pushToast([], { message: "Only Excel (.xlsx) and CSV files.", tone: "notice" }, 1)[0].tone).toBe("notice");
   });
 });

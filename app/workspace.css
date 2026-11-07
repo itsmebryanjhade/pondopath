@@ -524,7 +524,9 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
 /* Add records page — see docs/superpowers/specs/2026-11-07-add-records-page-design.md (Visual design). */
-.add-page { display: grid; gap: 18px; }
+.add-page { display: grid; gap: 18px; min-width: 0; }
+.add-page > *, .add-check > *, .add-adjust { min-width: 0; }
+.toast-check.notice { color: #f4c58e; }
 .add-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 6px; margin: 0; padding: 0; list-style: none; color: #7e8a82; font-size: 13px; font-weight: 600; }
 .add-steps li { display: inline-flex; align-items: center; gap: 8px; }
 .add-steps li + li::before { width: 26px; height: 1px; margin-right: 6px; background: #cfd8d1; content: ""; }
@@ -561,7 +563,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .add-summary { margin: 0; color: #17211b; font-size: 16px; font-weight: 600; }
 .add-table-scroll { overflow-x: auto; border: 1px solid #e3e7e1; border-radius: 12px; background: #fff; }
 .add-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.add-table th { padding: 8px 10px; border-bottom: 1px solid #e3e7e1; color: #7e8a82; font-size: 12px; font-weight: 600; text-align: left; }
+.add-table th { text-transform: none; letter-spacing: 0; padding: 8px 10px; border-bottom: 1px solid #e3e7e1; color: #7e8a82; font-size: 12px; font-weight: 600; text-align: left; }
 .add-table td { padding: 8px 10px; border-bottom: 1px solid #edf0eb; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .add-table tr:last-child td { border-bottom: 0; }
 .add-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e9f0f7; color: #3c638c; font-size: 11px; font-weight: 600; }

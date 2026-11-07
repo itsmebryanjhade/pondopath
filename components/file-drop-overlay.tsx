@@ -45,7 +45,7 @@ export function FileDropOverlay() {
       if (handledByDropArea) return;
       const file = firstFile(event.dataTransfer?.files);
       if (!file) return;
-      if (!fileKind(file.name)) { toast.show("Only Excel (.xlsx) and CSV files."); return; }
+      if (!fileKind(file.name)) { toast.show("Only Excel (.xlsx) and CSV files.", undefined, "notice"); return; }
       setPendingFile(file);
       if (onAddPage) window.dispatchEvent(new Event(PENDING_FILE_EVENT));
       else router.push("/add");
