@@ -65,6 +65,21 @@ Worksheets: if an Excel file has several sheets, a "Which sheet?" choice appears
 - The holder is memory only. It is cleared when the file is read, and is never written to storage or the URL.
 - The toast host is a single `aria-live="polite"` region. Messages are full phrases, auto-dismiss after about 5 seconds, can be dismissed, and never take focus.
 
+## Visual design (approved 7 November 2026)
+
+Colors come from the workspace tokens: ground `#f5f6f2`, surface `#ffffff`, ink `#17211b`, muted `#526057`, edge `#e3e7e1`, primary `#173e2d`, accent `#45a874`, light green `#e7f4ec`, check green `#28734f`, attention `#a25522` on `#fff8f1`.
+
+- **Layout:** page title and one line, then the step indicator, then a two-column grid (about 1.7 to 1): the drop area on the left, the two smaller cards stacked on the right. Under 860px the cards stack under the drop area.
+- **Drop area:** white, 1.5px dashed `#b9c6bd`, 16px corners, at least 230px tall, centred content: a 48px green icon circle, the headline (17px, weight 500), "or", a **Choose file** button, then a small "Try a sample file" link. While a file is dragged over it: 2px solid `#45a874` outline, `#e7f4ec` fill, headline "Release to add your file" with the file name, and the two side cards dim.
+- **Cards** ("Connect Google Sheet", "Type it in"): white, 0.5px edge, 14px corners, a 38px light-green icon tile, a 14px title and a 12px muted helper line.
+- **Buttons:** at least 44px tall, 10px corners; the primary is `#173e2d` with white text, the secondary is white with a `#cfd8d1` edge. One primary button per step.
+- **Step indicator:** three small circles joined by lines. Done steps are filled `#28734f` with a check, the current step has a `#e7f4ec` fill and `#45a874` edge. The connector fills green as steps finish.
+- **Check step:** the summary sentence at 16px, a table of up to five rows with a coloured Invoice or Expense chip, an amber note for rows that are not imported, a single plain question only if a column needs choosing, and one primary button "Send N rows to review".
+- **Done step:** a 64px `#28734f` check circle, "N rows are ready to review", "Nothing is saved yet." under it, **Review now** (primary) and **Add more records** (secondary).
+- **Overlay (drop anywhere):** full-window `rgba(23,62,45,.82)` with a dashed `#9cd3ae` box, an upload icon, "Drop to import" (22px) and "Excel or CSV files only".
+- **Toast:** bottom-right, `#17211b` background, 12px corners, white 13px text, a `#9cd3ae` action link and a dismiss button; auto-dismisses after about 5 seconds and slides in with transform and opacity only.
+- **Phone:** no dragging, so the drop area becomes one full-width **Choose your Excel or CSV file** button with the sample link below, and the two cards stack beneath it.
+
 ## Words
 
 - Labels are 3 to 6 words with at most one short helper line.

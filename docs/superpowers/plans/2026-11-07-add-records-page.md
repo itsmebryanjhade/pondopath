@@ -19,6 +19,7 @@
 - Page text above the fold stays under about 120 words.
 - Motion animates only opacity and transform and is off under `prefers-reduced-motion`. Tap targets at least 44px, text contrast at least 4.5:1.
 - File contents and names never go in URLs, storage or logs. The in-memory holder is cleared when read.
+- Follow the spec's **Visual design** section for exact colors, sizes, states and the toast and overlay look. Tasks 4, 5 and 8 implement it.
 - Stage only your own files with `git add <path>`; never `git add .` and never touch `components/landing-mobile-menu.tsx`.
 - Commit messages end with the attribution line given in the session reminder.
 
