@@ -86,8 +86,11 @@ describe("persistent workspace navigation", () => {
 
   it("reuses the source shell with in-bar mobile branding and no second mobile header", () => {
     const html = renderToStaticMarkup(WorkspaceFrame({ workspace, children: "Current page" }));
-    for (const className of ["app-shell", "side-nav", "nav-wrap", "nav-actions", "mobile-brand", "mobile-bar", "quick-button", "notification-panel", "profile-menu"]) expect(html).toContain(className);
+    for (const className of ["app-shell", "side-nav", "nav-wrap", "nav-actions", "mobile-brand", "mobile-bar", "notification-panel", "profile-menu"]) expect(html).toContain(className);
     expect(html).not.toContain('class="mobile-header"');
+    // One add action: the header no longer repeats the sidebar's and the phone bar's plus button.
+    expect(html).not.toContain("Quick add");
+    expect(html).not.toContain("quick-menu");
     expect(html).toContain('aria-label="Search records"');
     expect(html).toContain(workspace.business.name);
   });

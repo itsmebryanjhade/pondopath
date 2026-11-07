@@ -14,7 +14,7 @@ The core includes persistent financial records, verified partial payments, a 30-
 
 ## Spreadsheet import and review
 
-Open **Add records** (`/add`, also from Quick add → **Import a file**, or drag a file over any workspace page). Drop or choose an Excel or CSV file, check what PondoPath found (File → Check → Done), then send the rows to the **Review Inbox**, which now only reviews and confirms. Connect Google and the advanced n8n route live on the same page. The owner's first upload creates a hidden default file source; finance teammates use it afterwards.
+Open **Add records** (`/add`; the sidebar's **Add records** button, the phone bar's centre **Add**, or drag a file over any workspace page). **Type it in** on that page holds the shortcuts for adding one invoice, one expense or a received payment. Drop or choose an Excel or CSV file, check what PondoPath found (File → Check → Done), then send the rows to the **Review Inbox**, which now only reviews and confirms. Connect Google and the advanced n8n route live on the same page. The owner's first upload creates a hidden default file source; finance teammates use it afterwards.
 
 The older notes below describe the same import rules. The owner creates a named spreadsheet source; finance teammates can reuse it. One source accepts both UTF-8 CSV and Excel `.xlsx` files, so keep using it when a spreadsheet moves between formats. For a workbook, choose one worksheet first. Upload the file, select invoice or expense records, map its columns, and preview each row. Select existing business customers explicitly. Fictional CSV and Excel samples are provided on the page.
 

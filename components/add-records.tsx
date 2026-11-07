@@ -8,7 +8,7 @@ import type { AutoFields } from "@/lib/domain/reader";
 import type { CsvMapping } from "@/lib/domain/imports";
 import { takePendingFile } from "@/lib/ui/pending-file";
 import { PENDING_FILE_EVENT } from "@/lib/ui/pending-file-event";
-import { CheckSummary, ChoiceCards, DoneState, DropArea, StepIndicator } from "./add-records-parts";
+import { CheckSummary, ChoiceCards, DoneState, DropArea, ManualLinks, StepIndicator } from "./add-records-parts";
 import { ImportSelector, readSelectorForm, selectorProblems, type SelectorLabel } from "./import-selector";
 import { useToast } from "./toast-host";
 
@@ -60,6 +60,7 @@ export function AddRecords({ customers, googleSlot, googleOpenAtStart = false }:
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
   const [googleOpen, setGoogleOpen] = useState(googleOpenAtStart);
+  const [manualOpen, setManualOpen] = useState(false);
   const [labels, setLabels] = useState<SelectorLabel[]>([]);
   const [selection, setSelection] = useState<{ invoice: number; expense: number } | null>(null);
   const adjust = useRef<HTMLDetailsElement>(null);
@@ -143,9 +144,10 @@ export function AddRecords({ customers, googleSlot, googleOpenAtStart = false }:
       {phase.step === "file" && <>
         <div className="add-grid">
           <DropArea onFile={(file) => read(file)} dragging={dragging} onDragState={setDragging} disabled={busy} />
-          <ChoiceCards googleOpen={googleOpen} onConnectGoogle={() => setGoogleOpen((open) => !open)} manualHref="/invoices#new-invoice" />
+          <ChoiceCards googleOpen={googleOpen} onConnectGoogle={() => setGoogleOpen((open) => !open)} manualOpen={manualOpen} onManual={() => setManualOpen((open) => !open)} />
         </div>
         {busy && <p role="status" className="muted">Reading your file…</p>}
+        {manualOpen && <div className="add-google"><ManualLinks /></div>}
         {googleOpen && <div className="add-google">{googleSlot}</div>}
       </>}
 

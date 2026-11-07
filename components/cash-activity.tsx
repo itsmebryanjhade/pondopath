@@ -43,7 +43,7 @@ export function CashActivity({ rows }: { rows: ActivityRow[] }) {
           </tr>)}</tbody>
         </table>
       </div>
-      {!matching.length && <p className="empty-state">{rows.length ? "No records match this filter." : "No unpaid invoices or expenses entered. Use Quick add to start your cash plan."}</p>}
+      {!matching.length && <p className="empty-state">{rows.length ? "No records match this filter." : "No unpaid invoices or expenses entered. Use Add records to start your cash plan."}</p>}
       <div className="table-foot"><p role="status">{matching.length ? `Showing ${(current - 1) * 6 + 1}–${Math.min(current * 6, matching.length)} of ${matching.length} items` : "0 items"}</p><div><button type="button" disabled={current === 1} onClick={() => setPage(current - 1)}>Previous</button><button type="button" disabled={current === pages} onClick={() => setPage(current + 1)}>Next</button></div></div>
     </section>
   );

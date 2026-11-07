@@ -670,3 +670,13 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 @media (prefers-reduced-motion: reduce) {
   .workspace-root .mobile-bar .mobile-tab, .workspace-root .mobile-backdrop, .workspace-root .mobile-sheet { animation: none; transition: none; }
 }
+
+/* Type it in: the shortcuts that used to live in the header's Quick add menu. */
+.add-manual { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.add-manual a { display: flex; min-height: 56px; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid #e3e7e1; border-radius: 14px; background: #fff; color: #17211b; text-decoration: none; transition: border-color 180ms ease, transform 180ms ease; }
+.add-manual a:hover { border-color: #45a874; transform: translateY(-1px); }
+.add-manual a:focus-visible { outline: 2px solid #45a874; outline-offset: 2px; }
+.add-manual strong { display: block; font-size: 14px; }
+.add-manual small { display: block; color: #526057; font-size: 12px; }
+@media (min-width: 681px) { .add-manual { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .add-manual a { transition: none; } }

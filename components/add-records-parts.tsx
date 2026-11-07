@@ -74,18 +74,29 @@ export function DropArea({ onFile, dragging = false, fileName, disabled = false,
   );
 }
 
-export function ChoiceCards({ googleOpen, onConnectGoogle, manualHref }: { googleOpen: boolean; onConnectGoogle: () => void; manualHref: string }) {
+export function ChoiceCards({ googleOpen, onConnectGoogle, manualOpen, onManual }: { googleOpen: boolean; onConnectGoogle: () => void; manualOpen: boolean; onManual: () => void }) {
   return (
     <div className="add-choices">
       <button type="button" className="add-card" aria-expanded={googleOpen} onClick={onConnectGoogle}>
         <span className="add-card-icon"><Icon name="table" /></span>
         <span><strong>Connect Google Sheet</strong><small>Keeps itself up to date</small></span>
       </button>
-      <Link className="add-card" href={manualHref}>
+      <button type="button" className="add-card" aria-expanded={manualOpen} onClick={onManual}>
         <span className="add-card-icon"><Icon name="pencil" /></span>
         <span><strong>Type it in</strong><small>One record at a time</small></span>
-      </Link>
+      </button>
     </div>
+  );
+}
+
+/** The shortcuts that used to live in the header's Quick add menu. */
+export function ManualLinks() {
+  return (
+    <ul className="add-manual">
+      <li><Link href="/invoices#new-invoice"><span className="add-card-icon"><Icon name="file" /></span><span><strong>Add an invoice</strong><small>Money a customer owes you</small></span></Link></li>
+      <li><Link href="/expenses#new-expense"><span className="add-card-icon"><Icon name="upload" /></span><span><strong>Add an expense</strong><small>A bill you need to pay</small></span></Link></li>
+      <li><Link href="/invoices?filter=unpaid"><span className="add-card-icon"><Icon name="download" /></span><span><strong>Record a payment you received</strong><small>Pick the invoice it paid</small></span></Link></li>
+    </ul>
   );
 }
 

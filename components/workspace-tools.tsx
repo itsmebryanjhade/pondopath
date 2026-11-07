@@ -59,10 +59,6 @@ export function WorkspaceTools({ rows, name, role, businessName, accountActions,
           <DashboardIcon name="search" size={17} /><input ref={searchInput} type="search" aria-label="Search invoices and expenses" placeholder="Search your records" value={query} onChange={(event) => setQuery(event.target.value)} />
           {query.trim() && <div className="popover search-results"><p role="status">{results.length ? `${results.length} matching records` : "No matching unpaid records"}</p><ul>{results.map((row) => <li key={`${row.kind}-${row.id}`}><Link href={row.href} onNavigate={() => { setQuery(""); setMobileSearchOpen(false); }}><strong>{row.label}</strong><small>{row.reference} · {row.kind}</small></Link></li>)}</ul></div>}
         </div>
-        <details name="workspace-toolbar" className="quick-wrap" onToggle={dismissSearch}>
-          <summary className="quick-button" aria-label="Quick add"><DashboardIcon name="plus" size={17} /><span>Quick add</span><DashboardIcon name="chevron" size={15} /></summary>
-          <div className="popover quick-menu"><Link href="/invoices#new-invoice" onNavigate={closeMenus}><DashboardIcon name="receipt" />Add an invoice</Link><Link href="/expenses#new-expense" onNavigate={closeMenus}><DashboardIcon name="arrowOut" />Add an expense</Link><Link href="/invoices?filter=unpaid" onNavigate={closeMenus}><DashboardIcon name="arrowIn" />Record a verified receipt</Link><Link href="/add" onNavigate={closeMenus}><DashboardIcon name="arrowIn" />Import a file</Link></div>
-        </details>
         <details name="workspace-toolbar" className="notification-wrap" onToggle={dismissSearch}>
           <summary className="icon-button notification" aria-label="Records needing attention"><DashboardIcon name="bell" />{flagged.length > 0 && <span />}</summary>
           <div className="popover notification-panel">
