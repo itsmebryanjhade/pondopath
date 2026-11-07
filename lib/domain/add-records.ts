@@ -24,13 +24,15 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 
 export function summaryLine(counts: LabelCounts): string {
   const parts = [counts.invoice ? plural(counts.invoice, "invoice") : "", counts.expense ? plural(counts.expense, "expense") : ""].filter(Boolean);
-  return parts.length ? `We found ${parts.join(" and ")}.` : "We couldn't find any invoices or expenses in this file.";
+  if (parts.length) return `We found ${parts.join(" and ")}.${counts.choose ? ` ${counts.choose} more ${counts.choose === 1 ? "row needs" : "rows need"} your choice.` : ""}`;
+  if (counts.choose) return counts.choose === 1 ? "We found 1 row. Tell us below if it's an invoice or an expense." : `We found ${counts.choose} rows. Tell us below which are invoices and which are expenses.`;
+  if (counts.payment) return "We only found payments in this file. Record them in Collections.";
+  return "We couldn't find any invoices or expenses in this file.";
 }
 
 export function heldLine(counts: LabelCounts): string {
   const lines: string[] = [];
   if (counts.payment) lines.push(`${plural(counts.payment, "payment")} ${counts.payment === 1 ? "isn't" : "aren't"} imported. Record payments in Collections.`);
-  if (counts.choose) lines.push(`${plural(counts.choose, "row")} ${counts.choose === 1 ? "needs" : "need"} your choice below.`);
   return lines.join(" ");
 }
 

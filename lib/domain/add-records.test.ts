@@ -31,14 +31,17 @@ describe("Add records helpers", () => {
     expect(summaryLine(counts(1))).toBe("We found 1 invoice.");
     expect(summaryLine(counts(0, 1))).toBe("We found 1 expense.");
     expect(summaryLine(counts())).toBe("We couldn't find any invoices or expenses in this file.");
+    expect(summaryLine(counts(0, 0, 0, 5))).toBe("We found 5 rows. Tell us below which are invoices and which are expenses.");
+    expect(summaryLine(counts(0, 0, 0, 1))).toBe("We found 1 row. Tell us below if it's an invoice or an expense.");
+    expect(summaryLine(counts(2, 0, 0, 3))).toBe("We found 2 invoices. 3 more rows need your choice.");
+    expect(summaryLine(counts(0, 0, 2, 0))).toBe("We only found payments in this file. Record them in Collections.");
   });
   it("heldLine explains payments and rows that need a choice", () => {
     const payments = heldLine(counts(0, 0, 2));
     expect(payments).toContain("2 payments");
     expect(payments).toContain("aren't imported");
     expect(heldLine(counts(0, 0, 1))).toContain("1 payment isn't imported");
-    expect(heldLine(counts(0, 0, 0, 3))).toContain("need your choice");
-    expect(heldLine(counts(0, 0, 0, 1))).toContain("needs your choice");
+    expect(heldLine(counts(0, 0, 0, 3))).toBe("");
     expect(heldLine(counts(5, 2))).toBe("");
   });
   it("plainImportError turns the real server messages into what to do next", () => {
