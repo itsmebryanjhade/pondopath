@@ -8,7 +8,7 @@ import styles from "@/app/auth.module.css";
 export const metadata = { title: "Set up your business | PondoPath" };
 
 export default function SetupPage() {
-  return <AuthShell><Suspense fallback={<p className={styles.hint}>Loading your account…</p>}><SetupContent /></Suspense></AuthShell>;
+  return <AuthShell stage="business"><Suspense fallback={<p className={styles.hint}>Loading your account…</p>}><SetupContent /></Suspense></AuthShell>;
 }
 
 async function SetupContent() {
