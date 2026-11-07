@@ -50,7 +50,7 @@ describe("import selector", () => {
   });
   it("a missing ID column blocks saving with the reason", () => {
     expect(selectorProblems(form(base.filter(([k]) => k !== "externalId")), labels)[0])
-      .toBe("Choose the column that stays the same when a row is edited (for example an invoice or reference number). Without it, an edited row would look new and could be imported twice.");
+      .toBe("Pick the column that names each row, like an invoice or reference number. It stops an edited row from being added twice.");
   });
   it("keeps saved left-out rows and label changes for rows not shown", () => {
     const saved = { excludedIds: ["SRC-1", "SRC-200"], overrides: { "SRC-300": "expense" as const, "SRC-2": "invoice" as const } };
