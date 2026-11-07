@@ -29,13 +29,28 @@ const features = [
 ] as const;
 
 const controls = [
-  "Calculations are done by programmed rules, not by AI.",
-  "AI explains results and drafts text. It cannot post payments, change records or send messages.",
-  "A customer promise is not money received. Cash is recorded only after staff verifies it.",
-  "Owners approve reminders. Finance staff cannot bypass that.",
-  "Every workspace is private with role-based access.",
-  "Manual entry and templates keep working if AI is unavailable.",
-];
+  ["receipt", "Rules do the math", "Calculations are done by programmed rules, not by AI."],
+  ["sparkle", "AI cannot act", "AI explains results and drafts text. It cannot post payments, change records or send messages."],
+  ["wallet", "Promises are not cash", "A customer promise is not money received. Cash is recorded only after staff verifies it."],
+  ["bell", "Owners approve reminders", "Finance staff cannot bypass that approval."],
+  ["lock", "Private by default", "Every workspace is private with role-based access."],
+  ["plus", "Works without AI", "Manual entry and templates keep working if AI is unavailable."],
+] as const;
+
+const approvalFlow = [
+  ["sparkle", "Proposed", "AI or an import suggests a change"],
+  ["search", "You review", "Check it, edit it or reject it"],
+  ["check", "Saved", "Only after you confirm"],
+] as const;
+
+function SafetyIcon({ name }: { name: "lock" | "check" }) {
+  return (
+    <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {name === "lock" ? <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></> : <path d="M5 12.5l4.5 4.5L19 7.5" />}
+    </svg>
+  );
+}
+
 
 const liveRecords = [
   ["CSV or Excel upload", "Choose the columns and rows to bring in."],
@@ -239,9 +254,23 @@ export default function Home() {
             <p className={styles.eyebrow}>Control &amp; safety</p>
             <h2 id="control-heading">You stay in control.</h2>
             <p>Automation supports the review. It does not replace it.</p>
+            <ol className={styles.approvalFlow} aria-label="How a change reaches your records">
+              {approvalFlow.map(([icon, title, body], index) => (
+                <li key={title} style={stagger(index)}>
+                  <span className={styles.flowNode}>{icon === "check" ? <SafetyIcon name="check" /> : <DashboardIcon name={icon} size={18} />}</span>
+                  <strong>{title}</strong>
+                  <small>{body}</small>
+                </li>
+              ))}
+            </ol>
           </div>
           <ul className={styles.controlList}>
-            {controls.map((control, index) => <li key={control} style={stagger(index)}><span><DashboardIcon name="sparkle" size={16} /></span><p>{control}</p></li>)}
+            {controls.map(([icon, title, body], index) => (
+              <li key={title} style={stagger(index)}>
+                <span>{icon === "lock" ? <SafetyIcon name="lock" /> : <DashboardIcon name={icon} size={18} />}</span>
+                <div><h3>{title}</h3><p>{body}</p></div>
+              </li>
+            ))}
           </ul>
         </ViewportSection>
 

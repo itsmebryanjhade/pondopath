@@ -248,15 +248,11 @@
 .comparisonLabel { display: flex; align-items: center; gap: 8px; color: var(--green-700); font-size: 12px; font-weight: 700; }
 .compareRisk .comparisonLabel { color: var(--amber-700); }
 
-.controlSection { display: grid; grid-template-columns: .72fr 1.28fr; gap: 80px; padding: 92px max(40px, calc((100vw - 1360px) / 2)); background: var(--green-900); color: white; }
+.controlSection { display: grid; grid-template-columns: .72fr 1.28fr; gap: 64px; padding: 68px max(40px, calc((100vw - 1360px) / 2)); background: var(--green-900); color: white; }
 .controlSection .eyebrow { color: #9cd3ae; }
 .controlIntro > p:not(.eyebrow) { margin-top: 18px; color: #cce0d3; }
 .lightButton { background: white; color: var(--green-900) !important; }
 .lightButton:hover { background: var(--green-100); transform: translateY(-1px); }
-.controlList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 30px; margin: 0; padding: 0; list-style: none; }
-.controlList li { display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 20px 0; border-top: 1px solid #3d6051; }
-.controlList li > span { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 8px; background: #ffffff12; color: #9cd3ae; }
-.controlList p { color: #d8e7dd; font-size: 13px; line-height: 1.7; }
 .audienceGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 44px; }
 .audienceGrid article { padding: 26px; border-left: 1px solid var(--line); }
 .audienceGrid article:first-child { padding-left: 0; border-left: 0; }
@@ -461,6 +457,24 @@
 @media (max-width: 1180px) { .featureWide { grid-column: span 3; } }
 @media (max-width: 860px) { .featureWide { grid-column: span 2; } }
 @media (max-width: 680px) { .featureWide { grid-column: auto; grid-template-columns: 1fr; } .featuresSection { padding-block: 52px; } }
+
+.controlList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.controlList li { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: 14px; padding: 18px; border: 1px solid #ffffff1f; border-radius: 16px; background: #ffffff0a; transition: transform 180ms ease, background 180ms ease; }
+.controlList li:hover { background: #ffffff14; transform: translateY(-2px); }
+.controlList li > span { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; background: #ffffff14; color: #9cd3ae; }
+.controlList h3 { font-size: 15px; letter-spacing: -.02em; }
+.controlList p { margin-top: 4px; color: #d8e7dd; font-size: 13px; line-height: 1.65; }
+.approvalFlow { display: flex; align-items: flex-start; margin: 32px 0 0; padding: 0; list-style: none; }
+.approvalFlow li { position: relative; display: grid; flex: 1; justify-items: start; gap: 6px; padding-right: 10px; }
+.flowNode { position: relative; z-index: 1; display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid #ffffff2e; border-radius: 50%; background: #20583d; color: #9cd3ae; }
+.approvalFlow li:last-child .flowNode { border-color: #9cd3ae; background: #9cd3ae; color: var(--green-900); }
+.approvalFlow li:not(:last-child)::after { position: absolute; top: 19px; right: 6px; left: 46px; height: 2px; background: linear-gradient(90deg, #9cd3ae, #ffffff2e); content: ""; transform-origin: left; }
+.approvalFlow strong { margin-top: 6px; color: white; font-size: 13px; }
+.approvalFlow small { color: #cce0d3; font-size: 11px; line-height: 1.45; }
+.sectionMotion .flowNode { animation: dot-pop 420ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 420ms + 200ms) backwards; }
+.sectionMotion .approvalFlow li:not(:last-child)::after { animation: cash-rail-draw 520ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 420ms + 450ms) backwards; }
+.sectionMotion .approvalFlow li > strong, .sectionMotion .approvalFlow li > small { animation: reveal-up 480ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 420ms + 300ms) backwards; }
+@media (max-width: 680px) { .controlSection { padding-block: 52px; } .controlList { grid-template-columns: 1fr; } }
 
 @media (prefers-reduced-motion: reduce) {
   .landing *, .landing *::before, .landing *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
