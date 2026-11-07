@@ -26,7 +26,7 @@ function redirectTo(location: string, cookie?: string): Response {
 const secure = () => appOrigin().startsWith("https:") ? "; Secure" : "";
 const setCookie = (value: string) => `${COOKIE}=${value}; Path=${COOKIE_PATH}; Max-Age=600; HttpOnly; SameSite=Lax${secure()}`;
 const clearCookie = () => `${COOKIE}=; Path=${COOKIE_PATH}; Max-Age=0; HttpOnly; SameSite=Lax${secure()}`;
-const done = (result: "connected" | "failed") => redirectTo(`${appOrigin()}/imports?google=${result}`, clearCookie());
+const done = (result: "connected" | "failed") => redirectTo(`${appOrigin()}/add?google=${result}`, clearCookie());
 
 function readCookie(request: Request): { state: string; verifier: string; userId: string; businessId: string } | null {
   const raw = (request.headers.get("cookie") ?? "").split(";").map(part => part.trim()).find(part => part.startsWith(COOKIE + "="))?.slice(COOKIE.length + 1);

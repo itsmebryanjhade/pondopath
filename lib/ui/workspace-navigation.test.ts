@@ -111,7 +111,7 @@ describe("persistent workspace navigation", () => {
     expect(renderToStaticMarkup(createElement(WorkspaceNavigation))).not.toContain('aria-current="page"');
   });
 
-  it.each([["/cash", "/cash"], ["/payments", "/cash"], ["/forecast", "/forecast"], ["/followups", "/invoices"]])("selects the parent tab for %s", (pathname, destination) => {
+  it.each([["/cash", "/cash"], ["/payments", "/cash"], ["/forecast", "/forecast"], ["/followups", "/invoices"], ["/imports", "/invoices"], ["/add", "/invoices"]])("selects the parent tab for %s", (pathname, destination) => {
     navigationState.pathname = pathname;
     const html = renderToStaticMarkup(createElement(WorkspaceNavigation));
     const selected = html.match(/<a[^>]*aria-current="page"[^>]*>/g);

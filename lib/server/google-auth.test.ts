@@ -53,7 +53,7 @@ describe("Connect Google sign-in", () => {
   it("refuses a finance user without calling Google", async () => {
     state.actor.role = "finance";
     const response = await startGoogleSignIn(new Request(origin + "/api/google/connect"));
-    expect(response.headers.get("location")).toBe(origin + "/imports?google=failed");
+    expect(response.headers.get("location")).toBe(origin + "/add?google=failed");
     expect(state.exchange).not.toHaveBeenCalled();
   });
 
@@ -62,7 +62,7 @@ describe("Connect Google sign-in", () => {
     const verifier = state.exchange.mock.calls.length;
     expect(verifier).toBe(0);
     const response = await callback(`code=fictional-code&state=${google.searchParams.get("state")}`, cookie);
-    expect(response.headers.get("location")).toBe(origin + "/imports?google=connected");
+    expect(response.headers.get("location")).toBe(origin + "/add?google=connected");
     expect(cookieOf(response)).toContain("pp_google_oauth=; Path=/api/google; Max-Age=0");
     const [code, codeVerifier, redirect] = state.exchange.mock.calls[0];
     expect(code).toBe("fictional-code");
@@ -79,16 +79,16 @@ describe("Connect Google sign-in", () => {
   it("refuses a missing or mismatched state", async () => {
     const { cookie } = await start();
     for (const query of ["code=c", "code=c&state=wrong-state-value-wrong-state-value"]) {
-      expect((await callback(query, cookie)).headers.get("location")).toBe(origin + "/imports?google=failed");
+      expect((await callback(query, cookie)).headers.get("location")).toBe(origin + "/add?google=failed");
     }
-    expect((await callback("code=c&state=x", "")).headers.get("location")).toBe(origin + "/imports?google=failed");
+    expect((await callback("code=c&state=x", "")).headers.get("location")).toBe(origin + "/add?google=failed");
     expect(state.exchange).not.toHaveBeenCalled();
   });
 
   it("refuses a callback from a different signed-in user", async () => {
     const { google, cookie } = await start();
     state.actor = { ...state.actor, userId: "40000000-0000-4000-8000-000000000002" };
-    expect((await callback(`code=c&state=${google.searchParams.get("state")}`, cookie)).headers.get("location")).toBe(origin + "/imports?google=failed");
+    expect((await callback(`code=c&state=${google.searchParams.get("state")}`, cookie)).headers.get("location")).toBe(origin + "/add?google=failed");
     state.actor = { ...state.actor, userId: "40000000-0000-4000-8000-000000000001" };
     expect(state.exchange).not.toHaveBeenCalled();
   });
@@ -96,8 +96,8 @@ describe("Connect Google sign-in", () => {
   it("stores nothing when Google refuses drive.file or the owner cancels", async () => {
     const { google, cookie } = await start();
     state.exchange.mockRejectedValueOnce(new Error("GOOGLE_RECONNECT"));
-    expect((await callback(`code=c&state=${google.searchParams.get("state")}`, cookie)).headers.get("location")).toBe(origin + "/imports?google=failed");
-    expect((await callback(`error=access_denied&state=${google.searchParams.get("state")}`, cookie)).headers.get("location")).toBe(origin + "/imports?google=failed");
+    expect((await callback(`code=c&state=${google.searchParams.get("state")}`, cookie)).headers.get("location")).toBe(origin + "/add?google=failed");
+    expect((await callback(`error=access_denied&state=${google.searchParams.get("state")}`, cookie)).headers.get("location")).toBe(origin + "/add?google=failed");
     expect(state.adminRpc).not.toHaveBeenCalled();
   });
 

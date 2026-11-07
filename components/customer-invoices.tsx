@@ -77,7 +77,7 @@ export function CustomerInvoices({ workspace, params, invoiceControls, customerC
         <div className="dashboard-heading-actions">
           <span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span>
           <RefreshRecords />
-          <Link className="button secondary" href="/imports">Import &amp; review</Link>
+          <Link className="button secondary" href="/add">Import &amp; review</Link>
           <Link className="button secondary" href="/followups">Follow-ups</Link>
           <Link className="section-primary" href="#new-invoice"><DashboardIcon name="plus" size={17} />Add an invoice</Link>
         </div>

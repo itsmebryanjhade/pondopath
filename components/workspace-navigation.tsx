@@ -21,7 +21,7 @@ function NavigationFeedback({ label }: { label: string }) {
 
 export function WorkspaceNavigation({ mobile = false, followupCount = 0 }: { mobile?: boolean; followupCount?: number }) {
   const pathname = usePathname();
-  const activeHref = pathname === "/payments" ? "/cash" : ["/followups", "/imports"].includes(pathname) ? "/invoices" : pathname;
+  const activeHref = pathname === "/payments" ? "/cash" : ["/followups", "/imports", "/add"].includes(pathname) ? "/invoices" : pathname;
   const navigation = useRef<HTMLElement>(null);
   return (
     <nav ref={navigation} aria-label={mobile ? "Mobile cash planning" : "Cash planning"} className={mobile ? "mobile-nav" : undefined}>

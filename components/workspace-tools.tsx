@@ -62,7 +62,7 @@ export function WorkspaceTools({ rows, name, role, businessName, followupCount, 
         </div>
         <details name="workspace-toolbar" className="quick-wrap" onToggle={dismissSearch}>
           <summary className="quick-button" aria-label="Quick add"><DashboardIcon name="plus" size={17} /><span>Quick add</span><DashboardIcon name="chevron" size={15} /></summary>
-          <div className="popover quick-menu"><Link href="/invoices#new-invoice" onNavigate={closeMenus}><DashboardIcon name="receipt" />Add an invoice</Link><Link href="/expenses#new-expense" onNavigate={closeMenus}><DashboardIcon name="arrowOut" />Add an expense</Link><Link href="/invoices?filter=unpaid" onNavigate={closeMenus}><DashboardIcon name="arrowIn" />Record a verified receipt</Link></div>
+          <div className="popover quick-menu"><Link href="/invoices#new-invoice" onNavigate={closeMenus}><DashboardIcon name="receipt" />Add an invoice</Link><Link href="/expenses#new-expense" onNavigate={closeMenus}><DashboardIcon name="arrowOut" />Add an expense</Link><Link href="/invoices?filter=unpaid" onNavigate={closeMenus}><DashboardIcon name="arrowIn" />Record a verified receipt</Link><Link href="/add" onNavigate={closeMenus}><DashboardIcon name="arrowIn" />Import a file</Link></div>
         </details>
         <details name="workspace-toolbar" className="notification-wrap" onToggle={dismissSearch}>
           <summary className="icon-button notification" aria-label="Records needing attention"><DashboardIcon name="bell" />{flagged.length > 0 && <span />}</summary>

@@ -8,19 +8,9 @@ import { getIntakePage, isBulkConfirmable } from "@/lib/server/intake";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { WorkspacePageHeading } from "@/components/workspace-page-heading";
 import WorkspaceLoading from "@/components/workspace-loading";
-import { CsvImport } from "@/components/csv-import";
 import { IntakeReview } from "@/components/intake-review";
 import { IntakeBulkConfirm } from "@/components/intake-bulk-confirm";
-import { SheetConnection } from "@/components/sheet-connection";
-import { GoogleConnect } from "@/components/google-connect";
 import { createClient } from "@/lib/supabase/server";
-
-async function getSheetConnections(businessId: string) {
-  const client = await createClient();
-  const result = await client.from("intake_sources").select("id,label,created_at,mapping,connector_status,connector_settings,last_run_at,last_run_summary").eq("business_id", businessId).eq("kind", "google_sheet").order("created_at");
-  if (result.error) throw new Error("Sheet connections could not be loaded. Try refreshing.");
-  return { sources: result.data, checkedAt: Date.now() };
-}
 
 async function getGoogle(businessId: string) {
   const client = await createClient();
@@ -39,20 +29,15 @@ async function Inbox({ searchParams }: { searchParams: Promise<InboxParams> }) {
   const state = params.state === "resolved" ? "resolved" : "open";
   const selected = z.uuid().safeParse(params.item);
   const inbox = await getIntakePage(page, state, selected.success ? selected.data : undefined);
-  const [connections, google] = await Promise.all([getSheetConnections(workspace.actor.businessId), getGoogle(workspace.actor.businessId)]);
+  const google = await getGoogle(workspace.actor.businessId);
   const googleConfigured = !!(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_PICKER_API_KEY && process.env.GOOGLE_TOKEN_ENCRYPTION_KEY);
   // Opening the inbox catches up connected Drive files after the response is sent; the page never waits for Google.
   if (googleConfigured && google.connection?.status === "connected") { const businessId = workspace.actor.businessId; after(() => syncBusinessIfDue(businessId)); }
   const sources = new Map(inbox.sources.map(source => [source.id, source.label]));
   const context = { revision: workspace.revision, actor: workspace.actor, customers: workspace.customers, invoices: workspace.invoices, expenses: workspace.expenses, members: workspace.members };
-  return <WorkspaceShell workspace={workspace} className="section-page imports-page" header={<WorkspacePageHeading title="Review Inbox" description="Review imported changes before they reach your invoices, expenses or cash plan." workspace={workspace} actions={<Link className="button secondary" href="/invoices">Customer invoices</Link>} />}>
-    <CsvImport sources={inbox.sources} customers={workspace.customers} owner={workspace.actor.role === "owner"} />
-    <GoogleConnect owner={workspace.actor.role === "owner"} configured={googleConfigured} connection={google.connection} files={google.files} customers={workspace.customers} checkedAt={connections.checkedAt} notice={params.google === "connected" || params.google === "failed" ? params.google : undefined} />
-    <details className="records-panel"><summary>Advanced: operator route (n8n)</summary>
-      <SheetConnection sources={connections.sources} customers={workspace.customers} owner={workspace.actor.role === "owner"} serviceAccountEmail={process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ?? ""} checkedAt={connections.checkedAt} />
-    </details>
+  return <WorkspaceShell workspace={workspace} className="section-page imports-page" header={<WorkspacePageHeading title="Review Inbox" description="Review imported changes before they reach your invoices, expenses or cash plan." workspace={workspace} actions={<Link className="button" href="/add">Add records</Link>} />}>
     <nav aria-label="Review Inbox filters" className="intake-buttons"><Link className="button secondary" aria-current={!selected.success && state === "open" ? "page" : undefined} href="/imports">Pending reviews</Link><Link className="button secondary" aria-current={!selected.success && state === "resolved" ? "page" : undefined} href="/imports?state=resolved">Resolved and previous versions</Link><span className="muted">{selected.success ? "Selected proposal" : `${inbox.count} ${state === "open" ? "pending" : "resolved"} items · 20 per page`}</span></nav>
-    {!inbox.items.length && <section className="records-panel"><div className="intake-panel-body"><h2>{state === "open" ? "No proposals waiting for review" : "No resolved proposals on this page"}</h2><p className="muted">Import a CSV or XLSX above to prepare proposals. Saved financial records change only after you confirm an individual item.</p></div></section>}
+    {!inbox.items.length && <section className="records-panel"><div className="intake-panel-body"><h2>{state === "open" ? "No proposals waiting for review" : "No resolved proposals on this page"}</h2><p className="muted">New rows from your files show up here. Nothing counts until you confirm it.</p><p><Link className="button" href="/add">Add records</Link></p></div></section>}
     {state === "open" && inbox.items.some(isBulkConfirmable) && <IntakeBulkConfirm items={inbox.items} revision={workspace.revision} sourceLabels={Object.fromEntries(sources)} />}
     {inbox.items.map(item => <IntakeReview key={`${item.id}:${item.review_version}`} item={item} sourceLabel={sources.get(item.source_id) ?? "Source unavailable"} workspace={context} />)}
     {!selected.success && <nav className="intake-buttons" aria-label="Review Inbox pages">{page > 1 && <Link className="button secondary" href={`/imports?state=${state}&page=${page - 1}`}>Previous</Link>}{page * 20 < inbox.count && <Link className="button secondary" href={`/imports?state=${state}&page=${page + 1}`}>Next</Link>}</nav>}

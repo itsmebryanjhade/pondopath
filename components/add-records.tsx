@@ -33,14 +33,14 @@ export function countNew(results: { status: string; replayed?: boolean }[]) {
 type Read = { sourceId: string; file: File; sheet: string; sheets: string[]; headers: string[]; rows: (string | number | boolean | null)[][]; fields: AutoFields; labels: SelectorLabel[] };
 type Phase = { step: "file" } | { step: "check"; read: Read } | { step: "done"; fresh: number; already: number };
 
-export function AddRecords({ customers, googleSlot }: { customers: { id: string; name: string }[]; googleSlot: ReactNode }) {
+export function AddRecords({ customers, googleSlot, googleOpenAtStart = false }: { customers: { id: string; name: string }[]; googleSlot: ReactNode; googleOpenAtStart?: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const [busy, start] = useTransition();
   const [phase, setPhase] = useState<Phase>({ step: "file" });
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
-  const [googleOpen, setGoogleOpen] = useState(false);
+  const [googleOpen, setGoogleOpen] = useState(googleOpenAtStart);
   const [labels, setLabels] = useState<SelectorLabel[]>([]);
   const adjust = useRef<HTMLDetailsElement>(null);
 
