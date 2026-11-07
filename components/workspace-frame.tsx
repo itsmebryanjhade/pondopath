@@ -37,7 +37,7 @@ export function WorkspaceFrame({ workspace, children }: {
       <WorkspaceTools rows={rows} name={name} role={role} businessName={workspace.business.name} accountActions={accountActions} brand={<ProductBrand />} />
       <div className="workspace">
       <aside id="workspace-sidebar" className="side-nav" aria-label="Workspace navigation">
-        <div className="side-brand"><ProductBrand /><SidebarToggle /></div>
+        <div className="side-brand"><ProductBrand showAttribution={false} /><SidebarToggle /></div>
         <WorkspaceNavigation followupCount={followupCount} inboxCount={inboxCount} />
       </aside>
       <main id="workspace-main" tabIndex={-1} className="workspace-content">{children}</main>
