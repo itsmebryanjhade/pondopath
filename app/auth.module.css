@@ -120,6 +120,19 @@
   .shell *, .shell *::before, .shell *::after { transition: none !important; animation: none !important; }
 }
 
+/* Emailed-code step */
+.otp { min-height: 64px; padding-inline: 12px; font-family: var(--font-auth-heading), sans-serif; font-size: 30px; font-weight: 700; letter-spacing: .5em; text-align: center; text-indent: .5em; font-variant-numeric: tabular-nums; }
+.otp::placeholder { color: var(--line-dark); }
+.codeNote { color: var(--ink-soft); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.codeNote strong { color: var(--ink); }
+.codeActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.textButton { min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--green-700); cursor: pointer; font-size: 13px; font-weight: 700; text-underline-offset: 3px; }
+.textButton:hover:not(:disabled) { text-decoration: underline; }
+.textButton:disabled { color: var(--ink-faint); cursor: default; }
+.forgot { margin-top: -6px; text-align: right; font-size: 13px; }
+.forgot a { color: var(--green-700); font-weight: 600; text-underline-offset: 3px; }
+.swap { animation: step-in 420ms cubic-bezier(.2, .8, .2, 1) backwards; }
+
 /* Progress steps: the finished step's check pops in, the line to the current step fills, and the current step glows. */
 .progress .complete > span { animation: step-pop 420ms cubic-bezier(.2, .8, .2, 1) 120ms backwards; }
 .progress .complete + li::before { background: var(--green-500); transform-origin: left; animation: step-fill 520ms cubic-bezier(.2, .8, .2, 1) 260ms backwards; }
