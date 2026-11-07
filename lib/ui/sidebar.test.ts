@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeHref, badgeText, countPhrase, parseCollapsed, sidebarGroups } from "./sidebar";
+import { activeHref, badgeText, countPhrase, mobileTabs, moreActive, moreItems, parseCollapsed, sidebarGroups } from "./sidebar";
 
 describe("sidebar", () => {
   it("groups real workspace pages under Plan, Money and To do", () => {
@@ -48,5 +48,26 @@ describe("sidebar", () => {
     expect(parseCollapsed("0")).toBe(false);
     expect(parseCollapsed(null)).toBe(false);
     expect(parseCollapsed("true")).toBe(false);
+  });
+  it("phone tabs keep five spots: Overview, Forecast, a centre Add, Review with its count, and More", () => {
+    const tabs = mobileTabs({ inbox: 3, followups: 2 });
+    expect(tabs.map((tab) => tab.label)).toEqual(["Overview", "Forecast", "Add", "Review", "More"]);
+    expect(tabs.map((tab) => tab.kind === "link" ? tab.href : "more")).toEqual(["/overview", "/forecast", "/add", "/imports", "more"]);
+    expect(tabs[2]).toMatchObject({ kind: "link", fab: true });
+    expect(tabs[3]).toMatchObject({ count: "3", countLabel: "3 waiting for review" });
+  });
+  it("More carries the open follow-up count so urgent work is never hidden", () => {
+    expect(mobileTabs({ inbox: 0, followups: 2 })[4]).toMatchObject({ kind: "more", count: "2", countLabel: "2 open follow-ups" });
+    expect(mobileTabs({ inbox: 0, followups: 0 })[4]).not.toHaveProperty("count");
+  });
+  it("the More sheet lists everything not on the bar, with counts", () => {
+    const items = moreItems({ inbox: 3, followups: 2 });
+    expect(items.map((item) => item.href)).toEqual(["/cash", "/invoices", "/expenses", "/followups"]);
+    expect(items[3]).toMatchObject({ count: "2", countLabel: "2 open follow-ups" });
+    expect(items.map((item) => item.href)).not.toContain("/imports");
+  });
+  it("More looks active on the pages inside it", () => {
+    for (const path of ["/cash", "/payments", "/invoices", "/invoices/x", "/expenses", "/followups"]) expect(moreActive(path)).toBe(true);
+    for (const path of ["/overview", "/forecast", "/add", "/imports", "/team"]) expect(moreActive(path)).toBe(false);
   });
 });

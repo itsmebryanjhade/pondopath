@@ -1,5 +1,5 @@
 /** Sidebar structure: real workspace pages only, grouped by what a person is doing. */
-export type SideIcon = "sparkle" | "calendar" | "wallet" | "receipt" | "arrowOut" | "inbox" | "message";
+export type SideIcon = "sparkle" | "calendar" | "wallet" | "receipt" | "arrowOut" | "inbox" | "message" | "plus" | "more";
 export type SideItem = { href: string; label: string; icon: SideIcon; count?: string; countLabel?: string };
 export type SideGroup = { title: string; items: SideItem[] };
 
@@ -41,3 +41,28 @@ export function activeHref(pathname: string): string {
 }
 
 export const parseCollapsed = (raw: string | null) => raw === "1";
+
+export type MobileTab =
+  | { kind: "link"; href: string; label: string; icon: SideIcon; fab?: boolean; count?: string; countLabel?: string }
+  | { kind: "more"; label: "More"; icon: SideIcon; count?: string; countLabel?: string };
+
+/** Phone bottom bar: five spots, Add in the centre, and everything else behind More. */
+export function mobileTabs(counts: { inbox: number; followups: number }): MobileTab[] {
+  const [reviewItem] = sidebarGroups(counts)[2].items;
+  return [
+    { kind: "link", href: "/overview", label: "Overview", icon: "sparkle" },
+    { kind: "link", href: "/forecast", label: "Forecast", icon: "calendar" },
+    { kind: "link", href: "/add", label: "Add", icon: "plus", fab: true },
+    { kind: "link", href: "/imports", label: "Review", icon: "inbox", ...(reviewItem.count ? { count: reviewItem.count, countLabel: reviewItem.countLabel } : {}) },
+    { kind: "more", label: "More", icon: "more", ...(counts.followups > 0 ? { count: badgeText(counts.followups), countLabel: countPhrase("/followups", counts.followups) } : {}) },
+  ];
+}
+
+const MORE_HREFS = ["/cash", "/invoices", "/expenses", "/followups"];
+
+/** The pages that live behind More, in sidebar order, with their counts. */
+export function moreItems(counts: { inbox: number; followups: number }): SideItem[] {
+  return sidebarGroups(counts).flatMap((group) => group.items).filter((item) => MORE_HREFS.includes(item.href));
+}
+
+export const moreActive = (pathname: string) => MORE_HREFS.includes(activeHref(pathname));

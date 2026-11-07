@@ -6,10 +6,9 @@ import Link from "next/link";
 import { DashboardIcon } from "./dashboard-icon";
 import type { ActivityRow } from "@/lib/ui/cash-overview";
 import { filterActivityRows } from "@/lib/ui/cash-overview";
-import { WorkspaceNavigation } from "./workspace-navigation";
 
-export function WorkspaceTools({ rows, name, role, businessName, followupCount, accountActions, brand }: {
-  rows: ActivityRow[]; name: string; role: string; businessName: string; followupCount: number;
+export function WorkspaceTools({ rows, name, role, businessName, accountActions, brand }: {
+  rows: ActivityRow[]; name: string; role: string; businessName: string;
   accountActions: React.ReactNode; brand: React.ReactNode;
 }) {
   const [query, setQuery] = useState("");
@@ -78,7 +77,6 @@ export function WorkspaceTools({ rows, name, role, businessName, followupCount, 
         </details>
         </div>
       </div>
-      <WorkspaceNavigation mobile followupCount={followupCount} />
     </header>
   );
 }

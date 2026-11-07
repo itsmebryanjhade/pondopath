@@ -9,6 +9,7 @@ import { WorkspaceTools } from "./workspace-tools";
 import { buildActivityRows } from "@/lib/ui/cash-overview";
 import { AiAssistant } from "./ai-assistant";
 import { FileDropOverlay } from "./file-drop-overlay";
+import { MobileTabBar } from "./mobile-tab-bar";
 import { SidebarToggle } from "./sidebar-toggle";
 import { ToastHost } from "./toast-host";
 
@@ -33,7 +34,7 @@ export function WorkspaceFrame({ workspace, children }: {
     <FileDropOverlay />
     <div data-ui className={`${font.className} ${headingFont.variable} workspace-root app-shell`}>
       <a className="skip-link" href="#workspace-main">Skip to cash plan</a>
-      <WorkspaceTools rows={rows} name={name} role={role} businessName={workspace.business.name} followupCount={followupCount} accountActions={accountActions} brand={<ProductBrand />} />
+      <WorkspaceTools rows={rows} name={name} role={role} businessName={workspace.business.name} accountActions={accountActions} brand={<ProductBrand />} />
       <div className="workspace">
       <aside id="workspace-sidebar" className="side-nav" aria-label="Workspace navigation">
         <div className="side-brand"><ProductBrand /><SidebarToggle /></div>
@@ -41,6 +42,7 @@ export function WorkspaceFrame({ workspace, children }: {
       </aside>
       <main id="workspace-main" tabIndex={-1} className="workspace-content">{children}</main>
       </div>
+      <MobileTabBar followupCount={followupCount} inboxCount={inboxCount} />
       <AiAssistant workspace={workspace} />
     </div>
     </ToastHost>

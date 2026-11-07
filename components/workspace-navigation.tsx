@@ -8,42 +8,14 @@ import { DashboardIcon } from "./dashboard-icon";
 import { SideIconGlyph } from "./side-icons";
 import { activeHref, sidebarGroups } from "@/lib/ui/sidebar";
 
-const destinations = [
-  { href: "/overview", label: "Overview", icon: "sparkle" },
-  { href: "/cash", label: "Cash", icon: "wallet" },
-  { href: "/invoices", label: "Invoices", icon: "receipt" },
-  { href: "/expenses", label: "Expenses", icon: "arrowOut" },
-  { href: "/forecast", label: "Forecast", icon: "calendar" },
-] as const;
-
 function NavigationFeedback({ label }: { label: string }) {
   const { pending } = useLinkStatus();
   return <span className="sr-only" role="status" data-pending={pending}>{pending ? `Opening ${label}…` : ""}</span>;
 }
 
-export function WorkspaceNavigation({ mobile = false, followupCount = 0, inboxCount = 0 }: { mobile?: boolean; followupCount?: number; inboxCount?: number }) {
+export function WorkspaceNavigation({ followupCount = 0, inboxCount = 0 }: { followupCount?: number; inboxCount?: number }) {
   const pathname = usePathname();
   const navigation = useRef<HTMLElement>(null);
-  if (mobile) {
-    // The phone strip keeps the five main pages; a bottom bar replaces it in a later piece.
-    const activeMobile = pathname === "/payments" ? "/cash" : ["/followups", "/imports", "/add"].includes(pathname) ? "/invoices" : pathname;
-    return (
-      <nav ref={navigation} aria-label="Mobile cash planning" className="mobile-nav">
-        <ul>{destinations.map((item) => (
-          <li key={item.href}>
-            <Link href={item.href}
-              className={`mobile-tab${activeMobile === item.href || activeMobile.startsWith(`${item.href}/`) ? " active" : ""}`}
-              aria-current={activeMobile === item.href || activeMobile.startsWith(`${item.href}/`) ? "page" : undefined}
-              onNavigate={() => navigation.current?.closest("details")?.removeAttribute("open")}>
-              <span>{item.label}</span>
-              {item.href === "/invoices" && followupCount > 0 && <span className="side-count" aria-label={`${followupCount} open follow-ups`}>{followupCount}</span>}
-              <NavigationFeedback label={item.label} />
-            </Link>
-          </li>
-        ))}</ul>
-      </nav>
-    );
-  }
   const current = activeHref(pathname);
   return (
     <nav ref={navigation} aria-label="Cash planning">

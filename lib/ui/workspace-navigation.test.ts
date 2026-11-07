@@ -5,6 +5,7 @@ import { WorkspaceShell } from "@/components/workspace-shell";
 import { WorkspaceFrame } from "@/components/workspace-frame";
 import WorkspaceLayout from "@/app/(workspace)/layout";
 import { WorkspaceNavigation } from "@/components/workspace-navigation";
+import { MobileTabBar } from "@/components/mobile-tab-bar";
 import WorkspaceLoading from "@/components/workspace-loading";
 import WorkspaceError from "@/app/(workspace)/error";
 import PageError from "@/app/error";
@@ -85,22 +86,12 @@ describe("persistent workspace navigation", () => {
 
   it("reuses the source shell with in-bar mobile branding and no second mobile header", () => {
     const html = renderToStaticMarkup(WorkspaceFrame({ workspace, children: "Current page" }));
-    for (const className of ["app-shell", "side-nav", "nav-wrap", "nav-actions", "mobile-brand", "mobile-nav", "quick-button", "notification-panel", "profile-menu"]) expect(html).toContain(className);
+    for (const className of ["app-shell", "side-nav", "nav-wrap", "nav-actions", "mobile-brand", "mobile-bar", "quick-button", "notification-panel", "profile-menu"]) expect(html).toContain(className);
     expect(html).not.toContain('class="mobile-header"');
     expect(html).toContain('aria-label="Search records"');
     expect(html).toContain(workspace.business.name);
   });
 
-  it("uses actual open follow-up totals and keeps mobile routes available", () => {
-    navigationState.pathname = "/followups";
-    const html = renderToStaticMarkup(createElement(WorkspaceNavigation, { mobile: true, followupCount: 2 }));
-    expect(html).toContain('aria-label="2 open follow-ups"');
-    expect(html.match(/href="\/(overview|cash|invoices|expenses|forecast)"/g)).toHaveLength(5);
-    expect(html).not.toContain('href="/followups"');
-    expect(html).not.toContain('href="/payments"');
-    expect(html).toMatch(/class="mobile-tab active"[^>]*aria-current="page"[^>]*href="\/invoices"/);
-    expect(renderToStaticMarkup(createElement(WorkspaceNavigation))).not.toContain('class="side-count"');
-  });
 
   it("selects the invoice tab for detail routes without selecting unrelated prefixes", () => {
     navigationState.pathname = "/invoices/demo-id";
@@ -165,5 +156,31 @@ describe("persistent workspace navigation", () => {
     const html = renderToStaticMarkup(WorkspaceFrame({ workspace, children: "Current page" }));
     expect(html).toMatch(/<button[^>]*aria-label="Collapse sidebar"[^>]*aria-expanded="true"/);
     expect(html).not.toContain("Forecast check");
+  });
+
+  it("the phone bar has five spots with Add in the centre and counts as full phrases", () => {
+    navigationState.pathname = "/overview";
+    const html = renderToStaticMarkup(createElement(MobileTabBar, { followupCount: 2, inboxCount: 3 }));
+    expect(html).toContain('aria-label="Main menu"');
+    for (const label of ["Overview", "Forecast", "Add", "Review", "More"]) expect(html).toContain(`>${label}</span>`);
+    expect(html).toMatch(/<a[^>]*class="[^"]*mobile-fab[^"]*"[^>]*href="\/add"|<a[^>]*href="\/add"[^>]*class="[^"]*mobile-fab/);
+    expect(html).toContain('aria-label="3 waiting for review"');
+    expect(html).toContain('aria-label="2 open follow-ups"');
+    expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(html).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/overview"|<a[^>]*href="\/overview"[^>]*aria-current="page"/);
+  });
+  it("the More sheet is closed on first render and its button reports that", () => {
+    navigationState.pathname = "/overview";
+    const html = renderToStaticMarkup(createElement(MobileTabBar, { followupCount: 0, inboxCount: 0 }));
+    expect(html).toMatch(/<button[^>]*aria-expanded="false"[^>]*aria-controls="more-sheet"|<button[^>]*aria-controls="more-sheet"[^>]*aria-expanded="false"/);
+    expect(html).not.toContain('id="more-sheet"');
+    expect(html).not.toContain("side-count");
+  });
+  it("More is marked current on pages inside it, and the bar has no other current item", () => {
+    navigationState.pathname = "/followups";
+    const html = renderToStaticMarkup(createElement(MobileTabBar, { followupCount: 1, inboxCount: 0 }));
+    expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*>[\s\S]*?More|<button[^>]*>[\s\S]*?More[\s\S]*?<\/button>/);
+    expect(html).toMatch(/mobile-tab more active/);
   });
 });
