@@ -33,7 +33,7 @@ async function Add({ searchParams }: { searchParams: Promise<AddParams> }) {
   // Opening this page catches up connected Drive files after the response is sent; the page never waits for Google.
   if (googleConfigured && google.connection?.status === "connected") { const businessId = workspace.actor.businessId; after(() => syncBusinessIfDue(businessId)); }
   const notice = params.google === "connected" || params.google === "failed" ? params.google : undefined;
-  return <WorkspaceShell workspace={workspace} className="section-page add-records-page" header={<WorkspacePageHeading title="Add your records" description="Bring them in from a file, or type them in." workspace={workspace} actions={<Link className="button secondary" href="/imports">Review imports</Link>} />}>
+  return <WorkspaceShell workspace={workspace} className="section-page add-records-page" header={<WorkspacePageHeading title="Add your records" description="Bring them in from a file, or type them in." workspace={workspace} actions={<Link className="button secondary" href="/imports">Review Inbox</Link>} />}>
     <AddRecords customers={workspace.customers} googleOpenAtStart={!!notice || google.files.length > 0}
       googleSlot={<GoogleConnect owner={owner} configured={googleConfigured} connection={google.connection} files={google.files} customers={workspace.customers} checkedAt={google.checkedAt} notice={notice} />} />
     <details className="records-panel add-advanced"><summary>Advanced</summary>

@@ -15,7 +15,6 @@ type IconName =
   | 'calendar'
   | 'arrowRight'
   | 'more'
-  | 'check'
 
 type IconProps = {
   name: IconName
@@ -31,7 +30,6 @@ export function DashboardIcon({ name, size = 18 }: IconProps) {
       </>
     ),
     plus: <path d="M12 5v14M5 12h14" />,
-    check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
     chevron: <path d="m8 10 4 4 4-4" />,
     bell: (
       <>

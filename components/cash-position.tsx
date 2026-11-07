@@ -27,7 +27,7 @@ export function CashPosition({ workspace, receipts, payments, openingControls }:
     <header className="section-heading">
       <div>
         <p className="eyebrow">Liquidity · {workspace.business.is_demo ? "Fictional demo" : workspace.business.name}</p>
-        <h1>Cash ledger</h1>
+        <h1>Cash position</h1>
         <p>Recorded money available today, kept separate from expected customer payments.</p>
       </div>
       <div className="dashboard-heading-actions">

@@ -3,7 +3,7 @@ import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { formatPlanDate } from "@/lib/display";
 import { buildNextActions } from "@/lib/ui/next-actions";
 
-type Props = { workspace: WorkspaceSnapshot; limit?: number; viewAllHref?: string; heading?: string; description?: string };
+type Props = { workspace: WorkspaceSnapshot; limit?: number; viewAllHref?: string };
 
 function dueLabel(dueDate: string | null, referenceDate: string) {
   if (!dueDate) return "No date set";
@@ -12,7 +12,7 @@ function dueLabel(dueDate: string | null, referenceDate: string) {
   return `Due ${formatPlanDate(dueDate)}`;
 }
 
-export function NextActions({ workspace, limit, viewAllHref, heading = "Next actions", description = "Review the records that need a follow-up or owner decision." }: Props) {
+export function NextActions({ workspace, limit, viewAllHref }: Props) {
   const allActions = buildNextActions(workspace);
   const actions = limit === undefined ? allActions : allActions.slice(0, limit);
   const memberById = new Map(workspace.members.map((member) => [member.user_id, member.display_name]));
@@ -21,8 +21,8 @@ export function NextActions({ workspace, limit, viewAllHref, heading = "Next act
     <section className="panel next-actions-panel" aria-labelledby="next-actions-heading">
       <div className="next-actions-head">
         <div>
-          <h2 id="next-actions-heading">{heading}</h2>
-          <p>{description}</p>
+          <h2 id="next-actions-heading">Next actions</h2>
+          <p>Review the records that need a follow-up or owner decision.</p>
         </div>
         {viewAllHref && allActions.length > actions.length && (
           <Link className="text-link" href={viewAllHref}>View all {allActions.length} actions</Link>

@@ -42,9 +42,6 @@ export function buildActivityRows(workspace: WorkspaceSnapshot): ActivityRow[] {
   return [...invoices, ...expenses].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id));
 }
 
-/** A link to `#needs-attention` opens the activity list on that filter. */
-export const filterFromHash = (hash: string): ActivityFilter => (hash === "#needs-attention" ? "attention" : "all");
-
 export function filterActivityRows(rows: ActivityRow[], filter: ActivityFilter, query = ""): ActivityRow[] {
   const needle = query.trim().toLocaleLowerCase();
   return rows.filter((row) => (filter === "all" || (filter === "invoices" && row.kind === "invoice") || (filter === "expenses" && row.kind === "expense") || (filter === "attention" && row.needsAttention)) && (!needle || `${row.label} ${row.reference}`.toLocaleLowerCase().includes(needle)));

@@ -21,12 +21,12 @@ export function sidebarGroups(counts: { inbox: number; followups: number }): Sid
       { href: "/forecast", label: "Forecast", icon: "calendar" },
     ] },
     { title: "Money", items: [
-      { href: "/cash", label: "Cash ledger", icon: "wallet" },
+      { href: "/cash", label: "Cash", icon: "wallet" },
       { href: "/invoices", label: "Invoices", icon: "receipt" },
       { href: "/expenses", label: "Expenses", icon: "arrowOut" },
     ] },
     { title: "To do", items: [
-      { href: "/imports", label: "Review imports", icon: "inbox", ...counted("/imports", counts.inbox) },
+      { href: "/imports", label: "Review Inbox", icon: "inbox", ...counted("/imports", counts.inbox) },
       { href: "/followups", label: "Follow-ups", icon: "message", ...counted("/followups", counts.followups) },
     ] },
   ];
@@ -46,22 +46,21 @@ export type MobileTab =
   | { kind: "link"; href: string; label: string; icon: SideIcon; fab?: boolean; count?: string; countLabel?: string }
   | { kind: "more"; label: "More"; icon: SideIcon; count?: string; countLabel?: string };
 
-/** Phone bottom bar: five spots, Add in the centre; every count sits on its own labelled tab. */
+/** Phone bottom bar: five spots, Add in the centre, and everything else behind More. */
 export function mobileTabs(counts: { inbox: number; followups: number }): MobileTab[] {
-  const [review, followups] = sidebarGroups(counts)[2].items;
-  const counted = (item: SideItem) => (item.count ? { count: item.count, countLabel: item.countLabel } : {});
+  const [reviewItem] = sidebarGroups(counts)[2].items;
   return [
     { kind: "link", href: "/overview", label: "Overview", icon: "sparkle" },
-    { kind: "link", href: "/imports", label: "Review", icon: "inbox", ...counted(review) },
+    { kind: "link", href: "/forecast", label: "Forecast", icon: "calendar" },
     { kind: "link", href: "/add", label: "Add", icon: "plus", fab: true },
-    { kind: "link", href: "/followups", label: "Follow-ups", icon: "message", ...counted(followups) },
-    { kind: "more", label: "More", icon: "more" },
+    { kind: "link", href: "/imports", label: "Review", icon: "inbox", ...(reviewItem.count ? { count: reviewItem.count, countLabel: reviewItem.countLabel } : {}) },
+    { kind: "more", label: "More", icon: "more", ...(counts.followups > 0 ? { count: badgeText(counts.followups), countLabel: countPhrase("/followups", counts.followups) } : {}) },
   ];
 }
 
-const MORE_HREFS = ["/forecast", "/cash", "/invoices", "/expenses"];
+const MORE_HREFS = ["/cash", "/invoices", "/expenses", "/followups"];
 
-/** The pages that live behind More, in sidebar order. */
+/** The pages that live behind More, in sidebar order, with their counts. */
 export function moreItems(counts: { inbox: number; followups: number }): SideItem[] {
   return sidebarGroups(counts).flatMap((group) => group.items).filter((item) => MORE_HREFS.includes(item.href));
 }

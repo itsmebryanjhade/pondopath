@@ -182,9 +182,9 @@ export function AddRecords({ customers, googleSlot, googleOpenAtStart = false }:
         ? <DoneState count={phase.fresh} reviewHref="/imports" onAddMore={again} skipped={phase.skipped} />
         : <div className="add-done" role="status">
           <h2 tabIndex={-1} data-step-focus>{phase.already ? "These rows were already sent" : "No new rows were added"}</h2>
-          <p>{phase.already ? "They're waiting in Review imports." : "Nothing new was found in this file."}</p>
+          <p>{phase.already ? "They're waiting in the Review Inbox." : "Nothing new was found in this file."}</p>
           {phase.skipped > 0 && <p className="add-note">{phase.skipped} {phase.skipped === 1 ? "row was" : "rows were"} skipped. Check {phase.skipped === 1 ? "it" : "them"} in your file.</p>}
-          <div className="add-done-actions"><a className="add-button" href="/imports">Open Review imports</a><button type="button" className="add-button secondary" onClick={again}>Add more records</button></div>
+          <div className="add-done-actions"><a className="add-button" href="/imports">Open the Review Inbox</a><button type="button" className="add-button secondary" onClick={again}>Add more records</button></div>
         </div>)}
     </div>
   );
