@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { DM_Sans, Manrope } from "next/font/google";
 import { DashboardIcon } from "@/components/dashboard-icon";
+import { LandingMobileMenu } from "@/components/landing-mobile-menu";
 import { LandingPreview } from "@/components/landing-preview";
 import { ProductBrand } from "@/components/product-brand";
 import { CountUpAmount, MotionListItem, ViewportSection } from "@/components/viewport-motion";
@@ -42,6 +43,23 @@ const liveRecords = [
   ["Review before saving", "Every row arrives as a proposal. Nothing changes until you confirm."],
 ];
 const plannedRecords = ["Business messaging intake", "Receipt-image extraction"];
+
+const peso = (amount: number) => `${amount < 0 ? "\u2212" : ""}\u20b1${Math.abs(amount).toLocaleString("en-PH")}`;
+
+const timelines = [
+  {
+    label: "Customer pays on time", risk: false,
+    terms: [["\u20b140,000", "on hand"], ["+ \u20b150,000", "expected"], ["\u2212 \u20b180,000", "due Friday"]],
+    days: [["Thu", 40_000], ["Fri", 10_000], ["Mon", 10_000]],
+    resultLabel: "Projected cash", result: 10_000, note: "",
+  },
+  {
+    label: "Payment slips to Monday", risk: true,
+    terms: [["\u20b140,000", "on hand"], ["\u2212 \u20b180,000", "due Friday"]],
+    days: [["Thu", 40_000], ["Fri", -40_000], ["Mon", 10_000]],
+    resultLabel: "Friday shortfall", result: 40_000, note: "The balance recovers Monday, but payroll day still needs action.",
+  },
+] as const;
 
 const stagger = (index: number) => ({ "--i": index }) as CSSProperties;
 
@@ -85,21 +103,7 @@ export default function Home() {
             <Link className={styles.outlineButton} href="/login">Log in</Link>
             <Link className={styles.primaryButton} href="/signup">Create workspace</Link>
           </div>
-          <details className={styles.mobileMenu}>
-            <summary aria-label="Open navigation"><span>Menu</span><DashboardIcon name="chevron" /></summary>
-            <div className={styles.mobileMenuPanel}>
-              <nav aria-label="Mobile navigation">
-                <a href="#how-it-works">How it works</a>
-                <a href="#features">Features</a>
-                <a href="#control">Control &amp; safety</a>
-                <a href="#faq">FAQ</a>
-              </nav>
-              <div>
-                <Link className={styles.outlineButton} href="/login">Log in</Link>
-                <Link className={styles.primaryButton} href="/signup">Create workspace</Link>
-              </div>
-            </div>
-          </details>
+          <LandingMobileMenu />
         </div>
       </header>
 
@@ -169,19 +173,25 @@ export default function Home() {
           <div className={styles.problemCompare}>
             <h3>The same money. Different timing.</h3>
             <p>This is the gap a spreadsheet total can hide.</p>
-            <div className={styles.comparison}>
-              <article className={styles.comparisonSafe}>
-                <span className={styles.comparisonLabel}><DashboardIcon name="calendar" size={17} />Customer pays on time</span>
-                <p><strong>₱40,000</strong> on hand <span>+</span> <strong>₱50,000</strong> expected <span>−</span> <strong>₱80,000</strong> due Friday</p>
-                <div><span>Projected cash</span><strong>₱10,000</strong></div>
-              </article>
-              <article className={styles.comparisonRisk}>
-                <span className={styles.comparisonLabel}><DashboardIcon name="alert" size={17} />Payment slips to Monday</span>
-                <p><strong>₱40,000</strong> on hand <span>−</span> <strong>₱80,000</strong> due Friday</p>
-                <div><span>Friday shortfall</span><strong>₱40,000</strong></div>
-                <small>The balance recovers later, but payroll day still needs action.</small>
-              </article>
-            </div>
+            <ol className={styles.compareGrid} aria-label="Two ways the same money can play out">
+              {timelines.map((timeline) => (
+                <MotionListItem key={timeline.label} className={`${styles.compareCard} ${timeline.risk ? styles.compareRisk : ""}`} activeClassName={styles.compareVisible}>
+                  <span className={styles.comparisonLabel}><DashboardIcon name={timeline.risk ? "alert" : "calendar"} size={17} />{timeline.label}</span>
+                  <p className={styles.compareTerms}>{timeline.terms.map(([amount, text]) => <span key={text}><strong>{amount}</strong> {text}</span>)}</p>
+                  <div className={styles.balanceBars} role="img" aria-label={`Cash at the end of each day: ${timeline.days.map(([day, value]) => `${day} ${peso(value)}`).join(", ")}.`}>
+                    {timeline.days.map(([day, value], index) => (
+                      <div key={day} className={`${styles.balanceDay} ${value < 0 ? styles.balanceNegative : ""}`} style={{ "--h": Math.abs(value) / 40_000, "--d": index } as CSSProperties}>
+                        <div className={styles.barUp}>{value >= 0 && <i />}</div>
+                        <div className={styles.barDown}>{value < 0 && <i />}</div>
+                        <small>{day}</small><b>{peso(value)}</b>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={styles.compareResult}><span>{timeline.resultLabel}</span><strong><CountUpAmount value={timeline.result} /></strong></div>
+                  {timeline.note && <small>{timeline.note}</small>}
+                </MotionListItem>
+              ))}
+            </ol>
           </div>
         </ViewportSection>
 
