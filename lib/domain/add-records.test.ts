@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countLabels, dragHasFiles, fileKind, firstFile, heldLine, plainImportError, previewCell, previewColumns, summaryLine } from "./add-records";
+import { countLabels, dragHasFiles, fileKind, firstFile, heldLine, plainImportError, previewCell, previewColumns, sheetToRead, summarizeOutcome, summaryLine } from "./add-records";
 
 const counts = (invoice = 0, expense = 0, payment = 0, choose = 0) => ({ invoice, expense, payment, choose });
 const BANNED = /KiB|UTF|row ID|YYYY|source/i;
@@ -41,13 +41,35 @@ describe("Add records helpers", () => {
     expect(heldLine(counts(0, 0, 0, 1))).toContain("needs your choice");
     expect(heldLine(counts(5, 2))).toBe("");
   });
-  it("plainImportError maps limits to plain words", () => {
-    expect(plainImportError("The import needs 1–100 data rows.")).toBe("That file has too many rows. Send up to 100 at a time.");
-    expect(plainImportError("Use at most 24 columns.")).toBe("That file has too many columns. Keep up to 24.");
-    expect(plainImportError("Choose a .csv or .xlsx file up to 512 KiB.")).toBe("That file is too big, or isn't Excel or CSV. Export fewer rows and try again.");
-    expect(plainImportError("Something odd happened")).toBe("We couldn't read that file. Check it opens in Excel, then try again.");
-    for (const message of ["The import needs 1–100 data rows.", "Use at most 24 columns.", "Choose a .csv or .xlsx file up to 512 KiB.", "x"])
-      expect(plainImportError(message)).not.toMatch(BANNED);
+  it("plainImportError turns the real server messages into what to do next", () => {
+    const cases: [string, string][] = [
+      ["Include a header and 1–100 data rows per import.", "Your file needs a row of column names and 1 to 100 rows of records. Check it isn't empty, and send up to 100 rows at a time."],
+      ["Use up to 24 unique, nonempty column headers (maximum 200 characters each).", "Give every column a short, different name in the first row, and keep to 24 columns."],
+      ["The CSV has invalid quoting or a row larger than 16 KiB.", "We couldn't read this CSV. Save it again from Excel as CSV, then try again."],
+      ["Each data row must fit within 16 KiB.", "One row is too long. Shorten long notes in your file, then try again."],
+      ["Replace spreadsheet formulas with literal values before importing.", "Your sheet has formulas. Copy the cells and paste them as values, then try again."],
+      ["Replace Excel error values (such as #N/A or #REF!) and TRUE/FALSE cells with plain values before importing.", "Some cells show errors like #N/A, or TRUE/FALSE. Replace them with plain values, then try again."],
+      ["Put the column headers in worksheet row 1.", "Put the column names in the first row of the sheet, then try again."],
+      ["Choose a .csv or .xlsx file up to 512 KiB.", "That file is empty, too big, or not Excel or CSV. Choose an Excel or CSV file with fewer rows."],
+      ["Select a worksheet.", "Choose which sheet to use."],
+      ["Something odd happened", "We couldn't read that file. Check it opens in Excel, then try again."],
+    ];
+    for (const [server, plain] of cases) {
+      expect(plainImportError(server)).toBe(plain);
+      expect(plainImportError(server)).not.toMatch(BANNED);
+    }
+  });
+  it("sheetToRead picks the first sheet when an Excel file came back without one", () => {
+    expect(sheetToRead("xlsx", null, ["Sales", "Bills"])).toBe("Sales");
+    expect(sheetToRead("xlsx", "Bills", ["Sales", "Bills"])).toBeNull();
+    expect(sheetToRead("xlsx", null, [])).toBeNull();
+    expect(sheetToRead("csv", null, [])).toBeNull();
+  });
+  it("summarizeOutcome counts new, already-sent and skipped rows honestly", () => {
+    expect(summarizeOutcome(["new", "new", "invalid", "duplicate"], [
+      { status: "pending", replayed: false }, { status: "needs_match", replayed: false }, { status: "pending", replayed: true }, { status: "error" },
+    ])).toEqual({ fresh: 2, already: 1, skipped: 3 });
+    expect(summarizeOutcome([], [{ status: "error" }, { status: "error" }])).toEqual({ fresh: 0, already: 0, skipped: 2 });
   });
   it("previewColumns builds Name, Who, Amount and Due from whichever columns the reader found", () => {
     const headers = ["ID", "Type", "Customer", "Supplier", "Invoice no", "Amount", "Due", "Description"];

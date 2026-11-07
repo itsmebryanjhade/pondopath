@@ -53,9 +53,35 @@ export function previewCell(cells: (string | number | boolean | null)[], columns
   return "";
 }
 
+/** Server messages from `lib/domain/imports.ts` and `lib/domain/xlsx.ts`, turned into what to do next. */
+const PLAIN_ERRORS: [RegExp, string][] = [
+  [/1–100 data rows/, "Your file needs a row of column names and 1 to 100 rows of records. Check it isn't empty, and send up to 100 rows at a time."],
+  [/unique, nonempty column headers/, "Give every column a short, different name in the first row, and keep to 24 columns."],
+  [/invalid quoting/, "We couldn't read this CSV. Save it again from Excel as CSV, then try again."],
+  [/Each data row must fit/, "One row is too long. Shorten long notes in your file, then try again."],
+  [/spreadsheet formulas/, "Your sheet has formulas. Copy the cells and paste them as values, then try again."],
+  [/error values/, "Some cells show errors like #N/A, or TRUE/FALSE. Replace them with plain values, then try again."],
+  [/column headers in worksheet row 1/, "Put the column names in the first row of the sheet, then try again."],
+  [/\.csv or \.xlsx file/, "That file is empty, too big, or not Excel or CSV. Choose an Excel or CSV file with fewer rows."],
+  [/Select a worksheet/, "Choose which sheet to use."],
+];
+
 export function plainImportError(message: string): string {
-  if (/data rows|too many rows/i.test(message)) return "That file has too many rows. Send up to 100 at a time.";
-  if (/column/i.test(message)) return "That file has too many columns. Keep up to 24.";
-  if (/KiB|\.csv or \.xlsx|too large|too big/i.test(message)) return "That file is too big, or isn't Excel or CSV. Export fewer rows and try again.";
-  return "We couldn't read that file. Check it opens in Excel, then try again.";
+  return PLAIN_ERRORS.find(([pattern]) => pattern.test(message))?.[1] ?? "We couldn't read that file. Check it opens in Excel, then try again.";
+}
+
+/** An Excel file read without a sheet comes back empty; read its first sheet next. */
+export function sheetToRead(kind: "csv" | "xlsx" | null, sheet: string | null, sheets: string[]): string | null {
+  return kind === "xlsx" && !sheet && sheets.length ? sheets[0] : null;
+}
+
+/** New rows, rows already sent before, and rows that could not be added (bad values in the file, or refused by the server). */
+export function summarizeOutcome(previewStatuses: string[], results: { status: string; replayed?: boolean }[]) {
+  const skippedInPreview = previewStatuses.filter((status) => status === "invalid" || status === "duplicate").length;
+  const open = results.filter((result) => ["pending", "needs_match"].includes(result.status));
+  return {
+    fresh: open.filter((result) => !result.replayed).length,
+    already: results.filter((result) => result.replayed || result.status === "unchanged").length,
+    skipped: skippedInPreview + results.filter((result) => result.status === "error").length,
+  };
 }

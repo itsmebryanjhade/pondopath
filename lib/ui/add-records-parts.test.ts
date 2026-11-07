@@ -58,4 +58,16 @@ describe("Add records building blocks", () => {
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).toContain('href="/invoices#new-invoice"');
   });
+  it("marks where focus goes after each step change", () => {
+    const check = html(createElement(CheckSummary, { summary: "We found 1 invoice.", held: "", headers: ["Ref"], rows: [{ cells: ["A"], label: "invoice" }] }));
+    expect(check).toMatch(/<p[^>]*class="add-summary"[^>]*tabindex="-1"[^>]*data-step-focus|<p[^>]*data-step-focus[^>]*tabindex="-1"/i);
+    const done = html(createElement(DoneState, { count: 2, reviewHref: "/imports", onAddMore: vi.fn() }));
+    expect(done).toMatch(/<h2[^>]*tabindex="-1"/i);
+    expect(done).toContain("data-step-focus");
+    expect(done).toContain('role="status"');
+  });
+  it("DoneState mentions skipped rows once when there are some", () => {
+    expect(html(createElement(DoneState, { count: 4, reviewHref: "/imports", onAddMore: vi.fn(), skipped: 2 }))).toContain("2 rows were skipped. Check them in your file.");
+    expect(html(createElement(DoneState, { count: 4, reviewHref: "/imports", onAddMore: vi.fn() }))).not.toContain("skipped");
+  });
 });

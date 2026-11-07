@@ -63,7 +63,7 @@ export function DropArea({ onFile, dragging = false, fileName, disabled = false,
         : <>
           <p className="add-drop-title">Drop your Excel or CSV file here</p>
           <p className="add-drop-or">or</p>
-          <button type="button" className="add-button" disabled={disabled} onClick={() => input.current?.click()}>
+          <button type="button" className="add-button" data-step-focus disabled={disabled} onClick={() => input.current?.click()}>
             <span className="add-wide">Choose file</span><span className="add-narrow">Choose your Excel or CSV file</span>
           </button>
           <a className="add-link" href="/samples/pondopath-mixed.csv" download><Icon name="download" size={14} />Try a sample file</a>
@@ -96,7 +96,7 @@ export function CheckSummary({ summary, held, headers, rows }: { summary: string
   const columns = headers.slice(0, 4);
   return (
     <div className="add-check">
-      <p className="add-summary">{summary}</p>
+      <p className="add-summary" tabIndex={-1} data-step-focus>{summary}</p>
       <div className="add-table-scroll">
         <table className="add-table">
           <thead><tr>{columns.map((header) => <th key={header} scope="col">{header}</th>)}<th scope="col">Type</th></tr></thead>
@@ -111,12 +111,13 @@ export function CheckSummary({ summary, held, headers, rows }: { summary: string
   );
 }
 
-export function DoneState({ count, reviewHref, onAddMore }: { count: number; reviewHref: string; onAddMore: () => void }) {
+export function DoneState({ count, reviewHref, onAddMore, skipped = 0 }: { count: number; reviewHref: string; onAddMore: () => void; skipped?: number }) {
   return (
-    <div className="add-done">
+    <div className="add-done" role="status">
       <span className="add-done-check"><Icon name="check" size={34} /></span>
-      <h2>{count} {count === 1 ? "row is" : "rows are"} ready to review</h2>
+      <h2 tabIndex={-1} data-step-focus>{count} {count === 1 ? "row is" : "rows are"} ready to review</h2>
       <p>Nothing is saved yet.</p>
+      {skipped > 0 && <p className="add-note">{skipped} {skipped === 1 ? "row was" : "rows were"} skipped. Check {skipped === 1 ? "it" : "them"} in your file.</p>}
       <div className="add-done-actions">
         <Link className="add-button" href={reviewHref}>Review now</Link>
         <button type="button" className="add-button secondary" onClick={onAddMore}>Add more records</button>
