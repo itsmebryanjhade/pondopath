@@ -10,6 +10,8 @@ import { WorkspaceInvitationLink, WorkspaceNavigation } from "./workspace-naviga
 import { WorkspaceTools } from "./workspace-tools";
 import { buildActivityRows } from "@/lib/ui/cash-overview";
 import { AiAssistant } from "./ai-assistant";
+import { FileDropOverlay } from "./file-drop-overlay";
+import { ToastHost } from "./toast-host";
 
 const font = DM_Sans({ subsets: ["latin"], display: "swap" });
 const headingFont = Manrope({ subsets: ["latin"], display: "swap", variable: "--font-workspace-heading" });
@@ -28,6 +30,8 @@ export function WorkspaceFrame({ workspace, children }: {
     <form action={signOut}><button className="account-action"><AppIcon name="log-out" />Sign out</button></form>
   </>;
   return (
+    <ToastHost>
+    <FileDropOverlay />
     <div data-ui className={`${font.className} ${headingFont.variable} workspace-root app-shell`}>
       <a className="skip-link" href="#workspace-main">Skip to cash plan</a>
       <WorkspaceTools rows={rows} name={name} role={role} businessName={workspace.business.name} followupCount={followupCount} accountActions={accountActions} brand={<ProductBrand />} />
@@ -42,5 +46,6 @@ export function WorkspaceFrame({ workspace, children }: {
       </div>
       <AiAssistant workspace={workspace} />
     </div>
+    </ToastHost>
   );
 }

@@ -7,12 +7,11 @@ import { countLabels, fileKind, heldLine, plainImportError, summaryLine } from "
 import type { AutoFields } from "@/lib/domain/reader";
 import type { CsvMapping } from "@/lib/domain/imports";
 import { takePendingFile } from "@/lib/ui/pending-file";
+import { PENDING_FILE_EVENT } from "@/lib/ui/pending-file-event";
 import { CheckSummary, ChoiceCards, DoneState, DropArea, StepIndicator } from "./add-records-parts";
 import { ImportSelector, readSelectorForm, selectorProblems, type SelectorLabel } from "./import-selector";
 import { useToast } from "./toast-host";
 
-/** Fired on the window when a file is dropped anywhere while this page is open. */
-export const PENDING_FILE_EVENT = "pondopath:pending-file";
 
 const OWNER_MESSAGE = "Ask the owner to add the first file.";
 export const describeFailure = (message: string) => message === OWNER_MESSAGE ? message : plainImportError(message);
