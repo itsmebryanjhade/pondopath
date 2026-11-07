@@ -59,6 +59,12 @@ const liveRecords = [
 ];
 const plannedRecords = ["Business messaging intake", "Receipt-image extraction"];
 
+const inboxRows = [
+  ["Invoice", "INV-104 \u00b7 Fictional Trading", "\u20b115,000", "Due 20 Nov", true],
+  ["Expense", "Internet", "\u20b12,499", "Due 18 Nov", true],
+  ["Invoice", "INV-105 \u00b7 Sample Supply", "\u20b18,250", "Due 25 Nov", false],
+] as const;
+
 const peso = (amount: number) => `${amount < 0 ? "\u2212" : ""}\u20b1${Math.abs(amount).toLocaleString("en-PH")}`;
 
 const timelines = [
@@ -274,12 +280,35 @@ export default function Home() {
           </ul>
         </ViewportSection>
 
-        <ViewportSection className={styles.plannedSection} activeClassName={styles.sectionMotion} aria-labelledby="records-heading">
-          <div><p className={styles.eyebrow}>Bring your records in</p><h2 id="records-heading">Start from the files you already keep.</h2><p>Upload a file or connect Google. PondoPath reads only the files you pick and never changes them.</p></div>
-          <ul className={styles.recordList}>
-            {liveRecords.map(([title, body], index) => <li className={styles.liveItem} key={title} style={stagger(index)}><span>Live</span><div><strong>{title}</strong><small>{body}</small></div></li>)}
-            {plannedRecords.map((item, index) => <li key={item} style={stagger(index + liveRecords.length)}><span>Planned</span>{item}</li>)}
-          </ul>
+        <ViewportSection id="import" className={styles.recordsSection} activeClassName={styles.sectionMotion} aria-labelledby="records-heading">
+          <div className={styles.recordsIntro}>
+            <p className={styles.eyebrow}>Bring your records in</p>
+            <h2 id="records-heading">Start from the files you already keep.</h2>
+            <p>Upload a file or connect Google. PondoPath reads only the files you pick and never changes them.</p>
+            <ul className={styles.liveList}>
+              {liveRecords.map(([title, body], index) => (
+                <li key={title} style={stagger(index)}><span className={styles.liveCheck}><SafetyIcon name="check" /></span><div><strong>{title}</strong><small>{body}</small></div></li>
+              ))}
+            </ul>
+            <p className={styles.plannedLine}><span>Planned</span>{plannedRecords.join(" \u00b7 ")}</p>
+          </div>
+          <div className={styles.inboxMock} role="img" aria-label="Example: three rows from a spreadsheet wait in the Review Inbox. Two are selected, and nothing is saved until you confirm them.">
+            <div className={styles.mockSources}><span>sales-november.xlsx</span><span>Google Sheet · Invoices</span></div>
+            <div className={styles.mockPanel}>
+              <div className={styles.mockHead}><strong>Review Inbox</strong><span>3 waiting</span></div>
+              <ul>
+                {inboxRows.map(([type, name, amount, due, checked], index) => (
+                  <li key={name} className={checked ? styles.mockChecked : ""} style={stagger(index)}>
+                    <span className={styles.mockBox}>{checked && <SafetyIcon name="check" />}</span>
+                    <span className={styles.mockType}>{type}</span>
+                    <span className={styles.mockName}>{name}<small>{due}</small></span>
+                    <b>{amount}</b>
+                  </li>
+                ))}
+              </ul>
+              <div className={styles.mockFoot}><small>Nothing is saved until you confirm.</small><span className={styles.mockButton}>Confirm selected (2)</span></div>
+            </div>
+          </div>
         </ViewportSection>
 
         <section id="faq" className={`${styles.section} ${styles.faqSection}`} aria-labelledby="faq-heading">

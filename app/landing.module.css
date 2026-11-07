@@ -151,9 +151,9 @@
 .previewToggle label:has(input:checked) { background: var(--surface); color: var(--green-900); box-shadow: var(--shadow-sm); }
 .previewToggle input { accent-color: var(--green-700); }
 
-.section, .problemSection, .exampleSection, .plannedSection, .faqSection { max-width: 1440px; margin: auto; padding: 92px 40px; }
+.section, .problemSection, .exampleSection, .recordsSection, .faqSection { max-width: 1440px; margin: auto; padding: 92px 40px; }
 .sectionHeading { max-width: 720px; }
-.sectionHeading h2, .exampleIntro h2, .controlIntro h2, .plannedSection h2, .finalCta h2 { margin-top: 14px; font-size: clamp(2rem, 3.4vw, 3.25rem); font-weight: 750; letter-spacing: -.05em; line-height: 1.08; }
+.sectionHeading h2, .exampleIntro h2, .controlIntro h2, .recordsSection h2, .finalCta h2 { margin-top: 14px; font-size: clamp(2rem, 3.4vw, 3.25rem); font-weight: 750; letter-spacing: -.05em; line-height: 1.08; }
 .sectionHeading > p:last-child { max-width: 620px; margin-top: 16px; color: var(--ink-soft); }
 .problemSection { max-width: none; border-block: 1px solid var(--line); background: var(--surface); padding: 78px max(40px, calc((100vw - 1360px) / 2)) 64px; }
 .problemHeader { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); align-items: end; gap: 60px; }
@@ -259,12 +259,8 @@
 .audienceGrid span { color: var(--green-700); font-size: 12px; font-weight: 700; }
 .audienceGrid h3 { margin-top: 28px; font-size: 20px; }
 .audienceGrid p { margin-top: 10px; color: var(--ink-soft); font-size: 14px; }
-.plannedSection { display: grid; grid-template-columns: .8fr 1.2fr; gap: 70px; border-block: 1px solid var(--line); background: var(--surface-soft); }
-.plannedSection h2 { font-size: clamp(1.8rem, 2.8vw, 2.65rem); }
-.plannedSection > div > p:last-child { margin-top: 14px; color: var(--ink-soft); font-size: 13px; }
-.plannedSection ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.plannedSection li { display: flex; align-items: center; min-height: 58px; gap: 10px; padding: 10px 14px; border: 1px dashed var(--line-dark); border-radius: 12px; background: var(--surface); color: var(--ink-soft); font-size: 13px; }
-.plannedSection li span { padding: 3px 7px; border-radius: 999px; background: var(--line); color: var(--ink-faint); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.recordsSection { display: grid; grid-template-columns: .8fr 1.2fr; gap: 70px; border-block: 1px solid var(--line); background: var(--surface-soft); }
+.recordsSection h2 { font-size: clamp(1.8rem, 2.8vw, 2.65rem); }
 .faqSection { display: grid; grid-template-columns: .75fr 1.25fr; gap: 80px; }
 .faqList details { border-top: 1px solid var(--line-dark); }
 .faqList details:last-child { border-bottom: 1px solid var(--line-dark); }
@@ -297,7 +293,7 @@
 
 @media (max-width: 860px) {
   .headerInner { padding-inline: 24px; }
-  .hero, .section, .problemSection, .exampleSection, .plannedSection, .faqSection { padding: 68px 24px; }
+  .hero, .section, .problemSection, .exampleSection, .recordsSection, .faqSection { padding: 68px 24px; }
   .problemHeader { grid-template-columns: 1fr; gap: 24px; }
   .problemSummary { padding-bottom: 0; }
   .cashRail > li { padding-right: 24px; }
@@ -305,7 +301,7 @@
   .problemFooter { align-items: flex-start; flex-direction: column; gap: 16px; }
   .audienceGrid { grid-template-columns: 1fr; }
   .featureGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .exampleSection, .plannedSection, .faqSection { grid-template-columns: 1fr; gap: 40px; }
+  .exampleSection, .recordsSection, .faqSection { grid-template-columns: 1fr; gap: 40px; }
   .controlSection { grid-template-columns: 1fr; gap: 48px; padding: 68px 24px; }
   .audienceGrid article { padding: 24px 0; border-top: 1px solid var(--line); border-left: 0; }
   .audienceGrid article:first-child { border-top: 1px solid var(--line); }
@@ -340,7 +336,7 @@
   .previewToggle { align-items: stretch; flex-direction: column; }
   .previewToggle > div { width: 100%; }
   .previewToggle label { flex: 1; }
-  .section, .problemSection, .exampleSection, .plannedSection, .faqSection { padding: 58px 18px; }
+  .section, .problemSection, .exampleSection, .recordsSection, .faqSection { padding: 58px 18px; }
   .problemSection { padding-block: 58px 48px; }
   .cashSequence { margin-top: 42px; }
   .cashRail { grid-template-columns: 1fr; }
@@ -358,7 +354,6 @@
   .featureCard { padding: 22px; }
   .controlSection { padding: 58px 18px; }
   .controlList { grid-template-columns: 1fr; }
-  .plannedSection ul { grid-template-columns: 1fr; }
   .finalCta { align-items: flex-start; flex-direction: column; padding: 52px 18px; }
   .finalCta > div:last-child { width: 100%; align-items: stretch; flex-direction: column; }
   .finalCta a { width: 100%; margin-top: 0; }
@@ -377,13 +372,7 @@
 .problemCompare h3 { font-size: clamp(1.4rem, 2.2vw, 1.9rem); letter-spacing: -.04em; }
 .problemCompare > p { margin: 6px 0 18px; color: var(--ink-soft); font-size: 14px; }
 .audienceLine { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 14px; }
-.recordList li { align-items: flex-start; }
-.recordList li > div { display: grid; gap: 3px; }
-.plannedSection li.liveItem { border-style: solid; border-color: var(--green-500); color: var(--ink); }
-.plannedSection li.liveItem span { background: var(--green-100); color: var(--green-700); }
-.liveItem strong { font-size: 13px; }
-.liveItem small { color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
-.sectionMotion .stepCard, .sectionMotion .featureCard, .sectionMotion .controlList li, .sectionMotion .recordList li { animation: reveal-up 560ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 70ms) backwards; }
+.sectionMotion .stepCard, .sectionMotion .featureCard, .sectionMotion .controlList li { animation: reveal-up 560ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 70ms) backwards; }
 @keyframes reveal-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes dot-pop { from { transform: scale(0); } to { transform: scale(1); } }
 
@@ -475,6 +464,53 @@
 .sectionMotion .approvalFlow li:not(:last-child)::after { animation: cash-rail-draw 520ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 420ms + 450ms) backwards; }
 .sectionMotion .approvalFlow li > strong, .sectionMotion .approvalFlow li > small { animation: reveal-up 480ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 420ms + 300ms) backwards; }
 @media (max-width: 680px) { .controlSection { padding-block: 52px; } .controlList { grid-template-columns: 1fr; } }
+
+.recordsSection { align-items: center; gap: 56px; padding-block: 68px; }
+.recordsIntro > p:not(.eyebrow):not(.plannedLine) { margin-top: 14px; color: var(--ink-soft); font-size: 14px; }
+.liveList { display: grid; gap: 12px; margin: 24px 0 0; padding: 0; list-style: none; }
+.liveList li { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: start; gap: 12px; }
+.liveCheck { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: var(--green-100); color: var(--green-700); }
+.liveCheck svg { width: 14px; height: 14px; }
+.liveList strong { display: block; font-size: 14px; }
+.liveList small { color: var(--ink-soft); font-size: 13px; }
+.plannedLine { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 20px; color: var(--ink-faint); font-size: 13px; }
+.plannedLine span { padding: 3px 8px; border: 1px dashed var(--line-dark); border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.inboxMock { padding: 18px; border-radius: 24px; background: radial-gradient(circle at 88% 8%, rgb(211 233 218 / 75%), transparent 45%), var(--green-50); }
+.mockSources { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.mockSources span { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm); color: var(--ink-soft); font-size: 11px; font-weight: 600; }
+.mockPanel { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-float); }
+.mockHead { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.mockHead span { padding: 3px 8px; border-radius: 999px; background: var(--amber-100); color: var(--amber-700); font-size: 10px; font-weight: 700; }
+.mockPanel ul { margin: 0; padding: 0; list-style: none; }
+.mockPanel li { display: grid; grid-template-columns: 18px auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.mockChecked { background: var(--green-50); }
+.mockBox { display: grid; width: 18px; height: 18px; place-items: center; border: 1.5px solid var(--line-dark); border-radius: 5px; color: white; }
+.mockChecked .mockBox { border-color: var(--green-700); background: var(--green-700); }
+.mockBox svg { width: 12px; height: 12px; }
+.mockType { padding: 2px 7px; border-radius: 6px; background: var(--blue-100); color: var(--blue-700); font-size: 10px; font-weight: 700; }
+.mockPanel li:nth-child(2) .mockType { background: var(--purple-100); color: var(--purple-700); }
+.mockName { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.mockName small { display: block; color: var(--ink-faint); font-size: 11px; font-weight: 500; }
+.mockPanel li b { font-variant-numeric: tabular-nums; }
+.mockFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--surface-soft); }
+.mockFoot small { color: var(--ink-faint); font-size: 11px; }
+.mockButton { padding: 8px 12px; border-radius: 10px; background: var(--green-800); color: white; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.sectionMotion .liveList li { animation: reveal-up 520ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 80ms + 150ms) backwards; }
+.sectionMotion .mockSources span { animation: reveal-up 480ms cubic-bezier(.2, .8, .2, 1) 200ms backwards; }
+.sectionMotion .mockSources span + span { animation-delay: 320ms; }
+.sectionMotion .mockPanel { animation: reveal-up 600ms cubic-bezier(.2, .8, .2, 1) 250ms backwards; }
+.sectionMotion .mockPanel li { animation: row-in 480ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 140ms + 550ms) backwards; }
+.sectionMotion .mockChecked .mockBox { animation: dot-pop 380ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 140ms + 1000ms) backwards; }
+.sectionMotion .mockButton { animation: button-ready 700ms cubic-bezier(.2, .8, .2, 1) 1450ms backwards; }
+@keyframes row-in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes button-ready { 0% { opacity: .4; transform: scale(.96); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+@media (max-width: 680px) {
+  .recordsSection { padding-block: 52px; }
+  .mockPanel li { grid-template-columns: 18px minmax(0, 1fr) auto; }
+  .mockType { display: none; }
+  .mockFoot { align-items: stretch; flex-direction: column; }
+  .mockButton { text-align: center; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .landing *, .landing *::before, .landing *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
