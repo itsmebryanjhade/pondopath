@@ -599,3 +599,44 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 @media (prefers-reduced-motion: reduce) {
   .add-drop, .add-drop.over, .add-steps .done .add-step-dot, .add-check, .add-done, .add-done-check, .add-overlay, .add-card, .add-button { animation: none; transition: none; }
 }
+
+/* Sidebar: Add records on top, grouped pages, counts, and a collapsible icon rail (desktop only).
+   Direction: docs/superpowers/specs/2026-11-07-workspace-ux-direction.md. */
+.workspace-root .side-brand { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.workspace-root .side-toggle { display: grid; width: 32px; height: 32px; flex: none; place-items: center; border: 1px solid var(--edge); border-radius: 9px; background: #fff; color: var(--muted); cursor: pointer; transition: background-color 160ms ease, color 160ms ease; }
+.workspace-root .side-toggle:hover { background: var(--green-50); color: var(--green-900); }
+.workspace-root .side-toggle:focus-visible, .workspace-root .side-add:focus-visible { outline: 2px solid var(--data-accent); outline-offset: 2px; }
+.workspace-root .side-nav nav { gap: 0; }
+.workspace-root .side-add { display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 8px; min-height: 44px; margin: 0 0 6px; padding: 4px 10px; border-radius: 11px; background: var(--primary); color: #fff !important; font-size: 13px; font-weight: 600; text-decoration: none; transition: background-color 160ms ease, transform 160ms ease; }
+.workspace-root .side-add:hover { background: var(--green-800); transform: translateY(-1px); }
+.workspace-root .side-add[aria-current="page"] { background: var(--primary); color: #fff !important; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--data-accent); }
+.workspace-root .side-add[aria-current="page"]:hover { background: var(--green-800); }
+.workspace-root .side-add-icon { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; background: rgb(255 255 255 / 14%); }
+.workspace-root .side-group { display: grid; gap: 2px; margin-top: 10px; }
+.workspace-root .side-group ul { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.workspace-root .side-group-title { margin: 0; padding: 4px 10px; color: var(--ink-faint, #7e8a82); font-size: 12px; font-weight: 600; }
+.workspace-root .side-link { position: relative; font-size: 13px; }
+.workspace-root .side-link.active::before { position: absolute; top: 10px; bottom: 10px; left: -12px; width: 3px; border-radius: 0 3px 3px 0; background: var(--data-accent); content: ""; }
+.workspace-root .side-count.urgent { background: #f9e8e5; color: var(--negative); }
+@media (min-width: 1051px) {
+  .workspace-root .workspace { transition: grid-template-columns 220ms cubic-bezier(.2, .8, .2, 1); }
+  .workspace-root .side-nav { transition: width 220ms cubic-bezier(.2, .8, .2, 1); }
+  .workspace-root[data-sidebar="collapsed"] .workspace { grid-template-columns: 76px minmax(0, 1fr); }
+  .workspace-root[data-sidebar="collapsed"] .side-nav { width: 76px; padding-inline: 10px; overflow: visible; }
+  .workspace-root[data-sidebar="collapsed"] .side-brand { flex-direction: column; gap: 10px; padding-inline: 0; }
+  .workspace-root[data-sidebar="collapsed"] .side-brand > div > div,
+  .workspace-root[data-sidebar="collapsed"] .side-label,
+  .workspace-root[data-sidebar="collapsed"] .side-group-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .workspace-root[data-sidebar="collapsed"] .side-group { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rule, #edf0eb); }
+  .workspace-root[data-sidebar="collapsed"] .side-link,
+  .workspace-root[data-sidebar="collapsed"] .side-add { grid-template-columns: 28px; justify-content: center; padding: 4px; }
+  .workspace-root[data-sidebar="collapsed"] .side-link.active::before { left: -10px; }
+  .workspace-root[data-sidebar="collapsed"] .side-count { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; font-size: 10px; }
+  .workspace-root[data-sidebar="collapsed"] .side-link[data-tip]:hover::after,
+  .workspace-root[data-sidebar="collapsed"] .side-link[data-tip]:focus-visible::after,
+  .workspace-root[data-sidebar="collapsed"] .side-add[data-tip]:hover::after,
+  .workspace-root[data-sidebar="collapsed"] .side-add[data-tip]:focus-visible::after { position: absolute; top: 50%; left: calc(100% + 12px); z-index: 60; padding: 5px 9px; border-radius: 8px; background: #17211b; color: #fff; font-size: 12px; font-weight: 500; white-space: nowrap; pointer-events: none; transform: translateY(-50%); content: attr(data-tip); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-root .workspace, .workspace-root .side-nav, .workspace-root .side-add, .workspace-root .side-toggle { transition: none; }
+}

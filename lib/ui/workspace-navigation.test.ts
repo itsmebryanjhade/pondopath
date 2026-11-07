@@ -111,7 +111,7 @@ describe("persistent workspace navigation", () => {
     expect(renderToStaticMarkup(createElement(WorkspaceNavigation))).not.toContain('aria-current="page"');
   });
 
-  it.each([["/cash", "/cash"], ["/payments", "/cash"], ["/forecast", "/forecast"], ["/followups", "/invoices"], ["/imports", "/invoices"], ["/add", "/invoices"]])("selects the parent tab for %s", (pathname, destination) => {
+  it.each([["/cash", "/cash"], ["/payments", "/cash"], ["/forecast", "/forecast"], ["/followups", "/followups"], ["/imports", "/imports"], ["/add", "/add"]])("selects the matching sidebar item for %s", (pathname, destination) => {
     navigationState.pathname = pathname;
     const html = renderToStaticMarkup(createElement(WorkspaceNavigation));
     const selected = html.match(/<a[^>]*aria-current="page"[^>]*>/g);
@@ -141,5 +141,29 @@ describe("persistent workspace navigation", () => {
     expect(retry).toHaveBeenCalledOnce();
     const pageError = PageError({ retry });
     expect(pageError.props.children.props.retry).toBe(retry);
+  });
+
+  it("groups the sidebar, puts Add records on top and shows counts with full-phrase labels", () => {
+    const html = renderToStaticMarkup(createElement(WorkspaceNavigation, { followupCount: 2, inboxCount: 3 }));
+    expect(html).toMatch(/<a[^>]*href="\/add"[^>]*>[\s\S]*?Add records/);
+    for (const title of ["Plan", "Money", "To do"]) expect(html).toContain(title);
+    for (const label of ["Overview", "Forecast", "Cash", "Invoices", "Expenses", "Review Inbox", "Follow-ups"]) expect(html).toContain(label);
+    expect(html).toContain('aria-label="3 waiting for review"');
+    expect(html).toContain('aria-label="2 open follow-ups"');
+    expect(html).not.toContain("Team");
+  });
+  it("keeps every item's name in the page even when the rail is collapsed, and tooltips use it", () => {
+    const html = renderToStaticMarkup(createElement(WorkspaceNavigation, { inboxCount: 1 }));
+    expect(html).toContain('data-tip="Review Inbox, 1 waiting for review"');
+    expect(html).toContain('data-tip="Overview"');
+    expect(html).toContain('class="side-label"');
+  });
+  it("renders no badges when nothing is waiting", () => {
+    expect(renderToStaticMarkup(createElement(WorkspaceNavigation))).not.toContain("side-count");
+  });
+  it("offers a labelled collapse button that reports its state", () => {
+    const html = renderToStaticMarkup(WorkspaceFrame({ workspace, children: "Current page" }));
+    expect(html).toMatch(/<button[^>]*aria-label="Collapse sidebar"[^>]*aria-expanded="true"/);
+    expect(html).not.toContain("Forecast check");
   });
 });
