@@ -29,7 +29,7 @@
   color: var(--ink);
   font-size: 16px;
   line-height: 1.6;
-  scroll-padding-top: 96px;
+
 }
 
 .landing * { box-sizing: border-box; }
