@@ -5,3 +5,4 @@
 - Preserve labels, focus, keyboard access, loading/error/empty states and responsive money/date presentation. Do not make styling changes that obscure financial meaning.
 - Keep financial calculations and authorization in their existing programmed/server boundaries. Follow the owning callers and tests when changing a component contract.
 - Verify the affected UI in an authorized real browser when behavior or layout changes; disclose untested states and viewport gaps.
+- Polishing a screen or section: follow the [UI/UX polish playbook](../docs/ui-polish-playbook.md) (one piece at a time, plain words, one main action, hover on the element only, check 1880/1100/375px).

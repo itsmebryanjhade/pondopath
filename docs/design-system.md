@@ -7,6 +7,7 @@ PondoPath is the product; SoloForge is the builder brand. The transparent PP mon
 - Reuse shared components and current application styles; current source is the implementation authority.
 - Apply Taste's app-screen route to signed-in dashboards and the frontend engineering skill to accessibility and interactions. Financial clarity takes priority over decoration.
 - Verify tables, amounts, states, keyboard access and the affected mobile layouts in a real authorized browser; do not claim a deferred check was performed.
+- For one-screen-at-a-time polish, follow the [UI/UX polish playbook](ui-polish-playbook.md): its rules, shared pieces and checklist.
 
 ## Recorded design decisions
 

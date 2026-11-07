@@ -31,7 +31,7 @@ PondoPath by SoloForge is a cash-flow planner. Approved stack: Next.js App Route
 | Product scope / current delivery | Relevant PRD sections; [project status](docs/project-status.md) |
 | Module boundaries / system design | [Architecture](docs/architecture.md) |
 | Schema, auth, permissions or financial rules | [Database](docs/database.md); scoped rules in `lib/` and `supabase/` |
-| Screens, components or styling | [Design system](docs/design-system.md); scoped rules in `app/` and `components/` |
+| Screens, components or styling | [Design system](docs/design-system.md), [UI/UX polish playbook](docs/ui-polish-playbook.md); scoped rules in `app/` and `components/` |
 | Setup, tests or runtime checks | [Development](docs/development.md), [testing](docs/testing.md) |
 | Worker / script changes | Scoped rules and runbook in `automation/`; scoped rules in `scripts/` |
 | Documentation or locating older decisions | `docs/AGENTS.md`; [documentation index](docs/README.md) |

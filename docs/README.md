@@ -14,6 +14,7 @@ Completion planning: [full approved scope](../tasks/plan.md) and [task checklist
 | Local setup | [Development](development.md) |
 | Database access and financial invariants | [Database](database.md) |
 | Brand and UI references | [Design system](design-system.md) |
+| Repeatable steps and rules for polishing a screen | [UI/UX polish playbook](ui-polish-playbook.md) |
 | Checks, isolated fixtures and recorded gate | [Testing](testing.md) |
 | Accounts, CSV review and AI assistant | [Product guide](product-guide.md) |
 

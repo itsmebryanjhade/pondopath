@@ -31,6 +31,8 @@ Connect Google (demo item D2) checks passed on 6 November with Node 24.22.1: 476
 
 Add records (workspace piece 1) checks passed on 7 November with Node 24: 548 unit/UI tests, `tests/integration/intake.test.ts` 10/10, typecheck and the production build (`/add` listed). Browser, with the fictional `public/samples/pondopath-mixed.csv`: drag over any page shows "Drop to import" and hides on leave, dragged text is ignored, a `.pdf` gives the notice toast, a drop on Overview opens `/add` and reaches the Check step in about 1.8 seconds with "We found 4 invoices and 2 expenses.", no horizontal overflow at desktop or 375px, and 44px buttons. Not done in the browser: pressing Send (it would add proposals to the shared workspace; staging is covered by the intake integration tests), a real Google sign-in, and an emulated reduced-motion pass.
 
+Workspace polish (7 November, Node 24.22.1): Overview, Forecast, Add records and Cash ledger changes described in the [UI/UX polish playbook](ui-polish-playbook.md). Unit/UI tests, typecheck and lint pass; see the commit for the counts. Browser: each changed page checked at about 1880px, 1100px and 375px with no horizontal overflow. Not checked in the browser: a filled Payment history (the shared workspace has no recorded payments; the list is covered by unit tests), saving opening cash or any receipt, and an emulated reduced-motion pass.
+
 ## Build and runtime notes
 
 The production build downloads Google Fonts and needs network access. Next.js Cache Components and Partial Prefetching remain enabled. Node-RED will run separately from Next.js/Vercel. Read [AGENTS.md](../AGENTS.md) before implementation.
