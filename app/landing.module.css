@@ -396,6 +396,21 @@
   .previewChart text { font-size: 12px; }
 }
 
+.problemCompare { margin-top: 64px; }
+.problemCompare h3 { font-size: clamp(1.4rem, 2.2vw, 1.9rem); letter-spacing: -.04em; }
+.problemCompare > p { margin: 8px 0 24px; color: var(--ink-soft); font-size: 14px; }
+.audienceLine { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 14px; }
+.recordList li { align-items: flex-start; }
+.recordList li > div { display: grid; gap: 3px; }
+.plannedSection li.liveItem { border-style: solid; border-color: var(--green-500); color: var(--ink); }
+.plannedSection li.liveItem span { background: var(--green-100); color: var(--green-700); }
+.liveItem strong { font-size: 13px; }
+.liveItem small { color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+.sectionMotion .stepGrid li, .sectionMotion .featureCard, .sectionMotion .controlList li, .sectionMotion .recordList li { animation: reveal-up 560ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 70ms) backwards; }
+.sectionMotion .stepGrid li::before { animation: dot-pop 420ms cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 70ms + 220ms) backwards; }
+@keyframes reveal-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes dot-pop { from { transform: scale(0); } to { transform: scale(1); } }
+
 @media (prefers-reduced-motion: reduce) {
   .landing *, .landing *::before, .landing *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
   .forecastLine { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
