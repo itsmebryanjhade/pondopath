@@ -244,7 +244,7 @@ export default function Home() {
 
       <footer className={styles.footer}>
         <div><ProductBrand /><p>Cash-flow action planning for small Philippine B2B businesses.</p></div>
-        <div className={styles.footerMeta}><span>contact@soloforge.example</span><span>Privacy</span><span>Terms</span></div>
+        <div className={styles.footerMeta}><a href="mailto:bryanjhade.e@gmail.com">bryanjhade.e@gmail.com</a><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div>
         <p className={styles.disclaimer}>Pilot version. Not accounting, tax or payment software.</p>
         <p className={styles.copyright}>© 2026 SoloForge.</p>
       </footer>

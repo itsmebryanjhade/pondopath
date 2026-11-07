@@ -298,6 +298,8 @@
 .footer { display: grid; grid-template-columns: 1fr auto; gap: 24px; padding: 44px max(40px, calc((100vw - 1360px) / 2)) 28px; border-top: 1px solid var(--line); background: var(--surface); }
 .footer > div:first-child > p { margin-top: 10px; color: var(--ink-soft); font-size: 12px; }
 .footerMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; color: var(--ink-soft); font-size: 12px; }
+.footerMeta a { color: inherit; text-underline-offset: 3px; }
+.footerMeta a:hover { color: var(--green-700); }
 .disclaimer, .copyright { padding-top: 18px; border-top: 1px solid var(--line); color: var(--ink-faint); font-size: 11px; }
 .copyright { text-align: right; }
 
