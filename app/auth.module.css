@@ -119,3 +119,16 @@
 @media (prefers-reduced-motion: reduce) {
   .shell *, .shell *::before, .shell *::after { transition: none !important; animation: none !important; }
 }
+
+/* Progress steps: the finished step's check pops in, the line to the current step fills, and the current step glows. */
+.progress .complete > span { animation: step-pop 420ms cubic-bezier(.2, .8, .2, 1) 120ms backwards; }
+.progress .complete + li::before { background: var(--green-500); transform-origin: left; animation: step-fill 520ms cubic-bezier(.2, .8, .2, 1) 260ms backwards; }
+.progress .current > span { animation: step-glow 1.6s ease-in-out 700ms 2; }
+.step { animation: step-in 420ms cubic-bezier(.2, .8, .2, 1) backwards; }
+@keyframes step-pop { from { transform: scale(.4); opacity: 0; } }
+@keyframes step-fill { from { transform: scaleX(0); } }
+@keyframes step-glow { 50% { box-shadow: 0 0 0 7px rgb(69 168 116 / 18%); } }
+@keyframes step-in { from { opacity: 0; transform: translateX(24px); } }
+@media (prefers-reduced-motion: reduce) {
+  .shell *, .shell *::before, .shell *::after { animation: none !important; }
+}

@@ -21,7 +21,9 @@ export function AuthShell({ children, stage = "login" }: { children: ReactNode; 
           {stage !== "login" && <ol className={styles.progress} aria-label="Workspace setup progress">
             {["Account", "Business", "Workspace"].map((label, index) => <li key={label} className={index < progress ? styles.complete : index === progress ? styles.current : undefined}><span>{index < progress ? "✓" : index + 1}</span>{label}</li>)}
           </ol>}
-          {children}
+          {/* Only the form moves between steps; the header and preview panel stay still. Next keeps visited
+              pages mounted but hidden, and this CSS animation replays each time a step is shown. */}
+          <div className={styles.step}>{children}</div>
         </div>
         <footer className={styles.footer}>© 2026 PondoPath by SoloForge.</footer>
       </section>
