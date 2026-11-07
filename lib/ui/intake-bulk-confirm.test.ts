@@ -24,6 +24,13 @@ describe("Review Inbox bulk selection", () => {
     const html = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1")], revision: 0, sourceLabels: { "20000000-0000-4000-8000-000000000002": "Fictional ledger" } }));
     for (const text of ["Fictional", "125.00", "due 2026-11-10", "Source row ROW-1", "Fictional ledger"]) expect(html).toContain(text);
   });
+  it("leaves out look-alike rows so the same expense is not confirmed twice", () => {
+    const internet = { type: "save_expense", payload: { label: "Internet", payee: "Telco", amountCents: 249900, dueDate: "2026-11-18" } };
+    const rent = { type: "save_expense", payload: { label: "Rent", payee: "Owner", amountCents: 1200000, dueDate: "2026-12-01" } };
+    const html = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1", "pending", internet as never), item("2", "pending", internet as never), item("3", "pending", rent as never)], revision: 0 }));
+    expect(html.match(/type="checkbox"/g)).toHaveLength(1);
+    expect(html.match(/review it on its own/g)).toHaveLength(2);
+  });
   it("disables confirmation when nothing is selected", () => {
     const html = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1")], revision: 0 }));
     expect(html).toMatch(/<button[^>]*disabled[^>]*>Confirm selected \(0\)<\/button>/);

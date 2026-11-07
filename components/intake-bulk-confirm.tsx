@@ -21,6 +21,10 @@ function describe(item: IntakeItem, candidate: IntakeCandidate, sourceLabels: Re
   return `${title} · ${formatPHP(candidate.payload.amountCents)} · due ${candidate.payload.dueDate} · Source row ${item.external_id} · ${sourceLabels[item.source_id] ?? "Source unavailable"}`;
 }
 
+/** Same type, name, amount and due date means the same obligation, even when it came from another file. */
+const lookalikeKey = (candidate: IntakeCandidate) =>
+  [candidate.type, (candidate.type === "save_invoice" ? candidate.payload.number : candidate.payload.label).trim().toLowerCase(), candidate.payload.amountCents, candidate.payload.dueDate].join("|");
+
 export function IntakeBulkConfirm({ items, revision, sourceLabels = {} }: { items: IntakeItem[]; revision: number; sourceLabels?: Record<string, string> }) {
   const router = useRouter();
   const [busy, start] = useTransition();
@@ -28,10 +32,14 @@ export function IntakeBulkConfirm({ items, revision, sourceLabels = {} }: { item
   const [result, setResult] = useState<BulkResult | null>(null);
   const [notice, setNotice] = useState("");
   // Keep this check local: the equivalent server helper belongs to a server-only module.
-  const clean = items.flatMap(item => {
+  const parsed = items.flatMap(item => {
     if (item.status !== "pending") return [];
-    try { return [{ ...item, summary: describe(item, parseIntakeCandidate(item.candidate), sourceLabels) }]; } catch { return []; }
+    try { const candidate = parseIntakeCandidate(item.candidate); return [{ ...item, summary: describe(item, candidate, sourceLabels), key: lookalikeKey(candidate) }]; } catch { return []; }
   });
+  const seen = new Map<string, number>();
+  parsed.forEach(row => seen.set(row.key, (seen.get(row.key) ?? 0) + 1));
+  const clean = parsed.filter(row => seen.get(row.key) === 1);
+  const lookalikes = parsed.filter(row => (seen.get(row.key) ?? 0) > 1);
   const selected = clean.filter(item => selection.includes(item.id));
   return <section className="records-panel" aria-label="Confirm selected proposals"><div className="intake-panel-body">
     <h2>Confirm selected</h2><p>Review the proposals below, then select the clean rows you want to apply. This does not record a payment.</p>
@@ -44,6 +52,7 @@ export function IntakeBulkConfirm({ items, revision, sourceLabels = {} }: { item
       });
     }}>
       {clean.map(item => <label className="intake-confirm" key={item.id}><input type="checkbox" disabled={busy} checked={selection.includes(item.id)} onChange={event => setSelection(current => event.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} />{item.summary}</label>)}
+      {lookalikes.map(item => <p className="muted" key={item.id}>{item.summary} — Looks like another pending row, so review it on its own.</p>)}
       <div className="intake-buttons"><button type="button" className="button secondary" disabled={busy} onClick={() => setSelection(clean.map(item => item.id))}>Select all clean</button><button className="button" disabled={busy || selected.length === 0}>Confirm selected ({selected.length})</button></div>
     </form>
     {result && <IntakeBulkResult result={result} items={items} />}
