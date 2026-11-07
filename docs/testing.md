@@ -31,6 +31,8 @@ Connect Google (demo item D2) checks passed on 6 November with Node 24.22.1: 476
 
 Add records (workspace piece 1) checks passed on 7 November with Node 24: 548 unit/UI tests, `tests/integration/intake.test.ts` 10/10, typecheck and the production build (`/add` listed). Browser, with the fictional `public/samples/pondopath-mixed.csv`: drag over any page shows "Drop to import" and hides on leave, dragged text is ignored, a `.pdf` gives the notice toast, a drop on Overview opens `/add` and reaches the Check step in about 1.8 seconds with "We found 4 invoices and 2 expenses.", no horizontal overflow at desktop or 375px, and 44px buttons. Not done in the browser: pressing Send (it would add proposals to the shared workspace; staging is covered by the intake integration tests), a real Google sign-in, and an emulated reduced-motion pass.
 
+Overview redesign (workspace piece 3) checks passed on 7 November with Node 24.22.1: 582 unit/UI tests, typecheck, lint and the Webpack production build. Browser: the gap link opens the daily cash plan at the gap day with the row highlighted, the below-zero stretch shows in amber, and there is no horizontal overflow at desktop, 900px or 375px. Not checked: an emulated reduced-motion pass and a brand-new empty workspace in the browser (covered by unit tests). If `next build` fails with `WasmHash._updateWithBuffer ... reading 'length'`, the Webpack cache in `.next/cache/webpack` is corrupt; move it aside and rebuild.
+
 ## Build and runtime notes
 
 The production build downloads Google Fonts and needs network access. Next.js Cache Components and Partial Prefetching remain enabled. Node-RED will run separately from Next.js/Vercel. Read [AGENTS.md](../AGENTS.md) before implementation.

@@ -12,6 +12,7 @@ Target (decided by Bryan, 6 November): finish a focused hackathon demo with easy
 | D3 | Confirm selected (confirm several clean inbox rows at once) | Built; tests pass; browser-checked (rows described by number, amount, due date and file) |
 | W1 | Workspace redesign piece 1: Add records page (`/add`), drop anywhere, toast ([spec](../docs/superpowers/specs/2026-11-07-add-records-page-design.md), [plan](../docs/superpowers/plans/2026-11-07-add-records-page.md)) | Built 7 November; 548 unit tests, intake integration 10/10, typecheck, build; browser-checked up to the Check step (Send not pressed in the shared workspace) |
 | W2 | Workspace redesign piece 2: grouped, collapsible sidebar and phone bottom bar ([direction](../docs/superpowers/specs/2026-11-07-workspace-ux-direction.md)) | Built 7 November; 570 unit tests, typecheck, build; browser-checked at desktop, 900px and 375px |
+| W3 | Workspace redesign piece 3: Overview leads with the first cash gap, workflow bar, Do next column, ledger strip; header and nav renames (Cash ledger, Review imports) | Built 7 November; 582 unit tests, typecheck, lint, build; browser-checked at desktop, 900px and 375px (reduced motion not emulated) |
 | D4 | Demo preparation (Task 12) and final candidate check (R4) | Pending, after D1–D3 |
 
 ## After the hackathon (agreed, not part of the demo claim)

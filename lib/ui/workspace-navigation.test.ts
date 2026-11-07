@@ -91,6 +91,9 @@ describe("persistent workspace navigation", () => {
     // One add action: the header no longer repeats the sidebar's and the phone bar's plus button.
     expect(html).not.toContain("Quick add");
     expect(html).not.toContain("quick-menu");
+    // The header says what it really searches and sends flagged records to the matching list.
+    expect(html).toContain('placeholder="Search unpaid records"');
+    expect(html).toMatch(/href="\/overview#needs-attention"[^>]*>View flagged records/);
     expect(html).toContain('aria-label="Search records"');
     expect(html).toContain(workspace.business.name);
   });
@@ -141,14 +144,14 @@ describe("persistent workspace navigation", () => {
     const html = renderToStaticMarkup(createElement(WorkspaceNavigation, { followupCount: 2, inboxCount: 3 }));
     expect(html).toMatch(/<a[^>]*href="\/add"[^>]*>[\s\S]*?Add records/);
     for (const title of ["Plan", "Money", "To do"]) expect(html).toContain(title);
-    for (const label of ["Overview", "Forecast", "Cash", "Invoices", "Expenses", "Review Inbox", "Follow-ups"]) expect(html).toContain(label);
+    for (const label of ["Overview", "Forecast", "Cash ledger", "Invoices", "Expenses", "Review imports", "Follow-ups"]) expect(html).toContain(label);
     expect(html).toContain('aria-label="3 waiting for review"');
     expect(html).toContain('aria-label="2 open follow-ups"');
     expect(html).not.toContain("Team");
   });
   it("keeps every item's name in the page even when the rail is collapsed, and tooltips use it", () => {
     const html = renderToStaticMarkup(createElement(WorkspaceNavigation, { inboxCount: 1 }));
-    expect(html).toContain('data-tip="Review Inbox, 1 waiting for review"');
+    expect(html).toContain('data-tip="Review imports, 1 waiting for review"');
     expect(html).toContain('data-tip="Overview"');
     expect(html).toContain('class="side-label"');
   });
@@ -165,7 +168,7 @@ describe("persistent workspace navigation", () => {
     navigationState.pathname = "/overview";
     const html = renderToStaticMarkup(createElement(MobileTabBar, { followupCount: 2, inboxCount: 3 }));
     expect(html).toContain('aria-label="Main menu"');
-    for (const label of ["Overview", "Forecast", "Add", "Review", "More"]) expect(html).toContain(`>${label}</span>`);
+    for (const label of ["Overview", "Review", "Add", "Follow-ups", "More"]) expect(html).toContain(`>${label}</span>`);
     expect(html).toMatch(/<a[^>]*class="[^"]*mobile-fab[^"]*"[^>]*href="\/add"|<a[^>]*href="\/add"[^>]*class="[^"]*mobile-fab/);
     expect(html).toContain('aria-label="3 waiting for review"');
     expect(html).toContain('aria-label="2 open follow-ups"');
@@ -180,10 +183,12 @@ describe("persistent workspace navigation", () => {
     expect(html).not.toContain("side-count");
   });
   it("More is marked current on pages inside it, and the bar has no other current item", () => {
-    navigationState.pathname = "/followups";
+    navigationState.pathname = "/forecast";
     const html = renderToStaticMarkup(createElement(MobileTabBar, { followupCount: 1, inboxCount: 0 }));
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
-    expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*>[\s\S]*?More|<button[^>]*>[\s\S]*?More[\s\S]*?<\/button>/);
     expect(html).toMatch(/mobile-tab more active/);
+    navigationState.pathname = "/followups";
+    const followups = renderToStaticMarkup(createElement(MobileTabBar, { followupCount: 1, inboxCount: 0 }));
+    expect(followups).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/followups"|<a[^>]*href="\/followups"[^>]*aria-current="page"/);
   });
 });

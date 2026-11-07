@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ActivityFilter, ActivityRow } from "@/lib/ui/cash-overview";
-import { filterActivityRows } from "@/lib/ui/cash-overview";
+import { filterActivityRows, filterFromHash } from "@/lib/ui/cash-overview";
 import { formatPHP } from "@/lib/domain/money";
 import { formatPlanDate } from "@/lib/display";
 import { DashboardIcon } from "./dashboard-icon";
@@ -13,6 +13,13 @@ const filters: { value: ActivityFilter; label: string }[] = [{ value: "all", lab
 export function CashActivity({ rows }: { rows: ActivityRow[] }) {
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [page, setPage] = useState(1);
+  useEffect(() => {
+    // "View flagged records" in the header links here with #needs-attention.
+    const apply = () => { if (filterFromHash(window.location.hash) === "attention") { setFilter("attention"); setPage(1); document.getElementById("needs-attention")?.scrollIntoView({ block: "start" }); } };
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+  }, []);
   const matching = filterActivityRows(rows, filter);
   const pages = Math.max(1, Math.ceil(matching.length / 6));
   const current = Math.min(page, pages);
@@ -20,6 +27,7 @@ export function CashActivity({ rows }: { rows: ActivityRow[] }) {
   const attentionCount = rows.filter((row) => row.needsAttention).length;
   return (
     <section id="cash-activity" className="activity-panel" aria-labelledby="activity-heading">
+      <span id="needs-attention" className="activity-anchor" aria-hidden="true" />
       <div className="activity-head">
         <div><h2 id="activity-heading">Cash-flow activity</h2><p>Customer invoices and unpaid expenses that need a next step.</p></div>
         <Link className="text-button" href="/invoices">Review invoices <DashboardIcon name="arrowRight" size={16} /></Link>

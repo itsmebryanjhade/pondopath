@@ -8,7 +8,7 @@ describe("sidebar", () => {
     expect(groups.map((group) => group.items.map((item) => item.href))).toEqual([
       ["/overview", "/forecast"], ["/cash", "/invoices", "/expenses"], ["/imports", "/followups"],
     ]);
-    expect(groups.flatMap((group) => group.items.map((item) => item.label))).toEqual(["Overview", "Forecast", "Cash", "Invoices", "Expenses", "Review Inbox", "Follow-ups"]);
+    expect(groups.flatMap((group) => group.items.map((item) => item.label))).toEqual(["Overview", "Forecast", "Cash ledger", "Invoices", "Expenses", "Review imports", "Follow-ups"]);
   });
   it("gives every item its own icon so a collapsed rail is not a guessing game", () => {
     const icons = sidebarGroups({ inbox: 0, followups: 0 }).flatMap((group) => group.items.map((item) => item.icon));
@@ -51,23 +51,23 @@ describe("sidebar", () => {
   });
   it("phone tabs keep five spots: Overview, Forecast, a centre Add, Review with its count, and More", () => {
     const tabs = mobileTabs({ inbox: 3, followups: 2 });
-    expect(tabs.map((tab) => tab.label)).toEqual(["Overview", "Forecast", "Add", "Review", "More"]);
-    expect(tabs.map((tab) => tab.kind === "link" ? tab.href : "more")).toEqual(["/overview", "/forecast", "/add", "/imports", "more"]);
+    expect(tabs.map((tab) => tab.label)).toEqual(["Overview", "Review", "Add", "Follow-ups", "More"]);
+    expect(tabs.map((tab) => tab.kind === "link" ? tab.href : "more")).toEqual(["/overview", "/imports", "/add", "/followups", "more"]);
     expect(tabs[2]).toMatchObject({ kind: "link", fab: true });
-    expect(tabs[3]).toMatchObject({ count: "3", countLabel: "3 waiting for review" });
+    expect(tabs[1]).toMatchObject({ count: "3", countLabel: "3 waiting for review" });
+    expect(tabs[3]).toMatchObject({ count: "2", countLabel: "2 open follow-ups" });
   });
-  it("More carries the open follow-up count so urgent work is never hidden", () => {
-    expect(mobileTabs({ inbox: 0, followups: 2 })[4]).toMatchObject({ kind: "more", count: "2", countLabel: "2 open follow-ups" });
-    expect(mobileTabs({ inbox: 0, followups: 0 })[4]).not.toHaveProperty("count");
+  it("More carries no count, because every count now sits on a labelled tab", () => {
+    expect(mobileTabs({ inbox: 3, followups: 2 })[4]).not.toHaveProperty("count");
+    expect(mobileTabs({ inbox: 0, followups: 0 })[3]).not.toHaveProperty("count");
   });
   it("the More sheet lists everything not on the bar, with counts", () => {
     const items = moreItems({ inbox: 3, followups: 2 });
-    expect(items.map((item) => item.href)).toEqual(["/cash", "/invoices", "/expenses", "/followups"]);
-    expect(items[3]).toMatchObject({ count: "2", countLabel: "2 open follow-ups" });
-    expect(items.map((item) => item.href)).not.toContain("/imports");
+    expect(items.map((item) => item.href)).toEqual(["/forecast", "/cash", "/invoices", "/expenses"]);
+    expect(items.map((item) => item.label)).toEqual(["Forecast", "Cash ledger", "Invoices", "Expenses"]);
   });
   it("More looks active on the pages inside it", () => {
-    for (const path of ["/cash", "/payments", "/invoices", "/invoices/x", "/expenses", "/followups"]) expect(moreActive(path)).toBe(true);
-    for (const path of ["/overview", "/forecast", "/add", "/imports", "/team"]) expect(moreActive(path)).toBe(false);
+    for (const path of ["/forecast", "/cash", "/payments", "/invoices", "/invoices/x", "/expenses"]) expect(moreActive(path)).toBe(true);
+    for (const path of ["/overview", "/followups", "/add", "/imports", "/team"]) expect(moreActive(path)).toBe(false);
   });
 });

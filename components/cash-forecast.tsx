@@ -56,7 +56,7 @@ export function CashForecast({
             </thead>
             <tbody>
               {forecast.days.map((day) => (
-                <tr key={day.date}>
+                <tr key={day.date} id={overview ? `day-${day.date}` : undefined}>
                   <th scope="row">{formatPlanDate(day.date)}</th>
                   <td className="num">{formatPHP(day.expectedInCents)}</td>
                   <td className="num">{formatPHP(day.plannedOutCents)}</td>
@@ -98,9 +98,14 @@ export function CashForecast({
           <desc id={`${chartId}-chart-description`}>{forecast.firstShortage ? `First projected shortage ${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(forecast.firstShortage.date)}.` : "No shortage projected from entered records."} The daily cash plan below provides every amount and source record.</desc>
           <defs><linearGradient id={`${chartId}-chart-fill`} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#45a874" stopOpacity=".25" /><stop offset="100%" stopColor="#45a874" stopOpacity=".01" /></linearGradient></defs>
           <g className="grid-lines">{ticks.map((tick) => <line key={tick} x1="0" x2="700" y1={y(tick)} y2={y(tick)} />)}</g>
+          {/* Below zero is shown as an amber band, and the line turns amber there, so the whole short period is visible. */}
+          {low < 0 && <><clipPath id={`${chartId}-below-zero`}><rect x="0" y={y(0)} width="700" height={230 - y(0)} /></clipPath>
+            <clipPath id={`${chartId}-above-zero`}><rect x="0" y="0" width="700" height={y(0)} /></clipPath>
+            <rect className="below-zero-band" x="0" y={y(0)} width="700" height={y(min) - y(0)} /></>}
+          <path className="area" style={{ fill: `url(#${chartId}-chart-fill)` }} clipPath={low < 0 ? `url(#${chartId}-above-zero)` : undefined} d={`${line} L700,${y(0)} L0,${y(0)} Z`} />
           <line className="chart-zero" x1="0" x2="700" y1={y(0)} y2={y(0)} vectorEffect="non-scaling-stroke" />
-          <path className="area" style={{ fill: `url(#${chartId}-chart-fill)` }} d={`${line} L700,${y(0)} L0,${y(0)} Z`} />
           <path className="line" d={line} pathLength="1200" />
+          {low < 0 && <path className="line-below" d={line} clipPath={`url(#${chartId}-below-zero)`} />}
           {shortageIndex >= 0 && <line className="risk-line" x1={x(shortageIndex)} x2={x(shortageIndex)} y1="20" y2="220" vectorEffect="non-scaling-stroke" />}
         </svg>
         <div className="forecast-points" aria-label="Forecast data points">
@@ -112,7 +117,7 @@ export function CashForecast({
         </div>
         <div className="chart-dates" aria-hidden="true">{[0, 7, 14, 21, 29].map((index) => <span key={index}>{formatPlanDate(forecast.days[index].date, true)}</span>)}</div>
       </div>
-      <div className="chart-legend"><span><i className="legend-line" />Projected balance</span>{shortageIndex >= 0 && <span><i className="legend-dot" />Potential shortfall</span>}<span className="forecast-source">Based on recorded invoices and bills</span></div>
+      <div className="chart-legend"><span><i className="legend-line" />Projected balance</span>{shortageIndex >= 0 && <span><i className="legend-band" />Below zero</span>}<span className="forecast-source">Based on recorded invoices and bills</span></div>
       {dailyPlan}
     </section>;
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildActivityRows, filterActivityRows } from "./cash-overview";
+import { filterFromHash } from "./cash-overview";
 import { delayedCase } from "../../tests/fixtures/business";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 
@@ -47,5 +48,13 @@ describe("live cash-flow activity", () => {
     const workspace = fixture();
     workspace.expenses = Array.from({ length: 51 }, (_, i) => ({ ...workspace.expenses[0], id: `item-${String(i).padStart(2, "0")}`, unpaid_cents: i === 50 ? 1000 : 0 }));
     expect(buildActivityRows(workspace).find((row) => row.kind === "expense")?.href).toBe("/expenses?page=2#expense-item-50");
+  });
+});
+
+describe("activity filter from a link", () => {
+  it("opens on Needs attention when the link asks for it", () => {
+    expect(filterFromHash("#needs-attention")).toBe("attention");
+    expect(filterFromHash("")).toBe("all");
+    expect(filterFromHash("#cash-activity")).toBe("all");
   });
 });

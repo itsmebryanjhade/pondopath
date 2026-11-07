@@ -56,13 +56,13 @@ export function WorkspaceTools({ rows, name, role, businessName, accountActions,
         <div className="nav-actions">
         <button ref={searchToggle} type="button" className="icon-button mobile-search-toggle" aria-label="Search records" aria-controls="workspace-record-search" aria-expanded={mobileSearchOpen} onClick={() => { closeMenus(); setMobileSearchOpen(!mobileSearchOpen); }}><DashboardIcon name="search" size={17} /></button>
         <div id="workspace-record-search" className={`workspace-search search${mobileSearchOpen ? " mobile-search-open" : ""}`} role="search" aria-label="Find an invoice or expense" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setQuery(""); }}>
-          <DashboardIcon name="search" size={17} /><input ref={searchInput} type="search" aria-label="Search invoices and expenses" placeholder="Search your records" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <DashboardIcon name="search" size={17} /><input ref={searchInput} type="search" aria-label="Search unpaid invoices and expenses" placeholder="Search unpaid records" value={query} onChange={(event) => setQuery(event.target.value)} />
           {query.trim() && <div className="popover search-results"><p role="status">{results.length ? `${results.length} matching records` : "No matching unpaid records"}</p><ul>{results.map((row) => <li key={`${row.kind}-${row.id}`}><Link href={row.href} onNavigate={() => { setQuery(""); setMobileSearchOpen(false); }}><strong>{row.label}</strong><small>{row.reference} · {row.kind}</small></Link></li>)}</ul></div>}
         </div>
         <details name="workspace-toolbar" className="notification-wrap" onToggle={dismissSearch}>
           <summary className="icon-button notification" aria-label="Records needing attention"><DashboardIcon name="bell" />{flagged.length > 0 && <span />}</summary>
           <div className="popover notification-panel">
-            <div className="notification-head"><strong>Records to review</strong><Link href="/followups" onNavigate={closeMenus}>View follow-ups</Link></div>
+            <div className="notification-head"><strong>Records to review</strong><Link href="/overview#needs-attention" onNavigate={closeMenus}>View flagged records</Link></div>
             {flagged.slice(0, 5).map((row) => <Link className="notification-item" href={row.href} key={`${row.kind}-${row.id}`} onNavigate={closeMenus}><span className="notification-icon warning"><DashboardIcon name="alert" size={15} /></span><span><strong>{row.reference} · {row.status}</strong><small>{row.label}</small></span><DashboardIcon name="arrowRight" size={14} /></Link>)}
             {!flagged.length && <p className="toolbar-empty">No entered unpaid records are flagged for review.</p>}
           </div>

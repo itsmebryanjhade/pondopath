@@ -115,7 +115,7 @@ export function GoogleConnect({ owner, configured, connection, files, customers,
         const mapping: AutoMapping = readSelectorForm(data, setup.data.labels, setup.saved);
         start(async () => {
           const result = await saveGoogleSetupAction(setup.sourceId, mapping);
-          if (result.ok) { setSetup(null); setMessage("Saved. New and changed rows will arrive in the Review Inbox."); router.refresh(); } else setMessage(result.message);
+          if (result.ok) { setSetup(null); setMessage("Saved. New and changed rows will arrive in Review imports."); router.refresh(); } else setMessage(result.message);
         });
       }}>
         <h3>Set up {files.find(file => file.id === setup.sourceId)?.label ?? "the file"}</h3>
