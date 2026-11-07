@@ -7,6 +7,7 @@ import { unstable_rethrow } from "next/navigation";
 import { CommandError, type ActionResult } from "@/lib/domain/commands";
 import { CSV_LIMITS, csvMappingSchema, mapCsv, readCsv, type IntakeBinding } from "@/lib/domain/imports";
 import { stageIntakeBatch, reviewIntake, confirmSelectedIntake } from "@/lib/server/intake";
+import { ensureFileSource } from "@/lib/server/file-source";
 import { readXlsx } from "@/lib/domain/xlsx";
 import { applyReader, labelRows, suggestAutoFields, suggestColumns } from "@/lib/domain/reader";
 import { requireActor } from "@/lib/server/auth";
@@ -100,6 +101,11 @@ export async function stageCsvAction(form: FormData) {
     revalidatePath("/(workspace)", "layout");
     return results;
   });
+}
+
+/** The Add records page uses one hidden file source; see `ensureFileSource`. */
+export async function ensureFileSourceAction() {
+  return perform(() => ensureFileSource());
 }
 
 // One spreadsheet source accepts both CSV and XLSX uploads, so repeat protection keyed on the
