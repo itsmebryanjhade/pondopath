@@ -5,6 +5,7 @@ import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { getApprovedReminderText } from "@/app/(workspace)/actions";
 import { formatPHP } from "@/lib/domain/money";
 import { CommandForm, Field, TextAreaField } from "./command-form";
+import { AppIcon } from "./app-icon";
 
 type Props = {
   workspace: WorkspaceSnapshot;
@@ -12,6 +13,7 @@ type Props = {
   customer: WorkspaceSnapshot["customers"][number];
   template: string;
   suggestedBody?: string;
+  collapsible?: boolean;
 };
 
 function localDateTimeValue() {
@@ -19,7 +21,7 @@ function localDateTimeValue() {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
-export function ReminderPanel({ workspace, invoice, customer, template, suggestedBody }: Props) {
+export function ReminderPanel({ workspace, invoice, customer, template, suggestedBody, collapsible = false }: Props) {
   const reminder = [...workspace.reminders]
     .filter((row) => row.invoice_id === invoice.id && row.state !== "reported_sent")
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.id.localeCompare(a.id))[0] ?? null;
@@ -55,9 +57,17 @@ export function ReminderPanel({ workspace, invoice, customer, template, suggeste
     });
   }
 
+  const Container = collapsible ? "details" : "section";
   return (
-    <section className="panel reminder-panel" aria-labelledby="reminder-heading">
-      <h2 id="reminder-heading">Payment reminder</h2>
+    <Container className={collapsible ? "panel disclosure reminder-panel" : "panel reminder-panel"} aria-labelledby={collapsible ? undefined : "reminder-heading"}>
+      {collapsible ? (
+        <summary>
+          <AppIcon name="file-text" />
+          <span>Payment reminder</span>
+          {reminder && <small className="muted">{reminder.state === "rejected" ? "Changes requested" : reminder.state.replaceAll("_", " ")}</small>}
+          <AppIcon name="chevron-down" />
+        </summary>
+      ) : <h2 id="reminder-heading">Payment reminder</h2>}
       <p className="muted">
         Current outstanding balance: <strong className="num">{formatPHP(invoice.outstanding_cents)}</strong>.
         A saved message does not change when invoice records change, so check its amount and recipient before resubmitting. Saving or copying never sends a message.
@@ -187,6 +197,6 @@ export function ReminderPanel({ workspace, invoice, customer, template, suggeste
         </p>
       )}
       {invoice.outstanding_cents <= 0 && <p className="empty-state">No reminder can be prepared because the invoice is fully paid.</p>}
-    </section>
+    </Container>
   );
 }

@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { DashboardIcon } from "./dashboard-icon";
-import type { ActivityRow } from "@/lib/ui/cash-overview";
-import { filterActivityRows } from "@/lib/ui/cash-overview";
+import { searchWorkspaceRecords, type ActivityRow, type WorkspaceSearchRow } from "@/lib/ui/cash-overview";
 import { RefreshRecords } from "./refresh-records";
 
-export function WorkspaceTools({ rows, name, role, businessName, accountActions, brand, planDate }: {
-  rows: ActivityRow[]; name: string; role: string; businessName: string; planDate?: string;
+export function WorkspaceTools({ rows, paidInvoices, name, role, businessName, accountActions, brand, planDate }: {
+  rows: ActivityRow[]; paidInvoices: WorkspaceSearchRow[]; name: string; role: string; businessName: string; planDate?: string;
   accountActions: React.ReactNode; brand: React.ReactNode;
 }) {
   const [query, setQuery] = useState("");
@@ -18,6 +17,7 @@ export function WorkspaceTools({ rows, name, role, businessName, accountActions,
   const searchInput = useRef<HTMLInputElement>(null);
   const searchToggle = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
   useEffect(() => {
     // Hidden cached routes keep their DOM; Activity cleans up this active-workspace effect.
     document.documentElement.classList.add("pondopath-workspace-document");
@@ -37,7 +37,8 @@ export function WorkspaceTools({ rows, name, role, businessName, accountActions,
     return () => document.removeEventListener("pointerdown", dismiss);
   }, []);
   useEffect(() => { if (mobileSearchOpen) searchInput.current?.focus(); }, [mobileSearchOpen]);
-  const results = query.trim() ? filterActivityRows(rows, "all", query).slice(0, 6) : [];
+  const { results, direct } = searchWorkspaceRecords([...rows, ...paidInvoices], query);
+  const dismissResults = () => { setQuery(""); setMobileSearchOpen(false); };
   const flagged = rows.filter((row) => row.needsAttention);
   const dismissSearch = (event: React.SyntheticEvent<HTMLDetailsElement>) => {
     if (event.currentTarget.open) { setMobileSearchOpen(false); setQuery(""); }
@@ -60,10 +61,26 @@ export function WorkspaceTools({ rows, name, role, businessName, accountActions,
           <RefreshRecords compact />
         </div>}
         <button ref={searchToggle} type="button" className="icon-button mobile-search-toggle" aria-label="Search records" aria-controls="workspace-record-search" aria-expanded={mobileSearchOpen} onClick={() => { closeMenus(); setMobileSearchOpen(!mobileSearchOpen); }}><DashboardIcon name="search" size={17} /></button>
-        <div id="workspace-record-search" className={`workspace-search search${mobileSearchOpen ? " mobile-search-open" : ""}`} role="search" aria-label="Find an invoice or expense" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setQuery(""); }}>
-          <DashboardIcon name="search" size={17} /><input ref={searchInput} type="search" aria-label="Search invoices and expenses" placeholder="Search your records" value={query} onChange={(event) => setQuery(event.target.value)} />
-          {query.trim() && <div className="popover search-results"><p role="status">{results.length ? `${results.length} matching records` : "No matching unpaid records"}</p><ul>{results.map((row) => <li key={`${row.kind}-${row.id}`}><Link href={row.href} onNavigate={() => { setQuery(""); setMobileSearchOpen(false); }}><strong>{row.label}</strong><small>{row.reference} · {row.kind}</small></Link></li>)}</ul></div>}
-        </div>
+        <form id="workspace-record-search" className={`workspace-search search${mobileSearchOpen ? " mobile-search-open" : ""}`} role="search" aria-label="Find an invoice or expense"
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setQuery(""); }}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!direct) return;
+            dismissResults();
+            router.push(direct.href);
+          }}
+        >
+          <DashboardIcon name="search" size={17} /><input ref={searchInput} type="search" aria-label="Search invoices and expenses" placeholder="Invoice #, customer, or bill" value={query} onChange={(event) => setQuery(event.target.value)} />
+          {query.trim() && <div className="popover search-results">
+            <p role="status">{direct ? "Press Enter to open" : results.length ? "Matching records" : "No matching invoices or open bills"}</p>
+            <ul>{results.map((row) => <li key={`${row.kind}-${row.id}`}>
+              <Link href={row.href} onNavigate={dismissResults}>
+                <strong>{row.kind === "invoice" ? row.reference : row.label}</strong>
+                <small>{row.kind === "invoice" ? row.label : row.reference} · {row.status}</small>
+              </Link>
+            </li>)}</ul>
+          </div>}
+        </form>
         <details name="workspace-toolbar" className="notification-wrap" onToggle={dismissSearch}>
           <summary className="icon-button notification" aria-label="Records needing attention"><DashboardIcon name="bell" />{flagged.length > 0 && <span />}</summary>
           <div className="popover notification-panel">

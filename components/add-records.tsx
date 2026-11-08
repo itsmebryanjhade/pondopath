@@ -51,7 +51,7 @@ export function countSelection(form: FormData, labels: SelectorLabel[]): { invoi
 type Read = { id: number; sourceId: string; file: File; sheet: string; sheets: string[]; headers: string[]; rows: (string | number | boolean | null)[][]; fields: AutoFields; labels: SelectorLabel[] };
 type Phase = { step: "file" } | { step: "check"; read: Read } | { step: "done"; fresh: number; already: number; skipped: number };
 
-export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStart = false }: { customers: { id: string; name: string }[]; googleSlot: ReactNode; manualSlot?: ReactNode; googleOpenAtStart?: boolean }) {
+export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStart = false, manualOpenAtStart = false }: { customers: { id: string; name: string }[]; googleSlot: ReactNode; manualSlot?: ReactNode; googleOpenAtStart?: boolean; manualOpenAtStart?: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const [busy, start] = useTransition();
@@ -60,7 +60,7 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
   const [googleOpen, setGoogleOpen] = useState(googleOpenAtStart);
-  const [manualOpen, setManualOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(manualOpenAtStart);
   const [labels, setLabels] = useState<SelectorLabel[]>([]);
   const [selection, setSelection] = useState<{ invoice: number; expense: number } | null>(null);
   const adjust = useRef<HTMLDetailsElement>(null);

@@ -50,7 +50,7 @@ export function ScenarioPanel({
 
   const body = <div className="scenario-body">
     <form className="scenario-form" onSubmit={(event) => event.preventDefault()}>
-      <label className="form-field scenario-invoice">
+      {!invoiceId && <label className="form-field scenario-invoice">
         <span>Invoice</span>
         <select className="field" value={invoice.id} onChange={(event) => setState(startFor(event.target.value))}>
           {invoices.map((row) => (
@@ -60,7 +60,7 @@ export function ScenarioPanel({
         <small>{formatPHP(invoice.outstanding_cents)} unpaid · {customer} · {start.planned < today
           ? `was expected ${formatPlanDate(start.planned, true)}, so it isn't in the forecast now`
           : `expected ${formatPlanDate(start.planned, true)}`}</small>
-      </label>
+      </label>}
       <div className="scenario-fields">
         <label className="form-field">
           <span>Payment date</span>
@@ -86,7 +86,7 @@ export function ScenarioPanel({
   if (inline) return <div className="scenario-panel scenario-inline">{body}</div>;
   return (
     <details className="panel disclosure scenario-panel">
-      <summary><AppIcon name="help-circle" /><span>What if a customer pays later or only part?</span><AppIcon name="chevron-down" /></summary>
+      <summary><AppIcon name="help-circle" /><span>Try a payment scenario</span><AppIcon name="chevron-down" /></summary>
       <p className="muted">Try a payment date or amount. Nothing is saved.</p>
       {body}
     </details>

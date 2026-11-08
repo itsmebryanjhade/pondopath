@@ -6,7 +6,7 @@ import { ProductBrand } from "./product-brand";
 import { AppIcon } from "./app-icon";
 import { WorkspaceInvitationLink, WorkspaceNavigation } from "./workspace-navigation";
 import { WorkspaceTools } from "./workspace-tools";
-import { buildActivityRows } from "@/lib/ui/cash-overview";
+import { buildActivityRows, paidInvoiceSearchRows } from "@/lib/ui/cash-overview";
 import { AiAssistant } from "./ai-assistant";
 import { FileDropOverlay } from "./file-drop-overlay";
 import { MobileTabBar } from "./mobile-tab-bar";
@@ -35,7 +35,7 @@ export function WorkspaceFrame({ workspace, children }: {
     <FileDropOverlay />
     <div data-ui className={`${font.className} ${headingFont.variable} workspace-root app-shell`}>
       <a className="skip-link" href="#workspace-main">Skip to cash plan</a>
-      <WorkspaceTools rows={rows} name={name} role={role} businessName={workspace.business.name} accountActions={accountActions} brand={<ProductBrand />} planDate={formatPlanDate(workspace.forecastInput.referenceDate, true)} />
+      <WorkspaceTools rows={rows} paidInvoices={paidInvoiceSearchRows(workspace)} name={name} role={role} businessName={workspace.business.name} accountActions={accountActions} brand={<ProductBrand />} planDate={formatPlanDate(workspace.forecastInput.referenceDate, true)} />
       <div className="workspace">
       <aside id="workspace-sidebar" className="side-nav" aria-label="Workspace navigation">
         <div className="side-brand"><ProductBrand showAttribution={false} /><SidebarToggle /></div>

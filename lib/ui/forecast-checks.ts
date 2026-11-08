@@ -28,6 +28,7 @@ export function forecastChecks(workspace: WorkspaceSnapshot, forecast: ForecastR
     title: `${plural(pastDates.length, "expected payment date has", "expected payment dates have")} passed`,
     note: "Left out of the forecast until you set a new date or record the payment.",
     records: pastDates,
+    more: { label: "View these invoices", href: "/invoices?filter=needs_review" },
   });
 
   const stalePlanned = new Set(pastDates.map((item) => item.id));
@@ -44,6 +45,7 @@ export function forecastChecks(workspace: WorkspaceSnapshot, forecast: ForecastR
     title: `Incomplete plan: ${plural(noDate.length, "unpaid invoice has", "unpaid invoices have")} money with no expected date`,
     note: "That money isn't in the forecast until you set when it should arrive.",
     records: noDate,
+    more: { label: "View unpaid invoices", href: "/invoices?filter=unpaid" },
   });
 
   const overdue = new Set(forecast.overdueExpenseIds);

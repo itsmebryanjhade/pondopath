@@ -62,6 +62,25 @@ export function invoiceList(workspace: WorkspaceSnapshot): InvoiceListItem[] {
   })).sort((a, b) => rank[a.state] - rank[b.state] || a.dueDate.localeCompare(b.dueDate) || a.number.localeCompare(b.number));
 }
 
+export type WorkspaceSearchRow = Pick<ActivityRow, "id" | "kind" | "label" | "reference" | "href" | "status">;
+
+export function paidInvoiceSearchRows(workspace: WorkspaceSnapshot): WorkspaceSearchRow[] {
+  return invoiceList(workspace).filter((invoice) => invoice.state === "paid").map((invoice) => ({
+    id: invoice.id, kind: "invoice", label: invoice.customer, reference: invoice.number,
+    href: `/invoices/${invoice.id}`, status: "Paid",
+  }));
+}
+
+export function searchWorkspaceRecords(rows: WorkspaceSearchRow[], query: string) {
+  const needle = query.trim().toLocaleLowerCase();
+  if (!needle) return { results: [], direct: undefined };
+  const matches = rows.filter((row) => `${row.label} ${row.reference}`.toLocaleLowerCase().includes(needle));
+  const exact = matches.filter((row) => row.kind === "invoice" && row.reference.toLocaleLowerCase() === needle);
+  const direct = exact.length === 1 ? exact[0] : matches.length === 1 ? matches[0] : undefined;
+  const results = direct ? [direct, ...matches.filter((row) => row !== direct)] : matches;
+  return { results: results.slice(0, 6), direct };
+}
+
 export type ExpectedReceipt = { id: string; number: string; customer: string; amountCents: number; date: string };
 
 /** Customer payments the 30-day forecast expects but that are not cash yet, soonest first. Same amounts the forecast counts. */

@@ -17,10 +17,11 @@ export function PaymentForm({
 }) {
   if (remainingCents === 0)
     return <p className="muted">Fully paid. No additional payment can be allocated.</p>;
+  const receipt = kind === "receipt";
   return (
     <CommandForm
       revision={workspace.revision}
-      label={kind === "receipt" ? "Record verified receipt" : "Record verified expense payment"}
+      label={receipt ? "Save payment received" : "Record verified expense payment"}
       build={(data) => ({
         type: "post_cash_movement",
         payload: {
@@ -39,18 +40,18 @@ export function PaymentForm({
       })}
     >
       <p>
-        Remaining to allocate: <strong className="num">{formatPHP(remainingCents)}</strong>
+        {receipt ? "Still owed" : "Remaining to allocate"}: <strong className="num">{formatPHP(remainingCents)}</strong>
       </p>
       <div className="form-grid">
         <Field
-          label="Verified payment amount (PHP)"
+          label={receipt ? "Amount received (PHP)" : "Verified payment amount (PHP)"}
           name="amount"
           inputMode="decimal"
           required
-          help="A customer promise or message saying “paid” is not proof of receipt."
+          help={receipt ? "Check your bank or other proof of receipt." : "A customer promise or message saying “paid” is not proof of receipt."}
         />
         <Field
-          label="Actual payment date"
+          label={receipt ? "Date received" : "Actual payment date"}
           name="date"
           type="date"
           min={workspace.business.opening_date}
@@ -68,8 +69,9 @@ export function PaymentForm({
       <label className="check-field">
         <input type="checkbox" name="verified" required />
         <span>
-          I checked that this money movement actually occurred through the business’s normal
-          process.
+          {receipt
+            ? "I verified that the money was received."
+            : "I checked that this money movement actually occurred through the business’s normal process."}
         </span>
       </label>
       <details className="duplicate-review">
@@ -88,24 +90,39 @@ export function PaymentForm({
   );
 }
 
-export function VoidForm({ revision, movementId }: { revision: number; movementId: string }) {
+export function VoidForm({
+  revision,
+  movementId,
+  kind,
+}: {
+  revision: number;
+  movementId: string;
+  kind?: "receipt" | "expense_payment";
+}) {
+  const billPayment = kind === "expense_payment";
   return (
     <CommandForm
       revision={revision}
-      label="Void this incorrect entry"
+      label="Confirm void"
       build={(data) => ({
         type: "void_cash_movement",
         payload: { movementId, reason: String(data.get("reason") ?? "") },
       })}
     >
       <p className="muted">
-        The original entry stays in history. Cash and unpaid totals are recomputed. Voiding a
-        customer receipt also marks its expectation for review.
+        {billPayment
+          ? "The entry stays in history. PondoPath adds the amount back to available cash and the bill’s unpaid balance."
+          : "The entry stays in history. PondoPath subtracts the amount from available cash and adds it back to the unpaid balance. Any expected payment goes back for review."}
       </p>
-      <Field label="Reason for voiding this entry" name="reason" maxLength={4000} required />
+      <Field
+        label="Reason for voiding"
+        name="reason"
+        maxLength={4000}
+        required
+      />
       <label className="check-field">
         <input type="checkbox" required />
-        <span>I reviewed this entry and confirm it is incorrect.</span>
+        <span>I confirm this payment was recorded by mistake.</span>
       </label>
     </CommandForm>
   );

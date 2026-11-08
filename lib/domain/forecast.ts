@@ -2,6 +2,8 @@ import { addDays, assertLocalDate } from "./dates";
 import { checkedSum, MAX_RECORD_CENTS } from "./money";
 import type { ForecastDay, ForecastInput, ForecastResult, LocalDate, UUID, Cents } from "./types";
 
+export const FORECAST_DAYS = 30;
+
 function assertRecordAmount(amount: Cents): void {
   if (!Number.isSafeInteger(amount) || amount < 0 || amount > MAX_RECORD_CENTS) {
     throw new RangeError("Record balances must be nonnegative centavos within the record limit.");
@@ -11,7 +13,7 @@ function assertRecordAmount(amount: Cents): void {
 export function calculateForecast(input: ForecastInput): ForecastResult {
   assertLocalDate(input.referenceDate);
   checkedSum([input.availableCents]);
-  const days: ForecastDay[] = Array.from({ length: 30 }, (_, offset) => ({
+  const days: ForecastDay[] = Array.from({ length: FORECAST_DAYS }, (_, offset) => ({
     date: addDays(input.referenceDate, offset),
     expectedInCents: 0,
     plannedOutCents: 0,

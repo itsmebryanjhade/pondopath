@@ -27,12 +27,36 @@ describe("source Expenses page with real planned outflows", () => {
     expect(html).toContain("section-expenses expenses-page");
     expect([...html.matchAll(/data-cents="(\d+)"/g)].map((match) => Number(match[1]))).toEqual([3_000_000, 2_000_000, 0, 0, 0]);
     expect(html).toContain("₱50,000.00");
-    expect(html).toContain("Included as due now on");
-    expect(html).toContain("2026-10-28");
+    const bill = html.slice(html.indexOf('id="expense-' + workspace.expenses[0].id + '"')).split("</li>")[0];
+    expect(bill).toContain('dateTime="2026-10-28">28 Oct</time>');
+    expect(bill).toContain("Overdue");
+    expect(bill).toContain("Left of ₱50,000.00");
+    expect(bill).not.toContain("Counted as due today");
+    expect(bill.match(/name="bill-actions"/g)).toHaveLength(2);
+    expect(html).toContain("Overdue bills count as due today");
     expect(html).toContain('data-remaining="3000000"');
     expect(html).toContain(`data-expense="${workspace.expenses[0].id}"`);
-    expect(html).toContain('data-expense="new"');
+    // Adding a bill happens on Add records; the header opens that form.
+    expect(html).not.toContain('data-expense="new"');
+    expect(html).toContain('href="/add?type=expense"');
+    // The three metric cards became the breakdown in "Bills you owe".
+    expect(html).not.toContain('class="section-metric"');
+    expect(html).toContain("Bills to check");
   });
+  it("shows the paid total and keeps editing available for a paid bill", async () => {
+    const workspace = uiWorkspace();
+    const expense = workspace.expenses[0];
+    expense.paid_cents = expense.amount_cents;
+    expense.unpaid_cents = 0;
+    workspace.forecastInput.expenses[0].unpaidCents = 0;
+    const html = await render(workspace);
+    const bill = html.slice(html.indexOf('id="expense-' + expense.id + '"')).split("</li>")[0];
+    expect(bill).toContain(">Paid</span>");
+    expect(bill).toContain("₱50,000.00");
+    expect(bill).toContain("Edit bill");
+    expect(bill).not.toContain("Record payment");
+  });
+
   it("retains 50-row pagination and anchors while analytics use all saved expenses", async () => {
     const workspace = uiWorkspace();
     const base = workspace.expenses[0];
@@ -44,7 +68,7 @@ describe("source Expenses page with real planned outflows", () => {
     expect(html).toContain('href="/expenses?page=1"');
     expect(html).toContain('data-cents="255000000"');
   });
-  it("handles empty obligations and zero-value chart periods without losing the entry form", async () => {
+  it("handles empty obligations and zero-value chart periods, and leads to adding the first bill", async () => {
     const workspace = uiWorkspace();
     workspace.expenses = [];
     workspace.forecastInput.expenses = [];
@@ -52,6 +76,6 @@ describe("source Expenses page with real planned outflows", () => {
     expect(html).toContain("No expenses entered");
     expect([...html.matchAll(/data-cents="(\d+)"/g)].map((match) => Number(match[1]))).toEqual([0, 0, 0, 0, 0]);
     expect(html).not.toContain("NaN");
-    expect(html).toContain('data-expense="new"');
+    expect(html).toContain("Add your first bill");
   });
 });

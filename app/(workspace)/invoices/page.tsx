@@ -1,13 +1,11 @@
 import { getWorkspace } from "@/lib/server/workspace";
 import { CustomerInvoices } from "@/components/customer-invoices";
-import { CustomerForm, InvoiceForm } from "@/components/record-forms";
 
 type InvoicePageProps = { searchParams: Promise<{ page?: string | string[]; filter?: string | string[] }> };
 
+// Adding invoices and customers happens on Add records; this page lists and follows them up.
 export default async function Invoices({ searchParams }: InvoicePageProps) {
   const workspace = await getWorkspace();
   const params = await searchParams;
-  return <CustomerInvoices workspace={workspace} params={params}
-    invoiceControls={<InvoiceForm workspace={workspace} />}
-    customerControls={<CustomerForm workspace={workspace} />} />;
+  return <CustomerInvoices workspace={workspace} params={params} />;
 }

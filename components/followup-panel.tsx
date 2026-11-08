@@ -1,5 +1,6 @@
 "use client";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
+import { formatPlanDate } from "@/lib/display";
 import { CommandForm, Field, TextAreaField, AssigneeField } from "./command-form";
 
 type Props = { workspace: WorkspaceSnapshot; invoice: WorkspaceSnapshot["invoices"][number] };
@@ -118,7 +119,7 @@ export function FollowupPanel({ workspace, invoice }: Props) {
                     }
                   >
                     {task.due_date < workspace.forecastInput.referenceDate ? "Overdue · " : "Due "}
-                    {task.due_date} ·{" "}
+                    <time dateTime={task.due_date}>{formatPlanDate(task.due_date, true)}</time> ·{" "}
                     {workspace.members.find((member) => member.user_id === task.assignee_id)
                       ?.display_name ?? "Previous team member"}
                   </p>
@@ -129,12 +130,12 @@ export function FollowupPanel({ workspace, invoice }: Props) {
               )}
               <div className="two-column">
                 <details className="disclosure">
-                  <summary>Record outcome and next action</summary>
+                  <summary>Record outcome</summary>
                   <CompleteForm workspace={workspace} invoice={invoice} task={task} />
                 </details>
                 {invoice.outstanding_cents > 0 && (
                   <details className="disclosure">
-                    <summary>Edit assignment or action</summary>
+                    <summary>Edit follow-up</summary>
                     <FollowupForm workspace={workspace} invoice={invoice} task={task} />
                   </details>
                 )}
@@ -152,7 +153,7 @@ export function FollowupPanel({ workspace, invoice }: Props) {
       )}
       {invoice.outstanding_cents > 0 && (
         <details className="disclosure">
-          <summary>Schedule another follow-up</summary>
+          <summary>Add follow-up</summary>
           <FollowupForm workspace={workspace} invoice={invoice} />
         </details>
       )}

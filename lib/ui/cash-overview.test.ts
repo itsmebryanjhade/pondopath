@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildActivityRows, filterActivityRows } from "./cash-overview";
+import { buildActivityRows, filterActivityRows, paidInvoiceSearchRows, searchWorkspaceRecords } from "./cash-overview";
 import { delayedCase } from "../../tests/fixtures/business";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 
@@ -41,6 +41,18 @@ describe("live cash-flow activity", () => {
     expect(filterActivityRows(rows, "all", "fictional payee")).toHaveLength(3);
     expect(filterActivityRows(rows, "all", "missing")).toHaveLength(0);
     expect(rows).toHaveLength(4);
+  });
+
+  it("finds a paid invoice by number and leaves ambiguous customer matches for the user", () => {
+    const workspace = fixture();
+    workspace.invoices[1] = { ...workspace.invoices[0], id: "paid", number: "DEMO-PAID", outstanding_cents: 0 };
+    const activity = buildActivityRows(workspace);
+    const rows = [...activity, ...paidInvoiceSearchRows(workspace)];
+    const exact = searchWorkspaceRecords(rows, " demo-paid ");
+    expect(exact.direct).toMatchObject({ status: "Paid", href: "/invoices/paid" });
+    expect(exact.results[0]).toBe(exact.direct);
+    expect(searchWorkspaceRecords(rows, "Fictional services").direct).toBeUndefined();
+    expect(activity.some((row) => row.id === "paid")).toBe(false);
   });
 
   it("links to the expense's actual page even when earlier records have already been paid", () => {

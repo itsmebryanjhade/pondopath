@@ -5,10 +5,14 @@ import { calculateForecast } from "@/lib/domain/forecast";
 import { formatPlanDate } from "@/lib/display";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { DashboardIcon } from "@/components/dashboard-icon";
+import { AppIcon } from "@/components/app-icon";
 import { RefreshRecords } from "@/components/refresh-records";
 import { ExpenseForm } from "@/components/record-forms";
 import { PaymentForm } from "@/components/payment-form";
 import { CashMovements } from "@/components/cash-movements";
+import { ForecastCheckList } from "@/components/forecast-check-list";
+import { forecastChecks } from "@/lib/ui/forecast-checks";
+import { addDays } from "@/lib/domain/dates";
 
 type ExpensePageProps = { searchParams: Promise<{ page?: string | string[] }> };
 
@@ -28,76 +32,77 @@ export default async function Expenses({ searchParams }: ExpensePageProps) {
     const days = forecast.days.slice(index * 7, index * 7 + 7);
     return { start: days[0].date, end: days.at(-1)!.date, cents: checkedSum(days.map((day) => day.plannedOutCents)) };
   });
-  const plannedTotal = checkedSum(weeks.map((week) => week.cents));
   const chartMaximum = Math.max(1, ...weeks.map((week) => week.cents));
-  const overdue = workspace.expenses.filter((expense) => expense.unpaid_cents > 0 && expense.due_date < workspace.forecastInput.referenceDate);
-  const metrics = [
-    { label: "Due in the next 7 days", value: weeks[0].cents, note: "Includes overdue bills due now", tone: "purple" },
-    { label: "Overdue unpaid", value: checkedSum(overdue.map((expense) => expense.unpaid_cents)), note: `Overdue bills: ${overdue.length}`, tone: "orange" },
-    { label: "Verified expense payments", value: checkedSum(workspace.expenses.map((expense) => expense.paid_cents)), note: "Since opening cutoff · excludes voids", tone: "blue" },
+  const today = workspace.forecastInput.referenceDate;
+  const unpaid = workspace.expenses.filter((expense) => expense.unpaid_cents > 0);
+  const overdue = unpaid.filter((expense) => expense.due_date < today);
+  const dueSoon = unpaid.filter((expense) => expense.due_date >= today && expense.due_date <= addDays(today, 6));
+  const later = unpaid.filter((expense) => expense.due_date > addDays(today, 6));
+  // What you owe, split by when it is due (original due dates). Verified payments are on the Cash ledger.
+  const owed = [
+    { label: "Overdue", items: overdue, tone: "late" },
+    { label: "Due in the next 7 days", items: dueSoon, tone: "soon" },
+    { label: "Due later", items: later, tone: "calm" },
   ];
+  // On this page "View all bills" would point to itself, so the check keeps only its named bills.
+  const billChecks = forecastChecks(workspace, forecast, "forecast").filter((check) => check.key === "overdue-bills").map((check) => ({ ...check, more: undefined }));
   return (
     <WorkspaceShell workspace={workspace} className="section-page section-expenses expenses-page" header={
       <header className="section-heading">
-        <div><p className="eyebrow">Spend management · {workspace.business.is_demo ? "Fictional demo" : workspace.business.name}</p><h1>Expenses</h1><p>Manage payroll, supplier bills and upcoming obligations, then verify outgoing payments.</p></div>
-        <div className="dashboard-heading-actions"><span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span><RefreshRecords /><Link className="section-primary" href="#new-expense"><DashboardIcon name="plus" size={17} />Add an expense</Link></div>
+        <div><p className="eyebrow">Spend management · {workspace.business.is_demo ? "Fictional demo" : workspace.business.name}</p><h1>Expenses</h1><p>Bills you owe, when they&rsquo;re due, and recording them once they&rsquo;re paid.</p></div>
+        <div className="dashboard-heading-actions"><span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span><RefreshRecords /><Link className="section-primary" href="/add?type=expense"><DashboardIcon name="plus" size={17} />Add an expense</Link></div>
       </header>
     }>
-      <section className="section-metrics" aria-label="Expense summary">
-        {metrics.map(({ label, value, note, tone }) => <article className="section-metric" key={label}><span className={`metric-mark ${tone}`} aria-hidden="true" /><p>{label}</p><strong className="num">{formatPHP(value)}</strong><small>{note}</small></article>)}
-      </section>
       <section className="section-lower-grid">
-      <section className="records-panel">
+      <section className="records-panel expense-list-card" aria-labelledby="expense-list-heading">
         <div className="records-head">
-          <h2>
-            {workspace.expenses.length} recorded{" "}
-            {workspace.expenses.length === 1 ? "expense" : "expenses"}
-          </h2>
-          <span className="muted">PHP</span>
+          <div><h2 id="expense-list-heading">Bills <span className="next-count">{workspace.expenses.length}</span></h2><p>Soonest due first</p></div>
         </div>
         {expenses.length ? (
-          <div className="expense-list-scroll" role="region" aria-label="Expense records" tabIndex={0}><ul className="expense-list">
-            {expenses.map((expense) => (
-              <li id={`expense-${expense.id}`} key={expense.id}>
-                <div className="record-row expense-record">
-                  <span className="record-icon" aria-hidden="true"><DashboardIcon name="arrowOut" size={16} /></span>
-                  <div>
-                    <h3>{expense.label}</h3>
-                    <p className="muted">
-                      {expense.payee} · Original due date {expense.due_date}
-                    </p>
+          <ul className="expense-list">
+            {expenses.map((expense) => {
+              const paid = expense.unpaid_cents === 0;
+              const late = !paid && expense.due_date < today;
+              return (
+                <li id={`expense-${expense.id}`} key={expense.id} className={`expense-item${late ? " is-overdue" : ""}${paid ? " is-paid" : ""}`}>
+                  <div className="expense-row">
+                    <div className="expense-who">
+                      <strong>{expense.payee || expense.label}</strong>
+                      <div className="expense-meta">
+                        {expense.payee && expense.payee !== expense.label && <span>{expense.label}</span>}
+                        {paid ? <span className="status paid">Paid</span> : (
+                          <span>Due <time dateTime={expense.due_date}>{formatPlanDate(expense.due_date, true)}</time></span>
+                        )}
+                        {late && <span className="status review">Overdue</span>}
+                      </div>
+                    </div>
+                    <div className="expense-amount">
+                      <strong className="num">{formatPHP(paid ? expense.amount_cents : expense.unpaid_cents)}</strong>
+                      {!paid && <span>{expense.unpaid_cents === expense.amount_cents ? "Left to pay" : `Left of ${formatPHP(expense.amount_cents)}`}</span>}
+                    </div>
                   </div>
-                  <div className="num">
-                    <strong>{formatPHP(expense.unpaid_cents)}</strong>
-                    <p className="muted">Unpaid of {formatPHP(expense.amount_cents)}</p>
+                  <div className="expense-actions">
+                    {!paid && <details className="expense-action" name="bill-actions">
+                      <summary className="row-action" aria-label={`Record payment for ${expense.label}`}>
+                        Record payment <AppIcon name="chevron-down" />
+                      </summary>
+                      <div className="expense-action-body">
+                        <PaymentForm workspace={workspace} kind="expense_payment" parentId={expense.id} remainingCents={expense.unpaid_cents} />
+                      </div>
+                    </details>}
+                    <details className="expense-action" name="bill-actions">
+                      <summary className="row-action is-quiet" aria-label={`Edit bill: ${expense.label}`}>
+                        Edit bill <AppIcon name="chevron-down" />
+                      </summary>
+                      <div className="expense-action-body"><ExpenseForm workspace={workspace} expense={expense} /></div>
+                    </details>
                   </div>
-                </div>
-                {expense.unpaid_cents > 0 &&
-                  expense.due_date < workspace.forecastInput.referenceDate && (
-                    <p className="negative">
-                      Overdue · Included as due now on {workspace.forecastInput.referenceDate}
-                    </p>
-                  )}
-                <details className="disclosure">
-                  <summary>Record or review payment</summary>
-                  <PaymentForm
-                    workspace={workspace}
-                    kind="expense_payment"
-                    parentId={expense.id}
-                    remainingCents={expense.unpaid_cents}
-                  />
-                </details>
-                <details className="disclosure">
-                  <summary>Edit expense details</summary>
-                  <ExpenseForm workspace={workspace} expense={expense} />
-                </details>
-              </li>
-            ))}
-          </ul></div>
+                </li>
+              );
+            })}
+          </ul>
         ) : (
-          <p className="empty-state">
-            No expenses entered. Add upcoming obligations, including payroll and supplier bills.
-          </p>
+          <p className="empty-state">No expenses entered. <Link href="/add?type=expense">Add your first bill</Link>, such as payroll or a supplier bill.</p>
         )}
         {workspace.expenses.length > 50 && (
           <nav className="table-foot" aria-label="Expense pages">
@@ -110,39 +115,38 @@ export default async function Expenses({ searchParams }: ExpensePageProps) {
           </nav>
         )}
       </section>
-      <aside className="section-ai-card">
-        <span><DashboardIcon name="calendar" size={15} />Obligation check</span>
-        <h2>Keep the payment dates visible</h2>
-        <p>Overdue unpaid bills are included as due now on {formatPlanDate(workspace.forecastInput.referenceDate)}. Their original due dates stay in the records.</p>
-        <p>Record a payment only after checking that money was paid. Partial payments reduce the unpaid amount and the planned outflow together.</p>
-        <Link className="expense-source-link" href="/cash#payment-history">Review verified payments <DashboardIcon name="arrowRight" size={15} /></Link>
-        <div className="source-note"><span>Based on</span><strong>Saved expense records</strong></div>
+      <aside className={`forecast-checks-card expense-checks ${billChecks.length ? "is-caution" : "is-clear"}`} aria-labelledby="bill-checks-heading">
+        <div className="checks-card-head">
+          <span className="checks-eyebrow"><DashboardIcon name={billChecks.length ? "alert" : "check"} size={15} />{billChecks.length ? "Check first" : "All clear"}</span>
+          <h2 id="bill-checks-heading">Bills to check</h2>
+          <p>{billChecks.length ? "Overdue bills count as due today until you record the payment." : "No overdue bills."}</p>
+        </div>
+        <div className="forecast-checks-body"><ForecastCheckList checks={billChecks} empty="Every bill is paid or not yet due." /></div>
       </aside>
       </section>
-      <section className="section-feature" aria-label="Upcoming expense analytics">
-        <div className="section-feature-copy">
-          <span>Planned outflow · 30 days</span><strong className="num">{formatPHP(plannedTotal)}</strong>
-          <p>Unpaid amounts only, including overdue bills due now. Verified payments have already reduced these balances.</p>
-          <Link className="expense-source-link" href="/forecast">View the cash plan <DashboardIcon name="arrowRight" size={15} /></Link>
+      <section className="section-feature owed-panel" aria-label="Bills you owe and when they are due">
+        <div className="section-feature-copy owed-summary">
+          <span>Bills you owe</span><strong className="num">{formatPHP(checkedSum(unpaid.map((expense) => expense.unpaid_cents)))}</strong>
+          <p>{unpaid.length} unpaid {unpaid.length === 1 ? "bill" : "bills"} · not paid yet</p>
+          <ul className="owed-breakdown" aria-label="Owed by due date">
+            {owed.map((row) => <li key={row.label} className={`is-${row.tone}`}><div>
+              <span>{row.label}<small>{row.items.length} {row.items.length === 1 ? "bill" : "bills"}</small></span>
+              <strong className="num">{formatPHP(checkedSum(row.items.map((expense) => expense.unpaid_cents)))}</strong>
+            </div></li>)}
+          </ul>
         </div>
         <div className="mini-chart" role="region" aria-labelledby="expense-outlook-title">
-          <div className="mini-chart-head"><div><strong id="expense-outlook-title">Upcoming expense plan</strong><span>{formatPlanDate(forecast.days[0].date, true)}–{formatPlanDate(forecast.days[29].date, true)} · unpaid obligations</span></div><span className="mini-chart-change">30 days</span></div>
+          <div className="mini-chart-head"><div><strong id="expense-outlook-title">When bills are due</strong><span>By week · {formatPlanDate(forecast.days[0].date, true)}–{formatPlanDate(forecast.days[29].date, true)} · overdue bills count in the first week</span></div><span className="mini-chart-change">30 days</span></div>
           <div className="bars expense-bars" aria-label="Planned outflow grouped into seven-day periods">
             {weeks.map((week) => <button type="button" key={week.start} data-cents={week.cents}
               aria-label={`${formatPlanDate(week.start, true)}–${formatPlanDate(week.end, true)}: ${formatPHP(week.cents)} planned`}
               data-tooltip={`${formatPlanDate(week.start, true)}–${formatPlanDate(week.end, true)}: ${formatPHP(week.cents)}`}><span aria-hidden="true" style={{ height: `${week.cents / chartMaximum * 100}%` }} /></button>)}
           </div>
           <div className="bar-dates expense-week-labels" aria-hidden="true">{weeks.map((week) => <span key={week.start}>{formatPlanDate(week.start, true)}<small>{formatPHP(week.cents)}</small></span>)}</div>
-          <p className="expense-chart-note">Seven-day totals; the final period covers two days. These are planned obligations, not a record of spending already paid.</p>
+          <p className="expense-chart-note">What you still owe, not money already paid. The last bar covers two days.</p>
         </div>
       </section>
-      <div className="two-column expense-forms">
-        <section id="new-expense" className="records-panel">
-          <div className="records-head"><div><h2>Add an upcoming expense</h2><p>Record a bill without posting an actual payment</p></div><DashboardIcon name="plus" size={18} /></div>
-          <div className="expense-form-body"><ExpenseForm workspace={workspace} /></div>
-        </section>
-        <div className="records-panel expense-history-card"><CashMovements workspace={workspace} movements={movements} kind="expense_payment" /></div>
-      </div>
+      <section className="records-panel expense-history-card" id="bill-payments"><CashMovements workspace={workspace} movements={movements} kind="expense_payment" /></section>
     </WorkspaceShell>
   );
 }
