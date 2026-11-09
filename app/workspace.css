@@ -78,6 +78,16 @@ body:has(.workspace-root) .first-paint-splash { display: none; }
 .workspace-root .assistant-source { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 10px; border: 1px solid var(--edge); border-radius: 999px; background: var(--surface); color: var(--primary); font-size: 12px; font-weight: 600; text-decoration: none; transition: border-color var(--duration-quick, 150ms) ease-out; }
 .workspace-root .assistant-source:hover { border-color: var(--data-accent); }
 .workspace-root .assistant-source:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.workspace-root .assistant-msg-actions { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: 2px; }
+.workspace-root .assistant-action { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 0 12px; border: 1px solid var(--primary); border-radius: 10px; background: var(--surface); color: var(--primary); font: inherit; font-size: 13px; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; transition: background var(--duration-quick, 150ms) ease-out; }
+.workspace-root .assistant-action:hover { background: var(--surface-soft, rgba(0, 0, 0, 0.04)); }
+.workspace-root .assistant-action:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.workspace-root .assistant-action:disabled { opacity: 0.55; cursor: not-allowed; }
+.workspace-root .assistant-caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: text-bottom; background: var(--primary); animation: assistant-caret-blink 0.9s steps(1) infinite; }
+@keyframes assistant-caret-blink { 50% { opacity: 0; } }
+.workspace-root .assistant-msg-facts, .workspace-root .assistant-msg-sources, .workspace-root .assistant-msg-actions, .workspace-root .assistant-draft-card { animation: assistant-reveal 0.25s ease-out; }
+@keyframes assistant-reveal { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .workspace-root .assistant-caret, .workspace-root .assistant-msg-facts, .workspace-root .assistant-msg-sources, .workspace-root .assistant-msg-actions, .workspace-root .assistant-draft-card { animation: none; } }
 .workspace-root .assistant-thinking { display: flex; align-items: center; gap: 8px; }
 .workspace-root .assistant-typing-dots { display: inline-flex; gap: 4px; }
 .workspace-root .assistant-typing-dots .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--data-accent); animation: assistant-dot 1200ms ease-in-out infinite; }
@@ -1961,8 +1971,10 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .ask-ai.is-inverse:focus-visible { outline-color: #fff; }
 .workspace-root .invoice-balance > .ask-ai, .workspace-root .section-feature-copy > .ask-ai { margin-top: 12px; }
 .workspace-root .forecast-feature .section-feature-copy > .ask-ai { margin: 12px 0 16px; }
+.workspace-root .overview-hero-ai { margin-top: 14px; }
 .workspace-root .checks-card-ai { padding: 0 20px 18px; }
 .workspace-root .next-actions-copy > .ask-ai { position: relative; z-index: 1; margin-top: 8px; }
+.workspace-root .followups-page .records-head .ask-ai { margin-left: auto; }
 
 .workspace-root .assistant-context { display: flex; align-items: center; gap: 6px; min-width: 0; padding-left: 12px; border: 1px solid #cfe3d6; border-radius: 999px; background: var(--green-50, #eef8f1); font-size: 12px; }
 .workspace-root .assistant-context-about { color: var(--muted); }

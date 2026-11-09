@@ -21,6 +21,7 @@ import type { AssistantChatProposal } from "@/lib/domain/assistant-chat";
 import { DashboardIcon } from "./dashboard-icon";
 import { AssistantContextChip } from "./assistant-context-chip";
 import { AssistantIcon } from "./assistant-icon";
+import { TypedText } from "./typed-text";
 import { CollectionPanel } from "./collection-panel";
 import { ReminderPanel } from "./reminder-panel";
 import { FollowupForm } from "./followup-panel";
@@ -80,6 +81,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
   const workspace = assistantContextWorkspace(cardWorkspace, layoutWorkspace);
   const [composerText, setComposerText] = useState(initialEntry?.starterText ?? "");
   const [isSending, setIsSending] = useState(false);
+  const [typingText, setTypingText] = useState("");
   const [chatError, setChatError] = useState("");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [focusedMenuIndex, setFocusedMenuIndex] = useState(0);
@@ -125,6 +127,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
           setDraftIntent(undefined);
           setDraftInvoiceId("");
         }
+        setTypingText(proposal.summary);
         return { content: [
           { type: "text", text: proposal.summary },
           { type: "data", name: "pondopath-proposal", data: proposal },
@@ -335,6 +338,14 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
     }
     close();
     router.push("/add");
+  }
+
+  function startDraft(draft: { intent: "draft_reminder" | "draft_followup"; invoiceId: string }) {
+    setDraftIntent(draft.intent);
+    setDraftInvoiceId(draft.invoiceId);
+    setComposerText(draft.intent === "draft_reminder" ? "Draft a payment reminder for this invoice." : "Plan a follow-up for this invoice on ");
+    setChatError("");
+    composerInputRef.current?.focus();
   }
 
   function handleMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -580,6 +591,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
                       );
                     }
                     const target = proposal?.draft && resolveAssistantDraftTarget(workspace, proposal);
+                    const typing = message.role !== "user" && !!typingText && text.text === typingText;
                     return (
                       <MessagePrimitive.Root className={"assistant-msg " + message.role}>
                         {message.role === "user" && (() => {
@@ -588,15 +600,15 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
                           return tag ? <span className="assistant-msg-tag">{tag}</span> : null;
                         })()}
                         {message.role !== "user" && <span className="assistant-avatar-badge">PondoPath</span>}
-                        <p className="assistant-msg-text">{text.text}</p>
-                        {!!proposal?.facts.length && (
+                        <TypedText className="assistant-msg-text" text={text.text} animate={typing} onDone={() => setTypingText("")} />
+                        {!typing && !!proposal?.facts.length && (
                           <dl className="assistant-msg-facts">
                             {proposal.facts.map(fact => (
                               <div key={fact.id}><dt>{fact.label}</dt><dd className="num">{fact.value}</dd></div>
                             ))}
                           </dl>
                         )}
-                        {!!proposal?.sources.length && (
+                        {!typing && !!proposal?.sources.length && (
                           <nav aria-label="Supporting records" className="assistant-msg-sources">
                             {proposal.sources.map(source => (
                               <Link key={source.id} className="assistant-source" href={source.href} onClick={close}>
@@ -605,7 +617,21 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
                             ))}
                           </nav>
                         )}
-                        {proposal?.draft && (
+                        {!typing && !!proposal?.actions?.length && (
+                          <div role="group" aria-label="Suggested next steps" className="assistant-msg-actions">
+                            {proposal.actions.map(action => action.href ? (
+                              <Link key={action.id} className="assistant-action" href={action.href} onClick={close}>
+                                {action.label}<DashboardIcon name="arrowRight" size={12} />
+                              </Link>
+                            ) : (
+                              <button key={action.id} type="button" className="assistant-action" disabled={isSending}
+                                onClick={() => action.draft && startDraft(action.draft)}>
+                                {action.label}<DashboardIcon name="arrowRight" size={12} />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {!typing && proposal?.draft && (
                           <div className={"assistant-draft-card" + (target ? "" : " stale")}>
                             <p className="assistant-draft-kind">{proposal.draft.kind === "reminder" ? "Payment reminder" : "Follow-up task"}{proposal.draft.kind === "followup" && <> · due {formatPlanDate(proposal.draft.date)}</>}</p>
                             <blockquote className="assistant-response">{proposal.draft.text}</blockquote>

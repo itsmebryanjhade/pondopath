@@ -70,7 +70,7 @@ describe("Gemini and OpenRouter transport", () => {
     expect(options.headers).toEqual({ "Content-Type": "application/json", Authorization: "Bearer openrouter-test-only" });
     expect(JSON.parse(options.body)).toMatchObject({
       model: "test/model:free", temperature: 0, max_tokens: 1800,
-      provider: { only: ["test-provider"], allow_fallbacks: false, require_parameters: true, data_collection: "deny", max_price: { prompt: 0, completion: 0, request: 0 } },
+      provider: { only: ["test-provider"], allow_fallbacks: false, require_parameters: true, data_collection: "deny" },
       response_format: { type: "json_schema", json_schema: { strict: true, schema: {
         type: "object", properties: { kind: { type: "string", enum: ["answer"] }, records: { type: "array", items: { type: "string" } } },
         required: ["kind", "records"], additionalProperties: false,
@@ -87,7 +87,7 @@ describe("Gemini and OpenRouter transport", () => {
     vi.stubEnv("OPENROUTER_API_KEY", "  ");
     expect(aiBackupConfig()).toBeNull();
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-test-only");
-    for (const model of ["test/paid", "openrouter/free", "", "https://example.test:free"]) {
+    for (const model of ["", "no-slash", "https://example.test:free"]) {
       vi.stubEnv("OPENROUTER_MODEL", model);
       expect(aiBackupConfig()).toBeNull();
     }
@@ -98,12 +98,12 @@ describe("Gemini and OpenRouter transport", () => {
   it("reports only which backup settings failed validation in production", () => {
     configure();
     vi.stubEnv("VERCEL", "1");
-    vi.stubEnv("OPENROUTER_MODEL", "test/paid");
+    vi.stubEnv("OPENROUTER_MODEL", "no-slash");
     vi.stubEnv("OPENROUTER_PROVIDER", "bad provider");
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(aiBackupConfig()).toBeNull();
     expect(warn).toHaveBeenCalledWith("Assistant backup config rejected", {
-      keyPresent: true, freeModel: false, validProvider: false,
+      keyPresent: true, validModel: false, validProvider: false,
     });
   });
 

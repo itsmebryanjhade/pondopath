@@ -31,12 +31,18 @@ const sourceSchema = z.strictObject({
 }).refine(source => source.kind === "invoice"
   ? source.href === "/invoices/" + source.id
   : new RegExp("^/expenses(?:\\?page=[1-9]\\d{0,4})?#expense-" + source.id + "$").test(source.href));
+const actionSchema = z.strictObject({
+  id: z.string().max(40), label: z.string().max(200),
+  href: z.string().regex(/^\/(?:forecast|followups|invoices|expenses|add)$|^\/invoices\/[0-9a-f-]{36}$/).optional(),
+  draft: z.strictObject({ intent: z.enum(["draft_reminder", "draft_followup"]), invoiceId: z.uuid() }).optional(),
+}).refine(action => Boolean(action.href) !== Boolean(action.draft));
 const chatProposalSchema = z.strictObject({
   task: z.literal("chat"),
   sourceRevision: revision,
   ...assistantChatOutputSchema.pick({ kind: true, summary: true, draft: true }).shape,
   facts: z.array(z.strictObject({ id: z.string(), label: z.string(), value: z.string() })).max(14),
   sources: z.array(sourceSchema).max(13),
+  actions: z.array(actionSchema).max(3).default([]),
 }).refine(proposal => !proposal.draft || (proposal.kind === "answer" &&
   proposal.sources.some(source => source.kind === "invoice" && source.id === proposal.draft?.invoiceId)));
 const extractionProposalSchema = aiOutputSchemas.extract_reply.extend({

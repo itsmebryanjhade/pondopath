@@ -36,7 +36,7 @@ describe("Task 3 chat adapter", () => {
       ...proposal, kind: "clarify", summary: "Choose one invoice.", facts: [], sources: [],
     }));
     vi.stubGlobal("fetch", fetcher);
-    await expect(sendAssistantChat(request, scope, signal())).resolves.toEqual(proposal);
+    await expect(sendAssistantChat(request, scope, signal())).resolves.toEqual({ ...proposal, actions: [] });
     expect(fetcher).toHaveBeenCalledTimes(1);
     const [url, options] = fetcher.mock.calls[0];
     expect(url).toBe("/api/assistant");
@@ -81,7 +81,7 @@ describe("Task 3 chat adapter", () => {
       draft: { kind: "followup", invoiceId, text: "Check the collection status.", date: "2026-11-06" },
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(success(result)));
-    await expect(sendAssistantChat(request, { ...scope, intent: "draft_followup" }, signal())).resolves.toEqual(result);
+    await expect(sendAssistantChat(request, { ...scope, intent: "draft_followup" }, signal())).resolves.toEqual({ ...result, actions: [] });
   });
 
   it.each([

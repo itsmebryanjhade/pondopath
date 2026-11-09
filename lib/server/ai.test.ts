@@ -32,6 +32,37 @@ describe("authorized AI orchestration", () => {
     expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(mocks.provider.mock.invocationCallOrder[0]);
   });
 
+  it("accepts any listed demo account but still refuses an unlisted one", async () => {
+    const workspace = uiWorkspace();
+    mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: workspace });
+    vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", "other-business, " + workspace.business.id);
+    vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", "other-user," + workspace.actor.userId);
+    await expect(requestAssistant(input)).resolves.toMatchObject({ proposal: { task: "explain" } });
+    vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", "other-user");
+    await expect(requestAssistant(input)).rejects.toThrow("AI_DEMO_ONLY");
+  });
+
+  it("retries once inside the same reservation when the reply breaks the app's rules", async () => {
+    const workspace = uiWorkspace();
+    mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValue({ data: workspace });
+    mocks.provider
+      .mockResolvedValueOnce({ value: { ...grounded, summary: "Cash is PHP 40,000 now." }, usage: { cost: null } })
+      .mockResolvedValueOnce({ value: { ...grounded, summary: "You have {{cash-now}} now." }, usage: { cost: null } });
+    const result = await requestAssistant(chat);
+    expect(result.proposal).toMatchObject({ summary: expect.stringContaining("₱") });
+    expect(mocks.provider).toHaveBeenCalledTimes(2);
+    expect(mocks.rpc.mock.calls.filter(call => call[0] === "reserve_ai_request")).toHaveLength(1);
+    expect(JSON.stringify(mocks.provider.mock.calls[1][1])).toContain("previous reply was rejected");
+  });
+
+  it("gives up after one retry", async () => {
+    const workspace = uiWorkspace();
+    mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValue({ data: workspace });
+    mocks.provider.mockResolvedValue({ value: { ...grounded, summary: "Cash is PHP 40,000 now." }, usage: { cost: null } });
+    await expect(requestAssistant(chat)).rejects.toThrow("INVALID_AI_OUTPUT");
+    expect(mocks.provider).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects a client-selected provider attempt before authorization or inference", async () => {
     await expect(requestAssistant({ ...input, attempt: "backup" })).rejects.toThrow();
     expect(mocks.workspace).not.toHaveBeenCalled();

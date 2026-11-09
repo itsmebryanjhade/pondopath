@@ -186,7 +186,7 @@ describe("verified assistant replies", () => {
     const output = { ...answer, draft };
     expect(validateAssistantChatReply(request, context, output, workspace)).toMatchObject({
       draft, sources: [{ id: invoice.id, href: "/invoices/" + invoice.id }],
-      facts: expect.arrayContaining([{ id: "balance:" + invoice.id, label: expect.any(String), value: formatPHP(invoice.outstanding_cents) }]),
+      facts: [],
     });
     expect(() => validateAssistantChatReply(request, context, { ...output, draft: { ...draft, invoiceId: otherId } }, workspace)).toThrow();
     expect(() => validateAssistantChatReply(request, context, { ...output, draft: { ...draft, date: "2026-11-07" } }, workspace)).toThrow();
@@ -203,5 +203,48 @@ describe("verified assistant replies", () => {
     expect(validateAssistantChatReply(base, contextFor(workspace), { ...answer, draft }, workspace)).toMatchObject({ kind: "clarify", draft: null });
     const selected = { ...base, question: "Can you follow up for DEMO-001?" };
     expect(validateAssistantChatReply(selected, contextFor(workspace, selected), { ...answer, draft }, workspace)).toMatchObject({ kind: "clarify", draft: null });
+  });
+});
+
+describe("assistant answer presentation", () => {
+  const run = (workspace: ReturnType<typeof uiWorkspace>, value: object) =>
+    validateAssistantChatReply(base, contextFor(workspace), { ...answer, ...value }, workspace);
+
+  it("swaps {{fact}} placeholders for verified values and shows no cards for inline figures", () => {
+    const workspace = uiWorkspace();
+    const result = run(workspace, { summary: "You have {{cash-now}} today.", factIds: ["cash-now", "planned-out"] });
+    expect(result.summary).toBe("You have " + formatPHP(workspace.forecastInput.availableCents) + " today.");
+    expect(result.facts).toEqual([]);
+  });
+
+  it("rejects model-written digits, unknown placeholders and stray braces", () => {
+    const workspace = uiWorkspace();
+    for (const summary of ["You have PHP 5 today.", "You have {{invented}} today.", "Broken {{cash-now today.", "Use {{cash-now}} and 12."]) {
+      expect(() => run(workspace, { summary })).toThrow();
+    }
+  });
+
+  it("shows at most four comparison cards when no figure is inline", () => {
+    const workspace = uiWorkspace();
+    const ids = ["cash-now", "expected-in", "planned-out", "forecast-close", "first-shortfall", "largest-shortfall"];
+    expect(run(workspace, { factIds: ids }).facts.map(fact => fact.id)).toEqual(ids.slice(0, 4));
+  });
+
+  it("offers only app-owned actions from the menu and drops unknown ids", () => {
+    const workspace = uiWorkspace();
+    const context = contextFor(workspace);
+    expect(context.data.actions.map(action => action.id)).toEqual(expect.arrayContaining(["forecast", "followups"]));
+    const result = run(workspace, { actionIds: ["forecast", "invented", "followups"] });
+    expect(result.actions).toEqual([
+      { id: "forecast", label: "Open the cash forecast", href: "/forecast" },
+      { id: "followups", label: "Review follow-ups", href: "/followups" },
+    ]);
+  });
+
+  it("offers no actions for a draft request or a clarification", () => {
+    const workspace = uiWorkspace();
+    const request = { ...base, question: "Draft a reminder for DEMO-001", intent: "draft_reminder" as const };
+    expect(contextFor(workspace, request).data.actions).toEqual([]);
+    expect(run(workspace, { kind: "clarify", actionIds: ["forecast"] }).actions).toEqual([]);
   });
 });

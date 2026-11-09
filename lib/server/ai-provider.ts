@@ -13,9 +13,9 @@ export function aiBackupConfig(): AiConfig | null {
   const key = process.env.OPENROUTER_API_KEY?.trim();
   const model = process.env.OPENROUTER_MODEL?.trim();
   const provider = process.env.OPENROUTER_PROVIDER?.trim();
-  if (!key || !model || !/^[\w.-]+\/[\w.-]+:free$/.test(model) || !provider || !/^[\w.-]+(?:\/[\w.-]+)*$/.test(provider)) {
+  if (!key || !model || !/^[\w.-]+\/[\w.-]+(?::[\w.-]+)?$/.test(model) || !provider || !/^[\w.-]+(?:\/[\w.-]+)*$/.test(provider)) {
     if (process.env.VERCEL === "1") console.warn("Assistant backup config rejected", {
-      keyPresent: Boolean(key), freeModel: Boolean(model && /^[\w.-]+\/[\w.-]+:free$/.test(model)),
+      keyPresent: Boolean(key), validModel: Boolean(model && /^[\w.-]+\/[\w.-]+(?::[\w.-]+)?$/.test(model)),
       validProvider: Boolean(provider && /^[\w.-]+(?:\/[\w.-]+)*$/.test(provider)),
     });
     return null;
@@ -139,7 +139,7 @@ export async function callAiProvider(config: AiConfig, messages: AiMessage[], sc
     }, signal)
     : await fetchProviderJson("https://openrouter.ai/api/v1/chat/completions", { Authorization: `Bearer ${config.key}` }, {
       model: config.model, messages, temperature: 0, max_tokens: 1800,
-      provider: { only: [config.provider], allow_fallbacks: false, require_parameters: true, data_collection: "deny", max_price: { prompt: 0, completion: 0, request: 0 } },
+      provider: { only: [config.provider], allow_fallbacks: false, require_parameters: true, data_collection: "deny" },
       response_format: { type: "json_schema", json_schema: { name: "cash_plan_assistance", strict: true, schema: providerSchema(schema) } },
     }, signal);
   try {

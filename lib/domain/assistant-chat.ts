@@ -13,6 +13,7 @@ export const assistantChatOutputSchema = z.strictObject({
   summary: text(3000),
   factIds: z.array(text(80)).max(12),
   recordIds: z.array(z.uuid()).max(12),
+  actionIds: z.array(text(40)).max(3).default([]),
   draft: z.discriminatedUnion("kind", [
     z.strictObject({ kind: z.literal("reminder"), invoiceId: z.uuid(), text: text(2000) }),
     z.strictObject({ kind: z.literal("followup"), invoiceId: z.uuid(), text: text(4000), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
@@ -20,6 +21,7 @@ export const assistantChatOutputSchema = z.strictObject({
 });
 
 type Fact = { id: string; label: string; value: string };
+export type ChatAction = { id: string; label: string; href?: string; draft?: { intent: "draft_reminder" | "draft_followup"; invoiceId: string } };
 type Source = { id: string; kind: "invoice" | "expense"; label: string; href: string };
 type ChatReply = z.infer<typeof assistantChatOutputSchema>;
 export type AssistantChatProposal = Pick<ChatReply, "kind" | "summary" | "draft"> & {
@@ -27,6 +29,7 @@ export type AssistantChatProposal = Pick<ChatReply, "kind" | "summary" | "draft"
   sourceRevision: number;
   facts: Fact[];
   sources: Source[];
+  actions?: ChatAction[];
 };
 
 const help = [
@@ -67,7 +70,7 @@ function clarify(request: AssistantChatRequest, missing: keyof typeof clarificat
   const language = replyLanguage(request);
   return {
     task: "chat", sourceRevision: request.expectedRevision, kind: "clarify", summary: clarificationText[missing][language],
-    facts: [], sources: [], draft: null,
+    facts: [], sources: [], actions: [], draft: null,
   };
 }
 
@@ -92,6 +95,31 @@ function forecastFacts(workspace: WorkspaceSnapshot, forecast: ReturnType<typeof
     { id: "first-shortfall", label: "First projected shortfall", value: forecast.firstShortage
       ? formatPHP(forecast.firstShortage.shortfallCents) + " on " + formatPlanDate(forecast.firstShortage.date) : "None in this plan" },
     { id: "largest-shortfall", label: "Largest projected shortfall", value: formatPHP(forecast.maxShortfallCents) },
+  ];
+}
+
+type WorklistItem = { kind: keyof typeof actionText; invoiceId: string };
+type ActionRecord = { id: string; label: string };
+
+// App-owned shortcuts. The model may only pick ids from this menu; it never writes labels or links.
+function buildActions(worklist: WorklistItem[], records: ActionRecord[], openInvoices: boolean, openExpenses: boolean): ChatAction[] {
+  const labels = new Map(records.map(record => [record.id, record.label]));
+  const fromWorklist = worklist.slice(0, 3).flatMap((item, index): ChatAction[] => {
+    const label = labels.get(item.invoiceId);
+    const id = "worklist-" + (index + 1);
+    if (!label) return [];
+    if (item.kind === "missed_promise") return [{ id, label: "Check if " + label + " was paid", href: "/invoices/" + item.invoiceId }];
+    if (item.kind === "followup") return [{ id, label: "Plan a follow-up for " + label, draft: { intent: "draft_followup", invoiceId: item.invoiceId } }];
+    if (item.kind === "missing_expectation") return [{ id, label: "Draft a reminder for " + label, draft: { intent: "draft_reminder", invoiceId: item.invoiceId } }];
+    return [{ id, label: "Review the reminder for " + label, href: "/followups" }];
+  });
+  return [
+    ...fromWorklist,
+    { id: "forecast", label: "Open the cash forecast", href: "/forecast" },
+    ...(openInvoices ? [{ id: "invoices", label: "See customer invoices", href: "/invoices" }] : []),
+    ...(openExpenses ? [{ id: "expenses", label: "See upcoming bills", href: "/expenses" }] : []),
+    { id: "followups", label: "Review follow-ups", href: "/followups" },
+    { id: "add", label: "Add records", href: "/add" },
   ];
 }
 
@@ -162,10 +190,11 @@ export function buildAssistantChatContext(workspace: WorkspaceSnapshot, request:
   }
   const first = worklist[0];
   if (first) facts.push({ id: "first-invoice-action", label: "First invoice action", value: actionText[first.kind] + " for " + sentRecords.get(first.invoiceId)!.label });
+  const menu = request.intent ? [] : buildActions(worklist, records, openInvoices.length > 0, openExpenses.length > 0);
   return {
     data: {
       currency: "PHP", referenceDate, selectedInvoiceId: invoice?.id ?? null, followupDate: date,
-      records, facts, worklist, help,
+      records, facts, worklist, help, actions: menu.map(({ id, label }) => ({ id, label })),
       omittedInvoiceCount: openInvoices.length - invoiceRows.filter(row => row.outstanding_cents > 0).length,
       omittedExpenseCount: openExpenses.length - expenseRows.filter(row => row.unpaid_cents > 0).length,
     },
@@ -201,7 +230,11 @@ export function validateAssistantChatReply(
 ): AssistantChatProposal {
   if (freshWorkspace.revision !== request.expectedRevision) throw new Error("STALE_VERSION");
   const reply = assistantChatOutputSchema.parse(value);
-  if (!isPlainModelText(reply.summary) || (reply.draft && (reply.kind !== "answer" || !isPlainModelText(reply.draft.text)))) {
+  // {{fact-id}} placeholders let the prose use verified figures; the app swaps in the checked values.
+  const placeholder = /\{\{([^{}]{1,100})\}\}/g;
+  const inlineIds = [...reply.summary.matchAll(placeholder)].map(match => match[1].trim());
+  const bareSummary = reply.summary.replace(placeholder, " ");
+  if (/[{}]/.test(bareSummary) || !isPlainModelText(bareSummary) || (reply.draft && (reply.kind !== "answer" || !isPlainModelText(reply.draft.text)))) {
     throw new Error("INVALID_AI_OUTPUT");
   }
   const current = buildAssistantChatContext(freshWorkspace, request);
@@ -211,20 +244,25 @@ export function validateAssistantChatReply(
   const sentRecords = new Map(context.data.records.map(record => [record.id, record]));
   const currentRecords = new Map(current.data.records.map(record => [record.id, record]));
 
-  const factIds = new Set(reply.factIds);
-  const recordIds = new Set(reply.recordIds);
+  const inline = new Set(inlineIds);
+  const factIds = new Set([...reply.factIds, ...inline]);
+  const recordIds = new Set([...(reply.draft ? [reply.draft.invoiceId] : []), ...reply.recordIds]);
   if (reply.draft) {
-    recordIds.add(reply.draft.invoiceId);
+    // The draft text already carries these two figures, so they are checked but not shown as cards.
     factIds.add("balance:" + reply.draft.invoiceId);
     factIds.add("due:" + reply.draft.invoiceId);
   }
-  const facts = [...factIds].map(id => {
+  const checked = [...factIds].map(id => {
     const sent = sentFacts.get(id);
     if (!sent) throw new Error("INVALID_AI_OUTPUT");
     const fresh = currentFacts.get(id);
     if (fresh?.value !== sent.value || fresh.label !== sent.label) throw new Error("STALE_VERSION");
     return fresh;
   });
+  const shown = new Set(reply.factIds.filter(id => !inline.has(id)));
+  // Cards only add value for a side-by-side comparison; prose that already quotes figures needs none.
+  const facts = inline.size ? [] : checked.filter(fact => shown.has(fact.id)).slice(0, 4);
+  const summary = reply.summary.replace(placeholder, (_, id: string) => checked.find(fact => fact.id === id.trim())!.value);
   const expenseHrefs = [...recordIds].some(id => sentRecords.get(id)?.kind === "expense") ? expenseLinks(freshWorkspace.expenses) : null;
   const sources = [...recordIds].map(id => {
     const sent = sentRecords.get(id);
@@ -253,5 +291,9 @@ export function validateAssistantChatReply(
       if (draft.date !== context.data.followupDate || draft.date !== current.data.followupDate) throw new Error("INVALID_AI_OUTPUT");
     }
   }
-  return { task: "chat", sourceRevision: freshWorkspace.revision, kind: reply.kind, summary: reply.summary, facts, sources, draft };
+  const menu = new Map(buildActions(current.data.worklist, current.data.records, true, true).map(action => [action.id, action]));
+  const actions = reply.kind === "answer" && !request.intent
+    ? [...new Set(reply.actionIds)].flatMap(id => (menu.has(id) && current.data.actions.some(action => action.id === id) ? [menu.get(id)!] : []))
+    : [];
+  return { task: "chat", sourceRevision: freshWorkspace.revision, kind: reply.kind, summary, facts, sources: sources.slice(0, 4), actions, draft };
 }
