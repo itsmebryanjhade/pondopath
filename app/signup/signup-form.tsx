@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState, useSyncExternalStore } from "react";
+import { AuthErrorBanner } from "@/components/auth-error-banner";
 import { CodeStep } from "@/components/code-step";
 import { PasswordField } from "@/components/password-field";
 import type { CodeStep as CodeStepState } from "@/lib/server/auth-codes";
@@ -24,6 +25,8 @@ export function SignupForm() {
   const [error, action, pending] = useActionState(finishSignup, null);
   const [registration, register, registering] = useActionState(registerAccount, { step: "details", email: "", message: null } as CodeStepState);
   const [dismissed, setDismissed] = useState<CodeStepState | null>(null);
+  const [email, setEmail] = useState("");
+  const field = registering ? undefined : registration.field;
   const askingForCode = !hasInvitation && registration.step === "code" && dismissed !== registration;
   return (
     <>
@@ -35,21 +38,28 @@ export function SignupForm() {
         <CodeStep email={registration.email} verify={verifySignupCode} resend={resendSignupCode} onBack={() => setDismissed(registration)} />
       ) : hasInvitation ? (
         <form action={action} className={styles.form} aria-busy={pending}>
+          {error && !pending && <AuthErrorBanner id="signup-error" title="Couldn’t join your team" message={error} />}
           <input type="hidden" name="userId" value={userId} />
           <input type="hidden" name="token" value={token} />
           <PasswordField id="password" label="Password" autoComplete="new-password" minLength={12} describedBy={error ? "password-help signup-error" : "password-help"} />
           <p id="password-help" className={styles.hint}>Use at least 12 characters. Choose a strong password you don’t use elsewhere.</p>
           <PasswordField id="confirmation" label="Confirm password" autoComplete="new-password" minLength={12} describedBy={error ? "signup-error" : undefined} />
-          {error && !pending && <p id="signup-error" role="alert" className={styles.error}>{error}</p>}
+
           <button disabled={pending} className={styles.submit}>{pending ? "Creating your account…" : "Create account & join"}<span aria-hidden="true">↗</span></button>
           <p className={styles.hint}>You’ll join the workspace selected by your business owner with finance staff access.</p>
         </form>
       ) : <form action={register} className={styles.form} aria-busy={registering}>
-        <div className={styles.fieldGroup}><label className={styles.label} htmlFor="signup-email">Work email</label><input className={styles.input} id="signup-email" name="email" type="email" autoComplete="email" required maxLength={254} placeholder="you@company.com" /></div>
-        <PasswordField id="password" label="Password" autoComplete="new-password" minLength={12} describedBy="signup-password-help" />
+        {registration.message && !registering && <AuthErrorBanner id="signup-error" title="Couldn’t create your account" message={registration.message} />}
+        <div className={styles.fieldGroup}>
+          <label className={styles.label} htmlFor="signup-email">Work email</label>
+          <input className={styles.input} id="signup-email" name="email" type="email" autoComplete="email" required maxLength={254} placeholder="you@company.com"
+            value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={field === "email" || undefined} aria-describedby={field === "email" ? "signup-error" : undefined} />
+        </div>
+        <PasswordField id="password" label="Password" autoComplete="new-password" minLength={12}
+          invalid={field === "password"} describedBy={field === "password" ? "signup-error signup-password-help" : "signup-password-help"} />
         <p id="signup-password-help" className={styles.hint}>Use at least 12 characters and a password you don’t use elsewhere.</p>
-        <PasswordField id="confirmation" label="Confirm password" autoComplete="new-password" minLength={12} />
-        {registration.message && !registering && <p className={styles.error} role="alert">{registration.message}</p>}
+        <PasswordField id="confirmation" label="Confirm password" autoComplete="new-password" minLength={12}
+          invalid={field === "confirmation"} describedBy={field === "confirmation" ? "signup-error" : undefined} />
         <button disabled={registering} className={styles.submit}>{registering ? "Creating account…" : "Sign up"}<span aria-hidden="true">↗</span></button>
         <p className={styles.hint}>Have an invitation? Open the private link your owner shared with you instead.</p>
       </form>}

@@ -29,7 +29,7 @@ export function CodeStep({ email, verify, resend, onBack, submitLabel = "Verify 
   return (
     <form action={action} className={styles.form} aria-busy={pending}>
       <input type="hidden" name="email" value={email} />
-      <p id="code-help" className={styles.codeNote}>We sent a 6-digit code to <strong>{email}</strong>. It can take a minute to arrive, so check your spam folder too.</p>
+      <p id="code-help" className={styles.codeNote}>Enter the 6-digit code for <strong>{email}</strong>. If you’re waiting for it, check your spam folder too.</p>
       <OtpField describedBy={error ? "code-help code-error" : "code-help"} autoSubmit={!children} disabled={pending} />
       {children}
       {error && !pending && <p id="code-error" role="alert" className={styles.error}>{error}</p>}

@@ -46,6 +46,7 @@
 .label { font-size: 13px; font-weight: 700; }
 .input { width: 100%; min-width: 0; min-height: 50px; padding: 12px 14px; border: 1px solid var(--line-dark); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 16px; transition: border-color 160ms ease, box-shadow 160ms ease; }
 .input::placeholder { color: var(--ink-faint); }
+.input[aria-invalid="true"] { border-color: #a74b44; }
 .input:focus-visible { border-color: var(--green-500); outline: none; box-shadow: 0 0 0 3px var(--green-100); }
 .password { position: relative; display: flex; }
 .password .input { padding-right: 68px; }
@@ -56,6 +57,7 @@
 .submit:hover { background: var(--green-800); box-shadow: 0 7px 18px rgb(23 62 45 / 18%); transform: translateY(-1px); }
 .submit:disabled { cursor: wait; opacity: .65; transform: none; }
 .error { padding: 12px 14px; border: 1px solid #efd4d0; border-left: 3px solid #a74b44; border-radius: 10px; background: #f9e8e5; color: #8b3732; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.errorTitle { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-weight: 750; }
 .notice { margin: 0 0 20px; padding: 12px 14px; border: 1px solid #d4e8da; border-left: 3px solid var(--green-500); border-radius: 10px; background: var(--green-50); color: var(--ink); font-size: 13px; line-height: 1.6; }
 .after { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 12px; line-height: 1.8; }
 .after a, .textLink { display: inline-flex; align-items: center; min-height: 44px; color: var(--green-800); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }

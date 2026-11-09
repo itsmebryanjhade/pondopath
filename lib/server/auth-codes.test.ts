@@ -28,13 +28,25 @@ beforeEach(() => {
 });
 
 describe("sign-up with an emailed code", () => {
-  it("rejects short or mismatched passwords before asking Supabase", async () => {
-    for (const bad of [{ ...goodSignup, password: "short", confirmation: "short" }, { ...goodSignup, confirmation: "different-fictional-pass" }, { ...goodSignup, email: "not-an-email" }]) {
-      const result = await startSignup(form(bad));
-      expect(result.step).toBe("details");
-      expect(result.message).toMatch(/12 characters/);
+  it("identifies the field to fix before asking Supabase", async () => {
+    const cases = [
+      { input: { password: "short", confirmation: "short" }, field: "password", message: /at least 12 characters/ },
+      { input: { confirmation: "different-fictional-pass" }, field: "confirmation", message: /passwords don.t match/i },
+      { input: { email: "not-an-email" }, field: "email", message: /valid email address/i },
+    ];
+    for (const { input, field, message } of cases) {
+      expect(await startSignup(form({ ...goodSignup, ...input }))).toMatchObject({ step: "details", field, message: expect.stringMatching(message) });
     }
     expect(mocks.signUp).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed signup email without advancing to the code step", async () => {
+    mocks.signUp.mockResolvedValue({ data: { session: null, user: null }, error: {
+      name: "AuthRetryableFetchError", message: "Error sending confirmation email", status: 500,
+    } });
+    expect(await startSignup(form(goodSignup))).toMatchObject({
+      step: "details", message: expect.stringMatching(/couldn.t send a confirmation code/i),
+    });
   });
   it("moves to the code step with a lower-cased email when a confirmation code was sent", async () => {
     expect(await startSignup(form(goodSignup))).toEqual({ step: "code", email: "owner@fictional.example", message: null });
@@ -136,11 +148,28 @@ describe("signing in with a password", () => {
     expect(await signInWithPassword(form({ email: "A@B.example", password: "whatever-fictional-pass" }))).toEqual({ message: null, confirmEmail: "a@b.example" });
     expect(mocks.resend).toHaveBeenCalledWith({ type: "signup", email: "a@b.example" });
   });
-  it("keeps the generic failure for wrong passwords", async () => {
-    mocks.signInWithPassword.mockResolvedValue({ data: {}, error: { message: "Invalid login credentials", code: "invalid_credentials", status: 400 } });
-    const result = await signInWithPassword(form({ email: "a@b.example", password: "whatever-fictional-pass" }));
-    expect(result.confirmEmail).toBeNull();
-    expect(result.message).toMatch(/Sign-in failed/);
+  it("offers the same recovery path for wrong passwords and unknown accounts", async () => {
+    const details = form({ email: "a@b.example", password: "whatever-fictional-pass" });
+    mocks.signInWithPassword.mockResolvedValueOnce({ error: { message: "Invalid login credentials", code: "invalid_credentials", status: 400 } });
+    const result = await signInWithPassword(details);
+    expect(result).toEqual({ message: expect.stringMatching(/check your email and password/i), confirmEmail: null });
+    mocks.signInWithPassword.mockResolvedValueOnce({ error: { message: "Account does not exist", code: "user_not_found", status: 400 } });
+    expect(await signInWithPassword(details)).toEqual(result);
+  });
+
+  it("separates temporary service errors and rate limits from wrong credentials", async () => {
+    const details = form({ email: "a@b.example", password: "whatever-fictional-pass" });
+    mocks.signInWithPassword.mockResolvedValueOnce({ error: { name: "AuthRetryableFetchError", message: "internal service details", status: 503 } });
+    expect(await signInWithPassword(details)).toEqual({ message: expect.stringMatching(/temporarily unavailable/i), confirmEmail: null });
+    mocks.signInWithPassword.mockResolvedValueOnce({ error: { code: "over_request_rate_limit", status: 429 } });
+    expect(await signInWithPassword(details)).toEqual({ message: expect.stringMatching(/too many sign-in attempts/i), confirmEmail: null });
+  });
+
+  it("reports a failed resend and still accepts a code the user already received", async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: { code: "email_not_confirmed", status: 400 } });
+    mocks.resend.mockResolvedValueOnce({ error: { name: "AuthRetryableFetchError", status: 500 } });
+    const details = form({ email: "a@b.example", password: "whatever-fictional-pass" });
+    expect(await signInWithPassword(details)).toEqual({ message: expect.stringMatching(/couldn.t send a new code/i), confirmEmail: "a@b.example" });
   });
   it("routes a member to the overview and a new account to setup", async () => {
     mocks.membership = { data: { business_id: "b" }, error: null };
