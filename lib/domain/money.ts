@@ -22,6 +22,15 @@ export function parseMoney(input: string, options?: { allowZero?: boolean }): Ce
   return cents;
 }
 
+/**
+ * Amounts as spreadsheets export them: "45,000.00", "₱45,000", "PHP 1,200.5". Only correctly placed thousands
+ * commas and a peso marker are tolerated; anything else (such as "1,00" or "12 000") still fails the strict check.
+ */
+export function parseImportedMoney(input: string, options?: { allowZero?: boolean }): Cents {
+  const cleaned = input.normalize("NFKC").trim().replace(/^(?:₱|php\.?)\s*/i, "").replace(/\s*(?:php)$/i, "").trim();
+  return parseMoney(/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(cleaned) ? cleaned.replaceAll(",", "") : cleaned, options);
+}
+
 export function checkedSum(values: Cents[]): Cents {
   let total = 0;
   for (const value of values) {

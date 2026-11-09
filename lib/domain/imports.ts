@@ -1,6 +1,6 @@
 import { parse } from "csv-parse/sync";
 import { z } from "zod";
-import { checkedSum, parseMoney } from "./money";
+import { checkedSum, parseImportedMoney } from "./money";
 import { assertLocalDate } from "./dates";
 import { parseIntakeCandidate, type IntakeCandidate } from "./intake";
 
@@ -118,9 +118,9 @@ export function mapCsv(file: CsvFile, input: CsvMapping, context: ImportContext)
       const explicitId = value(mapping.recordId);
       if (explicitId && binding && binding.recordId !== explicitId) throw new Error("The record ID conflicts with the previously applied source row.");
       const id = explicitId || binding?.recordId;
-      const amountCents = parseMoney(value(mapping.amount));
-      const paidCents = mapping.paidAmount && value(mapping.paidAmount) ? parseMoney(value(mapping.paidAmount), { allowZero: true }) : undefined;
-      const declaredOpenCents = mapping.openBalance && value(mapping.openBalance) ? parseMoney(value(mapping.openBalance), { allowZero: true }) : undefined;
+      const amountCents = parseImportedMoney(value(mapping.amount));
+      const paidCents = mapping.paidAmount && value(mapping.paidAmount) ? parseImportedMoney(value(mapping.paidAmount), { allowZero: true }) : undefined;
+      const declaredOpenCents = mapping.openBalance && value(mapping.openBalance) ? parseImportedMoney(value(mapping.openBalance), { allowZero: true }) : undefined;
       if (paidCents !== undefined && paidCents > amountCents) throw new Error("The paid amount cannot exceed the original amount.");
       if (declaredOpenCents !== undefined && declaredOpenCents > amountCents) throw new Error("The open balance cannot exceed the original amount.");
       const openCents = declaredOpenCents ?? (paidCents === undefined ? undefined : amountCents - paidCents);

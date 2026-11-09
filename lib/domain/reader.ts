@@ -1,5 +1,5 @@
 import { assertLocalDate } from "./dates";
-import { parseMoney } from "./money";
+import { parseImportedMoney } from "./money";
 import type { CsvFile, CsvMapping } from "./imports";
 
 /** Programmed reader: suggests what each imported column means. It never decides money values; the owner confirms every suggestion. */
@@ -37,7 +37,7 @@ function headerMatch(header: string): { role: Exclude<ColumnRole, "ignore">; len
   return best;
 }
 
-const isMoney = (value: string) => { try { parseMoney(value.replace(/^-/, ""), { allowZero: true }); return true; } catch { return false; } };
+const isMoney = (value: string) => { try { parseImportedMoney(value.replace(/^-/, ""), { allowZero: true }); return true; } catch { return false; } };
 const isDate = (value: string) => { try { assertLocalDate(value); return true; } catch { return false; } };
 const isIdLike = (value: string) => /^[A-Za-z0-9][A-Za-z0-9_\-/.#]{1,63}$/.test(value) && /\d/.test(value);
 
