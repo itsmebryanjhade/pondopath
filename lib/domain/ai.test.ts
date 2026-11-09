@@ -175,4 +175,94 @@ describe("bounded multilingual AI proposals", () => {
     expect(() => validateAiProposal(mapping, { ...output, fields: { ...output.fields, amount: "c0" } }, workspace)).toThrow();
     expect(() => validateAiProposal(mapping, { ...output, unresolved: [] }, workspace)).toThrow();
   });
+
+  it("validates and bounds extract_record schema and context", () => {
+    const raw = { task: "extract_record" as const, text: "Invoice 1042, Acme Corp, 25k, due 2026-11-30", expectedRevision: 1 };
+    expect(aiRequestSchema.parse(raw)).toMatchObject({ task: "extract_record", text: raw.text });
+    expect(aiRequestSchema.safeParse({ ...raw, text: "x".repeat(1001) }).success).toBe(false);
+
+    const valid = aiRequestSchema.parse(raw) as Extract<AiRequest, { task: "extract_record" }>;
+    const context = buildAiContext(workspace, valid);
+    expect(context.data).toHaveProperty("customers");
+    expect(context.data).toHaveProperty("referenceDate");
+    expect(JSON.stringify(context.data)).not.toContain(workspace.actor.userId);
+  });
+
+  it("validates extracted invoice and expense proposals, matching authorized customers and verifying amounts/dates", () => {
+    const customer = workspace.customers[0];
+    const text = `Invoice 1042, ${customer.name}, 25k, due 2026-11-30. Also Office supplies, National Bookstore, PHP 1500, due 2026-11-20.`;
+    const req = aiRequestSchema.parse({ task: "extract_record", text, expectedRevision: 1 }) as Extract<AiRequest, { task: "extract_record" }>;
+
+    const output = {
+      proposals: [
+        {
+          kind: "invoice" as const,
+          number: "1042",
+          label: null,
+          party: customer.name,
+          amountCents: 2_500_000,
+          dueDate: "2026-11-30",
+          sourceQuotes: [`Invoice 1042, ${customer.name}, 25k, due 2026-11-30`],
+          issues: [],
+          needsReview: false,
+        },
+        {
+          kind: "expense" as const,
+          number: null,
+          label: "Office supplies",
+          party: "National Bookstore",
+          amountCents: 150_000,
+          dueDate: "2026-11-20",
+          sourceQuotes: ["Office supplies, National Bookstore, PHP 1500, due 2026-11-20"],
+          issues: [],
+          needsReview: false,
+        },
+      ],
+    };
+
+    const validated = validateAiProposal(req, output, workspace);
+    expect(validated.task).toBe("extract_record");
+    if (validated.task === "extract_record") {
+      expect(validated.proposals).toHaveLength(2);
+      expect(validated.proposals[0]).toMatchObject({
+        kind: "invoice",
+        number: "1042",
+        customerId: customer.id,
+        amountCents: 2_500_000,
+        dueDate: "2026-11-30",
+      });
+      expect(validated.proposals[1]).toMatchObject({
+        kind: "expense",
+        label: "Office supplies",
+        party: "National Bookstore",
+        amountCents: 150_000,
+        dueDate: "2026-11-20",
+      });
+    }
+
+    // Unregistered customer and hallucinated amount handling
+    const unregisteredOutput = {
+      proposals: [
+        {
+          kind: "invoice" as const,
+          number: "INV-999",
+          label: null,
+          party: "Nonexistent Client Corp",
+          amountCents: 99_999_999, // not in text
+          dueDate: "2026-11-30",
+          sourceQuotes: ["Invoice 1042"],
+          issues: [],
+          needsReview: false,
+        },
+      ],
+    };
+    const flagged = validateAiProposal(req, unregisteredOutput, workspace);
+    if (flagged.task === "extract_record") {
+      expect(flagged.proposals[0].customerId).toBeNull();
+      expect(flagged.proposals[0].amountCents).toBeNull(); // hallucinated amount nulled
+      expect(flagged.proposals[0].needsReview).toBe(true);
+      expect(flagged.proposals[0].issues.some(i => i.includes("not in your business"))).toBe(true);
+      expect(flagged.proposals[0].issues.some(i => i.includes("Confirm one exact amount"))).toBe(true);
+    }
+  });
 });

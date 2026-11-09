@@ -3,6 +3,7 @@ import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { calculateForecast } from "./forecast";
 import { assertLocalDate } from "./dates";
 import { MAX_RECORD_CENTS, parseMoney } from "./money";
+import { expandAmountShorthand } from "./manual-entry";
 
 const text = (maximum: number) => z.string().trim().min(1).max(maximum);
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -43,6 +44,11 @@ export const aiRequestSchema = z.discriminatedUnion("task", [
     }).optional(),
     intent: z.enum(["draft_reminder", "draft_followup"]).optional(),
   }),
+  z.strictObject({
+    ...common,
+    task: z.literal("extract_record"),
+    text: text(1000),
+  }),
   mappingRequest,
 ]);
 type AssistantRequest = z.infer<typeof aiRequestSchema>;
@@ -77,17 +83,46 @@ export const aiOutputSchemas = {
     }),
     unresolved: z.array(z.enum(requiredMappingRoles)).max(requiredMappingRoles.length),
   }),
+  extract_record: z.strictObject({
+    proposals: z.array(z.strictObject({
+      kind: z.enum(["invoice", "expense"]),
+      number: text(100).nullable(),
+      label: text(200).nullable(),
+      party: text(200).nullable(),
+      amountCents: z.number().int().min(1).max(MAX_RECORD_CENTS).nullable(),
+      dueDate: z.string().regex(isoDatePattern).nullable(),
+      sourceQuotes: z.array(text(1000)).max(8),
+      issues: z.array(text(300)).max(8),
+      needsReview: z.boolean(),
+    })).max(3),
+  }),
 };
 type Version = { sourceRevision: number };
 export type AiProposal =
   | (z.infer<typeof aiOutputSchemas.explain> & Version & { task: "explain" })
   | (z.infer<typeof aiOutputSchemas.extract_reply> & Version & { task: "extract_reply" })
   | (z.infer<typeof aiOutputSchemas.draft_reminder> & Version & { task: "draft_reminder"; invoiceId: string; recipient: string })
-  | (z.infer<typeof aiOutputSchemas.suggest_import_mapping> & Version & { task: "suggest_import_mapping" });
+  | (z.infer<typeof aiOutputSchemas.suggest_import_mapping> & Version & { task: "suggest_import_mapping" })
+  | ({
+      task: "extract_record";
+      sourceRevision: number;
+      proposals: (z.infer<typeof aiOutputSchemas.extract_record>["proposals"][number] & {
+        customerId: string | null;
+      })[];
+    });
 
 export function buildAiContext(workspace: WorkspaceSnapshot, request: AiRequest) {
   if (workspace.revision !== request.expectedRevision) throw new Error("STALE_VERSION");
   if (request.task === "suggest_import_mapping") return { allowedRecordIds: [] as string[], data: { headers: request.headers, samples: request.samples } };
+  if (request.task === "extract_record") {
+    return {
+      allowedRecordIds: [] as string[],
+      data: {
+        customers: workspace.customers.map(c => ({ id: c.id, name: c.name })),
+        referenceDate: workspace.forecastInput.referenceDate,
+      },
+    };
+  }
   const selected = request.invoiceId ? workspace.invoices.find(row => row.id === request.invoiceId) : undefined;
   if (request.invoiceId && !selected) throw new Error("NOT_FOUND");
   const forecast = request.task === "explain" ? calculateForecast(workspace.forecastInput) : undefined;
@@ -167,6 +202,27 @@ function phpAmounts(reply: string) {
   return amounts;
 }
 
+export function recordTextAmounts(sourceText: string): Set<number> {
+  const amounts = new Set<number>();
+  const shorthandPattern = /(?:\bPHP\s*|₱\s*)?([+-]?\d+(?:\.\d+)?)\s*([kKmM])\b/gi;
+  for (const match of sourceText.matchAll(shorthandPattern)) {
+    try {
+      const expanded = expandAmountShorthand(match[0]);
+      amounts.add(parseMoney(expanded));
+    } catch {}
+  }
+  for (const amt of phpAmounts(sourceText)) {
+    if (amt !== null) amounts.add(amt);
+  }
+  const plainPattern = /(?<![\p{L}\p{N}_./-])(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?![\p{L}\p{N}_/-])/gu;
+  for (const match of sourceText.matchAll(plainPattern)) {
+    try {
+      amounts.add(parseMoney(match[1].replaceAll(",", "")));
+    } catch {}
+  }
+  return amounts;
+}
+
 function matchesReplyValue<T>(value: T, replyValues: Set<T>, quoteValues: Set<T>) {
   return replyValues.size === 1 && replyValues.has(value) && quoteValues.size === 1 && quoteValues.has(value);
 }
@@ -190,6 +246,98 @@ export function validateAiProposal(request: AiRequest, value: unknown, workspace
     if (result.recordIds.some(id => !context.allowedRecordIds.includes(id))) throw new Error("INVALID_AI_OUTPUT");
     return { ...result, task: request.task, sourceRevision };
   }
+  if (request.task === "extract_record") {
+    const result = aiOutputSchemas.extract_record.parse(value);
+    const textAmounts = recordTextAmounts(request.text);
+    const textDates = fullIsoDates(request.text);
+
+    const proposals = result.proposals.slice(0, 3).map((item) => {
+      const issues = [...item.issues];
+      const validQuotes = item.sourceQuotes.filter(q => request.text.includes(q));
+      if (validQuotes.length !== item.sourceQuotes.length) {
+        issues.push("Some quoted snippets were not found in the original text.");
+      }
+
+      let amountCents = item.amountCents;
+      if (amountCents !== null) {
+        if (!textAmounts.has(amountCents)) {
+          amountCents = null;
+          issues.push("Confirm one exact amount. The amount must match the original text and its quoted wording.");
+        }
+      } else {
+        issues.push("Amount could not be determined from the text.");
+      }
+
+      let dueDate = item.dueDate;
+      if (dueDate !== null) {
+        try {
+          assertLocalDate(dueDate);
+          const hasIsoInText = textDates.has(dueDate);
+          const hasDateInQuotes = validQuotes.some(quote =>
+            fullIsoDates(quote).has(dueDate!) ||
+            /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{1,2}\/\d{1,2})\b/i.test(quote),
+          );
+          if (!hasIsoInText && !hasDateInQuotes) {
+            dueDate = null;
+            issues.push("Confirm one exact date in YYYY-MM-DD format. The date must match the original text and its quoted wording.");
+          }
+        } catch {
+          dueDate = null;
+          issues.push("Confirm one exact date in YYYY-MM-DD format.");
+        }
+      } else {
+        issues.push("Due date could not be determined from the text.");
+      }
+
+      let customerId: string | null = null;
+      let party = item.party?.trim() || null;
+
+      if (item.kind === "invoice") {
+        if (party) {
+          const matched = workspace.customers.find(
+            c => c.name.trim().toLowerCase() === party!.toLowerCase(),
+          );
+          if (matched) {
+            customerId = matched.id;
+            party = matched.name;
+          } else {
+            issues.push(`Customer "${party}" is not in your business. Add the customer or select one in the form.`);
+          }
+        } else {
+          issues.push("Customer name could not be determined from the text.");
+        }
+        if (!item.number) {
+          issues.push("Invoice number could not be determined from the text.");
+        }
+      } else {
+        if (!item.label) {
+          issues.push("Expense label could not be determined from the text.");
+        }
+        if (!party) {
+          issues.push("Payee could not be determined from the text.");
+        }
+      }
+
+      const needsReview = item.needsReview || issues.length > 0;
+      return {
+        ...item,
+        amountCents,
+        dueDate,
+        customerId,
+        party,
+        sourceQuotes: validQuotes,
+        issues,
+        needsReview,
+      };
+    });
+
+    return {
+      task: request.task,
+      sourceRevision,
+      proposals,
+    };
+  }
+
   const invoice = workspace.invoices.find(row => row.id === request.invoiceId)!;
   if (request.task === "draft_reminder") {
     const customer = workspace.customers.find(row => row.id === invoice.customer_id)!;

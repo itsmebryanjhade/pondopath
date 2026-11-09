@@ -123,4 +123,45 @@ describe("authorized AI orchestration", () => {
     expect(prompt).not.toContain("Mabuhay Cafe");
     expect(prompt).not.toContain("<workspace-actor-id>");
   });
+
+  it("routes extract_record through the demo reservation and validates the proposal", async () => {
+    const customer = uiWorkspace().customers[0];
+    const text = `Invoice 1042, ${customer.name}, 25k, due 2026-11-30`;
+    const req = { task: "extract_record", text, expectedRevision: 1 };
+    const output = {
+      proposals: [
+        {
+          kind: "invoice",
+          number: "1042",
+          label: null,
+          party: customer.name,
+          amountCents: 2_500_000,
+          dueDate: "2026-11-30",
+          sourceQuotes: [text],
+          issues: [],
+          needsReview: false,
+        },
+      ],
+    };
+    mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: uiWorkspace() });
+    mocks.provider.mockResolvedValueOnce({ value: output, usage: { cost: null } });
+    const response = await requestAssistant(req);
+    expect(response).toMatchObject({
+      proposal: {
+        task: "extract_record",
+        sourceRevision: 1,
+        proposals: [
+          {
+            kind: "invoice",
+            number: "1042",
+            customerId: customer.id,
+            amountCents: 2_500_000,
+            dueDate: "2026-11-30",
+          },
+        ],
+      },
+    });
+    expect(mocks.rpc.mock.calls[0][0]).toBe("reserve_ai_request");
+    expect(mocks.provider.mock.calls[0][1][0].content).toContain("EXTRACT_RECORD");
+  });
 });

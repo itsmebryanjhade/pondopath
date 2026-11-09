@@ -1359,3 +1359,12 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
   .workspace-root .invoice-balances { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .workspace-root .invoice-balances > div:first-child { grid-column: 1 / -1; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
 }
+
+/* Manual entry shortcuts: quick date choices and action buttons */
+.workspace-root .quick-date-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.workspace-root .quick-date-chip { min-height: 28px; padding: 2px 10px; border: 1px solid var(--edge, #e5e7eb); border-radius: 999px; background: var(--surface, #fff); color: var(--ink-soft, #526057); cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; transition: border-color var(--duration-quick, 150ms) ease-out, background-color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .quick-date-chip:hover { border-color: var(--data-accent, #28734f); color: var(--ink, #1f2937); background: var(--green-50, #f0fdf4); }
+.workspace-root .quick-date-chip.is-selected { border-color: var(--primary, #28734f); background: var(--green-100, #e7f4ec); color: var(--green-900, #1f5a3d); font-weight: 700; }
+.workspace-root .quick-date-chip:focus-visible { outline: 2px solid #28734f; outline-offset: 2px; }
+@media (pointer: coarse) { .workspace-root .quick-date-chip { min-height: 36px; padding: 4px 12px; } }
+@media (prefers-reduced-motion: reduce) { .workspace-root .quick-date-chip { transition: none; } }

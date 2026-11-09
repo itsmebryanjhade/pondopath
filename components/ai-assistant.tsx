@@ -22,6 +22,7 @@ import { TextAreaField } from "./command-form";
 import { CollectionPanel } from "./collection-panel";
 import { ReminderPanel } from "./reminder-panel";
 import { FollowupForm } from "./followup-panel";
+import { CustomerForm, ExpenseForm, InvoiceForm } from "./record-forms";
 import { CashImpact } from "./cash-impact";
 import { calculateForecast, compareScenario } from "@/lib/domain/forecast";
 import { formatPHP } from "@/lib/domain/money";
@@ -62,7 +63,7 @@ export function AiAssistant({ workspace, dialog, onClose }: {
   const pathname = usePathname();
   const headingId = useId();
 
-  const [mode, setMode] = useState<"chat" | "reply">("chat");
+  const [mode, setMode] = useState<"chat" | "reply" | "add_record">("chat");
   const [language, setLanguage] = useState<AiRequest["language"]>("auto");
   const [composerText, setComposerText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -82,6 +83,14 @@ export function AiAssistant({ workspace, dialog, onClose }: {
   const [replyProposal, setReplyProposal] = useState<Extract<AiProposal, { task: "extract_reply" }> | null>(null);
   const [sourceReplySaved, setSourceReplySaved] = useState("");
   const [replyReviewOpen, setReplyReviewOpen] = useState(false);
+
+  const [recordText, setRecordText] = useState("");
+  const [recordPending, setRecordPending] = useState(false);
+  const [recordError, setRecordError] = useState("");
+  const [recordProposal, setRecordProposal] = useState<Extract<AiProposal, { task: "extract_record" }> | null>(null);
+  const [activeFormProposal, setActiveFormProposal] = useState<
+    Extract<AiProposal, { task: "extract_record" }>["proposals"][number] | null
+  >(null);
 
   const adapter = useMemo<ChatModelAdapter>(() => ({
     async run({ messages, abortSignal }) {
@@ -165,6 +174,11 @@ export function AiAssistant({ workspace, dialog, onClose }: {
     setReplyReviewOpen(false);
     setReplyError("");
     setReplyPending(false);
+    setRecordText("");
+    setRecordProposal(null);
+    setRecordError("");
+    setRecordPending(false);
+    setActiveFormProposal(null);
     setToolsOpen(false);
     setMode("chat");
   }
@@ -217,6 +231,12 @@ export function AiAssistant({ workspace, dialog, onClose }: {
     if (toolId === "reply") {
       setSelectedInvoiceId(currentOpenInvoice?.id ?? "");
       setMode("reply");
+      return;
+    }
+    if (toolId === "add_record") {
+      setMode("add_record");
+      setRecordError("");
+      setActiveFormProposal(null);
       return;
     }
     close();
@@ -277,6 +297,47 @@ export function AiAssistant({ workspace, dialog, onClose }: {
       if (activeRequest.current === controller) {
         activeRequest.current = null;
         setReplyPending(false);
+      }
+    }
+  }
+
+  async function extractRecordFromText(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = recordText.trim();
+    if (activeRequest.current || !text) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    setRecordPending(true);
+    setRecordError("");
+    setRecordProposal(null);
+    setActiveFormProposal(null);
+    try {
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          task: "extract_record",
+          expectedRevision: workspace.revision,
+          language,
+          text,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok || !data.proposal) {
+        throw new Error(data.message || "Failed to extract records. Check your input and try again.");
+      }
+      controller.signal.throwIfAborted();
+      if (activeRequest.current !== controller) return;
+      setRecordProposal(data.proposal);
+    } catch (error) {
+      if (!controller.signal.aborted && activeRequest.current === controller) {
+        setRecordError(assistantError(error));
+      }
+    } finally {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setRecordPending(false);
       }
     }
   }
@@ -488,6 +549,144 @@ export function AiAssistant({ workspace, dialog, onClose }: {
                         sourceNote: sourceReplySaved,
                       }}
                     />
+                  )}
+                </section>
+              )}
+            </div>
+          ) : mode === "add_record" ? (
+            <div className="assistant-add-record-mode">
+              <div className="assistant-mode-header">
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() => setMode("chat")}
+                >
+                  ← Back to conversation
+                </button>
+                <strong>Add a record from text</strong>
+              </div>
+              <p className="muted">
+                Paste or type record details in English, Tagalog or Taglish (e.g. &apos;Invoice 1042, Northbay, 25k, due Nov 30&apos; or bill notes). The assistant extracts proposals for your manual review and confirmation.
+              </p>
+
+              <form onSubmit={extractRecordFromText} className="assistant-form">
+                <fieldset disabled={recordPending}>
+                  <TextAreaField
+                    label="Record text (up to 1,000 characters)"
+                    value={recordText}
+                    onChange={(e) => setRecordText(e.target.value)}
+                    placeholder="Invoice 1042, Northbay, 25k, due Nov 30"
+                    maxLength={1000}
+                    rows={4}
+                    required
+                  />
+
+                  <button type="submit" className="section-primary" disabled={recordPending || !recordText.trim()}>
+                    {recordPending ? "Extracting records…" : "Extract records"}
+                    <DashboardIcon name="arrowRight" size={15} />
+                  </button>
+                </fieldset>
+              </form>
+
+              {recordError && (
+                <div role="alert" className="assistant-notice negative">
+                  <p>{recordError}</p>
+                </div>
+              )}
+
+              {recordProposal && (
+                <section className="assistant-review-panel">
+                  <h3>Extracted proposals ({recordProposal.proposals.length})</h3>
+                  {recordProposal.proposals.length === 0 ? (
+                    <p className="empty-state">No records could be identified from the text. Check the details or use manual entry.</p>
+                  ) : (
+                    <div className="assistant-proposals-grid" style={{ display: "grid", gap: "12px", marginTop: "12px" }}>
+                      {recordProposal.proposals.map((item, index) => (
+                        <div key={index} className="assistant-draft-card">
+                          <p>
+                            <strong>{item.kind === "invoice" ? "Invoice" : "Expense / Bill"}</strong>
+                            {item.kind === "invoice" && item.number ? ` · ${item.number}` : ""}
+                            {item.kind === "expense" && item.label ? ` · ${item.label}` : ""}
+                          </p>
+                          <p>
+                            {item.kind === "invoice" ? "Customer: " : "Payee: "}
+                            <strong>{item.party ?? "Unspecified"}</strong>
+                            {item.amountCents !== null ? ` · ${formatPHP(item.amountCents)}` : " · Amount needs check"}
+                            {item.dueDate ? ` · Due ${formatPlanDate(item.dueDate)}` : " · Due date needs check"}
+                          </p>
+                          {item.sourceQuotes.length > 0 && (
+                            <blockquote className="assistant-response">
+                              {item.sourceQuotes.join(" ")}
+                            </blockquote>
+                          )}
+                          {item.issues.length > 0 && (
+                            <ul className="negative" style={{ fontSize: "13px", paddingLeft: "20px", margin: "8px 0" }}>
+                              {item.issues.map((issue, i) => (
+                                <li key={i}>{issue}</li>
+                              ))}
+                            </ul>
+                          )}
+                          <button
+                            type="button"
+                            className="button secondary"
+                            onClick={() => setActiveFormProposal(item)}
+                          >
+                            Open in form to review and save
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {activeFormProposal && (
+                    <div className="panel proposal-review-panel" style={{ marginTop: "16px" }}>
+                      <div className="section-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <h4>Review and save {activeFormProposal.kind === "invoice" ? "invoice" : "expense"}</h4>
+                          <p className="muted">Review the extracted values. Nothing is saved until you confirm.</p>
+                        </div>
+                        <button type="button" className="text-link" onClick={() => setActiveFormProposal(null)}>
+                          Close form
+                        </button>
+                      </div>
+                      {activeFormProposal.kind === "invoice" ? (
+                        <>
+                          <InvoiceForm
+                            workspace={workspace}
+                            initialProposed={{
+                              number: activeFormProposal.number,
+                              customerId: activeFormProposal.customerId,
+                              party: activeFormProposal.party,
+                              amountCents: activeFormProposal.amountCents,
+                              dueDate: activeFormProposal.dueDate,
+                            }}
+                          />
+                          {(!activeFormProposal.customerId || workspace.customers.length === 0) && (
+                            <details className="add-entry-more" open={!activeFormProposal.customerId} style={{ marginTop: "12px" }}>
+                              <summary>
+                                {activeFormProposal.party
+                                  ? `Add customer "${activeFormProposal.party}"`
+                                  : "Customer not listed? Add a customer"}
+                              </summary>
+                              <CustomerForm
+                                workspace={workspace}
+                                initialName={activeFormProposal.party ?? undefined}
+                              />
+                            </details>
+                          )}
+                        </>
+                      ) : (
+                        <ExpenseForm
+                          workspace={workspace}
+                          initialProposed={{
+                            label: activeFormProposal.label,
+                            payee: activeFormProposal.party,
+                            amountCents: activeFormProposal.amountCents,
+                            dueDate: activeFormProposal.dueDate,
+                          }}
+                        />
+                      )}
+                    </div>
                   )}
                 </section>
               )}

@@ -5,6 +5,7 @@ import { AiAssistant, DraftReviewPanel, WORKSPACE_TOOLS } from "@/components/ai-
 import { AiAssistantLauncher } from "@/components/ai-assistant-launcher";
 import { CollectionPanel } from "@/components/collection-panel";
 import { ReminderPanel } from "@/components/reminder-panel";
+import { CustomerForm, ExpenseForm, InvoiceForm } from "@/components/record-forms";
 import { executeWorkspaceAction } from "@/app/(workspace)/actions";
 import { generatePageStarters, resolveAssistantDraftTarget } from "./assistant-chat-adapter";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
@@ -232,5 +233,67 @@ describe("multilingual assistant presentation & Task 4 conversation UI", () => {
     expect(html).toContain("The invoice targeted by this draft is no longer available in this workspace.");
     expect(html).not.toContain("Save draft");
     expect(html).not.toContain("Schedule follow-up");
+  });
+
+  it("includes Add a record from text in WORKSPACE_TOOLS", () => {
+    expect(WORKSPACE_TOOLS.some((tool) => tool.id === "add_record" && tool.label === "Add a record from text")).toBe(true);
+  });
+
+  it("handoffs an extracted invoice proposal to InvoiceForm with prefilled values without saving", () => {
+    const workspace = uiWorkspace();
+    const customer = workspace.customers[0];
+    const initialProposed = {
+      number: "INV-1042",
+      customerId: customer.id,
+      party: customer.name,
+      amountCents: 2_500_000,
+      dueDate: "2026-11-30",
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(InvoiceForm, { workspace, initialProposed })
+    );
+
+    expect(html).toContain('value="INV-1042"');
+    expect(html).toContain(`value="${customer.id}"`);
+    expect(html).toContain('value="25000.00"');
+    expect(html).toContain('value="2026-11-30"');
+    expect(html).toContain("Add invoice");
+    expect(executeWorkspaceAction).not.toHaveBeenCalled();
+  });
+
+  it("handoffs an extracted invoice proposal with an unregistered customer to CustomerForm prefilled with the proposed name", () => {
+    const workspace = uiWorkspace();
+    const html = renderToStaticMarkup(
+      createElement(CustomerForm, {
+        workspace,
+        initialName: "Northbay Trading Corp",
+      })
+    );
+
+    expect(html).toContain('value="Northbay Trading Corp"');
+    expect(html).toContain("Add customer");
+    expect(executeWorkspaceAction).not.toHaveBeenCalled();
+  });
+
+  it("handoffs an extracted expense proposal to ExpenseForm with prefilled values without saving", () => {
+    const workspace = uiWorkspace();
+    const initialProposed = {
+      label: "Office Internet",
+      payee: "PLDT Enterprise",
+      amountCents: 850_000,
+      dueDate: "2026-11-15",
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ExpenseForm, { workspace, initialProposed })
+    );
+
+    expect(html).toContain('value="Office Internet"');
+    expect(html).toContain('value="PLDT Enterprise"');
+    expect(html).toContain('value="8500.00"');
+    expect(html).toContain('value="2026-11-15"');
+    expect(html).toContain("Add expense");
+    expect(executeWorkspaceAction).not.toHaveBeenCalled();
   });
 });

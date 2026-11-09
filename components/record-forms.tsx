@@ -1,17 +1,61 @@
 "use client";
 
+import { useMemo, useRef, useState } from "react";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
-import { parseMoney } from "@/lib/domain/money";
-import { CommandForm, Field } from "./command-form";
+import { addDays } from "@/lib/domain/dates";
+import { parseAmountInput, suggestNextInvoiceNumber } from "@/lib/domain/manual-entry";
+import { AmountField, CommandForm, DueDateField, Field } from "./command-form";
 
 const value = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
 const decimal = (cents: number) => (cents / 100).toFixed(2);
 type Context = { workspace: WorkspaceSnapshot };
 
+export function buildInvoicePayload(data: FormData, invoice?: WorkspaceSnapshot["invoices"][number]) {
+  return {
+    type: "save_invoice" as const,
+    payload: {
+      ...(invoice ? { id: invoice.id } : {}),
+      number: value(data, "number"),
+      customerId: value(data, "customerId"),
+      amountCents: parseAmountInput(value(data, "amount")),
+      dueDate: value(data, "dueDate"),
+      ...(value(data, "reason") ? { reason: value(data, "reason") } : {}),
+    },
+  };
+}
+
+export function buildExpensePayload(data: FormData, expense?: WorkspaceSnapshot["expenses"][number]) {
+  return {
+    type: "save_expense" as const,
+    payload: {
+      ...(expense ? { id: expense.id } : {}),
+      label: value(data, "label"),
+      payee: value(data, "payee"),
+      amountCents: parseAmountInput(value(data, "amount")),
+      dueDate: value(data, "dueDate"),
+      ...(value(data, "reason") ? { reason: value(data, "reason") } : {}),
+    },
+  };
+}
+
+export function buildOpeningCashPayload(data: FormData) {
+  return {
+    type: "set_opening_cash" as const,
+    payload: {
+      amountCents: parseAmountInput(value(data, "amount"), { allowZero: true }),
+      date: value(data, "date"),
+    },
+  };
+}
+
 export function CustomerForm({
   workspace,
   customer,
-}: Context & { customer?: WorkspaceSnapshot["customers"][number] }) {
+  initialName,
+}: Context & {
+  customer?: WorkspaceSnapshot["customers"][number];
+  initialName?: string;
+}) {
   return (
     <CommandForm
       revision={workspace.revision}
@@ -31,7 +75,7 @@ export function CustomerForm({
         <Field
           label="Business / customer name"
           name="name"
-          defaultValue={customer?.name}
+          defaultValue={customer?.name ?? initialName ?? ""}
           maxLength={200}
           required
         />
@@ -64,29 +108,57 @@ export function CustomerForm({
 export function InvoiceForm({
   workspace,
   invoice,
-}: Context & { invoice?: WorkspaceSnapshot["invoices"][number] }) {
+  initialProposed,
+}: Context & {
+  invoice?: WorkspaceSnapshot["invoices"][number];
+  initialProposed?: {
+    number?: string | null;
+    customerId?: string | null;
+    party?: string | null;
+    amountCents?: number | null;
+    dueDate?: string | null;
+  };
+}) {
+  const isNew = !invoice;
+  const initialNext = useMemo(
+    () => suggestNextInvoiceNumber(workspace.invoices.map((inv) => inv.number)),
+    [workspace.invoices],
+  );
+  const [number, setNumber] = useState(invoice?.number ?? initialProposed?.number ?? initialNext);
+  const [customerId, setCustomerId] = useState(invoice?.customer_id ?? initialProposed?.customerId ?? "");
+  const numberRef = useRef<HTMLInputElement>(null);
+
+  const defaultDueDate =
+    invoice?.due_date ?? initialProposed?.dueDate ?? addDays(workspace.forecastInput.referenceDate, 30);
+
+  const handleAddAnother = () => {
+    // Generate the next sequential number based on what was just saved
+    setNumber((prev) => suggestNextInvoiceNumber([prev]));
+    setTimeout(() => {
+      if (numberRef.current) {
+        numberRef.current.focus();
+        numberRef.current.select();
+      }
+    }, 0);
+  };
+
   return (
     <CommandForm
       revision={workspace.revision}
       label={invoice ? "Save invoice" : "Add invoice"}
-      build={(data) => ({
-        type: "save_invoice",
-        payload: {
-          ...(invoice ? { id: invoice.id } : {}),
-          number: value(data, "number"),
-          customerId: value(data, "customerId"),
-          amountCents: parseMoney(value(data, "amount")),
-          dueDate: value(data, "dueDate"),
-          ...(value(data, "reason") ? { reason: value(data, "reason") } : {}),
-        },
-      })}
+      allowAddAnother={isNew}
+      onAddAnother={handleAddAnother}
+      build={(data) => buildInvoicePayload(data, invoice)}
     >
       <div className="form-grid">
         <Field
+          ref={numberRef}
           label="Invoice number"
           name="number"
-          defaultValue={invoice?.number}
+          value={number}
+          onChange={(e) => setNumber(e.target.value)}
           maxLength={100}
+          help={isNew ? `Suggested: ${number} (editable)` : undefined}
           required
         />
         <label className="form-field">
@@ -94,7 +166,8 @@ export function InvoiceForm({
           <select
             className="field"
             name="customerId"
-            defaultValue={invoice?.customer_id ?? ""}
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
             required
           >
             <option value="" disabled>
@@ -107,19 +180,24 @@ export function InvoiceForm({
             ))}
           </select>
         </label>
-        <Field
+        <AmountField
           label="Invoice amount (PHP)"
           name="amount"
-          inputMode="decimal"
-          defaultValue={invoice ? decimal(invoice.amount_cents) : ""}
-          help="Use the unpaid amount at setup; no commas or currency symbols."
+          defaultValue={
+            invoice
+              ? decimal(invoice.amount_cents)
+              : initialProposed?.amountCents
+                ? decimal(initialProposed.amountCents)
+                : ""
+          }
+          help="Use k or m for shorthand (e.g. 15k, 1.5m). No commas or ₱ sign."
           required
         />
-        <Field
+        <DueDateField
           label="Original due date"
           name="dueDate"
-          type="date"
-          defaultValue={invoice?.due_date ?? workspace.forecastInput.referenceDate}
+          referenceDate={workspace.forecastInput.referenceDate}
+          defaultValue={defaultDueDate}
           required
         />
       </div>
@@ -149,44 +227,67 @@ export function InvoiceForm({
 export function ExpenseForm({
   workspace,
   expense,
-}: Context & { expense?: WorkspaceSnapshot["expenses"][number] }) {
+  initialProposed,
+}: Context & {
+  expense?: WorkspaceSnapshot["expenses"][number];
+  initialProposed?: {
+    label?: string | null;
+    payee?: string | null;
+    amountCents?: number | null;
+    dueDate?: string | null;
+  };
+}) {
+  const isNew = !expense;
+  const labelRef = useRef<HTMLInputElement>(null);
+
+  const handleAddAnother = () => {
+    setTimeout(() => {
+      labelRef.current?.focus();
+    }, 0);
+  };
+
   return (
     <CommandForm
       revision={workspace.revision}
       label={expense ? "Save expense" : "Add expense"}
-      build={(data) => ({
-        type: "save_expense",
-        payload: {
-          ...(expense ? { id: expense.id } : {}),
-          label: value(data, "label"),
-          payee: value(data, "payee"),
-          amountCents: parseMoney(value(data, "amount")),
-          dueDate: value(data, "dueDate"),
-          ...(value(data, "reason") ? { reason: value(data, "reason") } : {}),
-        },
-      })}
+      allowAddAnother={isNew}
+      onAddAnother={handleAddAnother}
+      build={(data) => buildExpensePayload(data, expense)}
     >
       <div className="form-grid">
         <Field
+          ref={labelRef}
           label="Expense label"
           name="label"
-          defaultValue={expense?.label}
+          defaultValue={expense?.label ?? initialProposed?.label ?? ""}
           maxLength={200}
           required
         />
-        <Field label="Payee" name="payee" defaultValue={expense?.payee} maxLength={200} required />
         <Field
-          label="Expense amount (PHP)"
-          name="amount"
-          inputMode="decimal"
-          defaultValue={expense ? decimal(expense.amount_cents) : ""}
+          label="Payee"
+          name="payee"
+          defaultValue={expense?.payee ?? initialProposed?.payee ?? ""}
+          maxLength={200}
           required
         />
-        <Field
+        <AmountField
+          label="Expense amount (PHP)"
+          name="amount"
+          defaultValue={
+            expense
+              ? decimal(expense.amount_cents)
+              : initialProposed?.amountCents
+                ? decimal(initialProposed.amountCents)
+                : ""
+          }
+          help="Use k or m for shorthand (e.g. 15k, 1.5m). No commas or ₱ sign."
+          required
+        />
+        <DueDateField
           label="Original due date"
           name="dueDate"
-          type="date"
-          defaultValue={expense?.due_date ?? workspace.forecastInput.referenceDate}
+          referenceDate={workspace.forecastInput.referenceDate}
+          defaultValue={expense?.due_date ?? initialProposed?.dueDate ?? workspace.forecastInput.referenceDate}
           required
         />
       </div>
@@ -204,28 +305,31 @@ export function ExpenseForm({
 }
 
 /** Opening cash: how much the business had at the start of one day. Two fields, saved once; it locks after the first payment. */
-export function OpeningCashForm({ workspace, onSaved, onCancel }: Context & { onSaved?: () => void; onCancel?: () => void }) {
+export function OpeningCashForm({
+  workspace,
+  onSaved,
+  onCancel,
+}: Context & { onSaved?: () => void; onCancel?: () => void }) {
   return (
     <CommandForm
       revision={workspace.revision}
       label="Save opening cash"
       onSaved={onSaved}
-      secondary={onCancel && <button type="button" className="button secondary" onClick={onCancel}>Cancel</button>}
-      build={(data) => ({
-        type: "set_opening_cash",
-        payload: {
-          amountCents: parseMoney(value(data, "amount"), { allowZero: true }),
-          date: value(data, "date"),
-        },
-      })}
+      secondary={
+        onCancel && (
+          <button type="button" className="button secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        )
+      }
+      build={buildOpeningCashPayload}
     >
       <div className="form-grid">
-        <Field
+        <AmountField
           label="Cash you had (PHP)"
           name="amount"
-          inputMode="decimal"
           defaultValue={decimal(workspace.business.opening_cash_cents)}
-          help="Bank and cash on hand together. Use 0 if you're starting fresh."
+          help="Bank and cash on hand together. Use k or m (e.g. 50k). Use 0 if starting fresh."
           required
         />
         <Field

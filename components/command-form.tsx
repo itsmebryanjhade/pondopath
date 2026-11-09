@@ -4,9 +4,10 @@ import {
   useId,
   useRef,
   useState,
+  useEffect,
   useTransition,
   type ReactNode,
-  type InputHTMLAttributes,
+  type ComponentProps,
   type TextareaHTMLAttributes,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -17,6 +18,8 @@ import {
   type ActionResult,
   type CommandResult,
 } from "@/lib/domain/commands";
+import { expandAmountShorthand, quickDateChoices } from "@/lib/domain/manual-entry";
+import type { LocalDate } from "@/lib/domain/types";
 
 type Failure = Extract<ActionResult<CommandResult>, { ok: false }>;
 
@@ -58,7 +61,7 @@ export function Field({
   label,
   help,
   ...input
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; help?: string }) {
+}: ComponentProps<"input"> & { label: string; help?: string }) {
   const id = useId();
   return (
     <div className="form-field">
@@ -74,6 +77,109 @@ export function Field({
   );
 }
 
+export function AmountField({
+  label,
+  help = "Use k or m for shorthand (e.g. 15k, 1.5m). No commas or ₱ sign.",
+  ...input
+}: ComponentProps<"input"> & { label: string; help?: string }) {
+  const id = useId();
+  return (
+    <div className="form-field">
+      <label htmlFor={id}>{label}</label>
+      <input
+        {...input}
+        id={id}
+        inputMode="decimal"
+        aria-describedby={help ? `${id}-help` : undefined}
+        className="field"
+        onBlur={(e) => {
+          const val = e.target.value;
+          if (val) {
+            const expanded = expandAmountShorthand(val);
+            if (expanded !== val) {
+              e.target.value = expanded;
+            }
+          }
+          input.onBlur?.(e);
+        }}
+      />
+      {help && <small id={`${id}-help`}>{help}</small>}
+    </div>
+  );
+}
+
+export function DueDateField({
+  label = "Original due date",
+  name = "dueDate",
+  referenceDate,
+  defaultValue,
+  value: controlledValue,
+  onChange: onControlledChange,
+  required = true,
+  help,
+}: {
+  label?: string;
+  name?: string;
+  referenceDate: LocalDate;
+  defaultValue?: string;
+  value?: string;
+  onChange?: (date: string) => void;
+  required?: boolean;
+  help?: string;
+}) {
+  const id = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const initialDate = defaultValue ?? referenceDate;
+  const [internalDate, setInternalDate] = useState(initialDate);
+  const activeDate = controlledValue !== undefined ? controlledValue : internalDate;
+  const setDate = (d: string) => {
+    if (controlledValue === undefined) setInternalDate(d);
+    onControlledChange?.(d);
+  };
+
+  useEffect(() => {
+    const formEl = inputRef.current?.form;
+    if (!formEl) return;
+    const handleReset = () => {
+      setInternalDate(initialDate);
+    };
+    formEl.addEventListener("reset", handleReset);
+    return () => formEl.removeEventListener("reset", handleReset);
+  }, [initialDate]);
+
+  const choices = quickDateChoices(referenceDate);
+
+  return (
+    <div className="form-field">
+      <label htmlFor={id}>{label}</label>
+      <input
+        ref={inputRef}
+        type="date"
+        name={name}
+        id={id}
+        value={activeDate}
+        onChange={(e) => setDate(e.target.value)}
+        className="field"
+        required={required}
+        aria-describedby={help ? `${id}-help` : undefined}
+      />
+      <div className="quick-date-choices" role="group" aria-label="Quick date choices">
+        {choices.map((choice) => (
+          <button
+            key={choice.key}
+            type="button"
+            className={`quick-date-chip ${activeDate === choice.date ? "is-selected" : ""}`}
+            onClick={() => setDate(choice.date)}
+          >
+            {choice.label}
+          </button>
+        ))}
+      </div>
+      {help && <small id={`${id}-help`}>{help}</small>}
+    </div>
+  );
+}
+
 export function CommandForm({
   revision,
   build,
@@ -81,6 +187,8 @@ export function CommandForm({
   label = "Save changes",
   onSaved,
   secondary,
+  allowAddAnother = false,
+  onAddAnother,
 }: {
   revision: number;
   build: (data: FormData) => { type: WorkspaceCommand["type"]; payload: object };
@@ -90,6 +198,10 @@ export function CommandForm({
   onSaved?: () => void;
   /** An extra control shown beside the save button, such as Cancel. */
   secondary?: ReactNode;
+  /** Allow saving and continuing to add another record. */
+  allowAddAnother?: boolean;
+  /** Called after save and add another succeeds, e.g. to update next number or focus. */
+  onAddAnother?: () => void;
 }) {
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
@@ -102,11 +214,21 @@ export function CommandForm({
   const uncertain = failure?.code === "SERVICE_UNAVAILABLE";
   const conflict = failure?.code === "STALE_VERSION";
 
-  function submit() {
+  function submit(addAnother = false) {
     if (pending || conflict) return;
     let command = submitted.current;
     if (!command) {
       try {
+        const amountInputs = form.current?.querySelectorAll<HTMLInputElement>(
+          'input[inputmode="decimal"], input[name="amount"]',
+        );
+        amountInputs?.forEach((input) => {
+          if (input.value) {
+            const expanded = expandAmountShorthand(input.value);
+            if (expanded !== input.value) input.value = expanded;
+          }
+        });
+
         const draft = build(new FormData(form.current!));
         const parsed = workspaceCommandSchema.safeParse({
           ...draft,
@@ -144,14 +266,19 @@ export function CommandForm({
         submitted.current = null;
         draftRevision.current = null;
         setFailure(null);
-        setNotice(
-          result.data.replayed
-            ? "The original save is confirmed. No duplicate was added."
-            : "Saved. The cash plan has been refreshed.",
-        );
         form.current?.reset();
         router.refresh();
-        onSaved?.();
+        if (addAnother) {
+          setNotice("Saved. Ready for the next one.");
+          onAddAnother?.();
+        } else {
+          setNotice(
+            result.data.replayed
+              ? "The original save is confirmed. No duplicate was added."
+              : "Saved. The cash plan has been refreshed.",
+          );
+          onSaved?.();
+        }
       } else {
         setFailure(result);
         if (result.code !== "SERVICE_UNAVAILABLE") submitted.current = null;
@@ -173,7 +300,7 @@ export function CommandForm({
       }}
       onSubmit={(event) => {
         event.preventDefault();
-        submit();
+        submit(false);
       }}
     >
       <fieldset disabled={pending || uncertain}>{children}</fieldset>
@@ -215,15 +342,25 @@ export function CommandForm({
           {notice}
         </p>
       )}
-      <div className={secondary ? "form-actions" : undefined}>
+      <div className={secondary || allowAddAnother ? "form-actions" : undefined}>
         <button
           className="button"
           type={uncertain ? "button" : "submit"}
-          onClick={uncertain ? submit : undefined}
+          onClick={uncertain ? () => submit(false) : undefined}
           disabled={pending || conflict}
         >
           {pending ? "Confirming save…" : uncertain ? "Retry original request" : label}
         </button>
+        {allowAddAnother && (
+          <button
+            className="button secondary"
+            type="button"
+            onClick={() => submit(true)}
+            disabled={pending || conflict}
+          >
+            Save and add another
+          </button>
+        )}
         {secondary}
       </div>
     </form>
