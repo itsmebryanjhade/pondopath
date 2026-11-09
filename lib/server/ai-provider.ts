@@ -17,9 +17,10 @@ export function aiBackupConfig(): AiConfig | null {
   return { kind: "openrouter", key, model, provider };
 }
 
-export class AiProviderRateLimit extends Error {
-  constructor() {
-    super("AI_PROVIDER_BUSY");
+export class AiProviderFallback extends Error {
+  constructor(code: "AI_PROVIDER_BUSY" | "AI_UNAVAILABLE") {
+    super(code);
+    this.name = "AiProviderFallback";
   }
 }
 
@@ -103,7 +104,8 @@ async function fetchProviderJson(url: string, headers: Record<string, string>, b
     if (process.env.VERCEL === "1") console.warn("Assistant provider HTTP failure", new URL(url).hostname, response.status);
     await response.body?.cancel().catch(() => {});
     if (response.status === 408) throw new Error("AI_TIMEOUT");
-    if (response.status === 429) throw new AiProviderRateLimit();
+    if (response.status === 429) throw new AiProviderFallback("AI_PROVIDER_BUSY");
+    if (response.status === 401 && new URL(url).hostname === "generativelanguage.googleapis.com") throw new AiProviderFallback("AI_UNAVAILABLE");
     throw new Error(response.status >= 500 ? "AI_PROVIDER_BUSY" : "AI_UNAVAILABLE");
   }
   try {

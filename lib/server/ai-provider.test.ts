@@ -120,12 +120,19 @@ describe("Gemini and OpenRouter transport", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it.each([302, 400, 401, 403])("rejects upstream %i without requesting a backup", async status => {
+  it.each([302, 400, 403])("rejects upstream %i without requesting a backup", async status => {
     configure();
     const fetcher = vi.fn().mockResolvedValue(new Response(null, { status }));
     vi.stubGlobal("fetch", fetcher);
     await expect(callAiProvider(aiConfig(), messages, schema)).rejects.toThrow(/^AI_UNAVAILABLE$/);
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks only Gemini 401 as eligible for the configured backup", async () => {
+    configure();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+    await expect(callAiProvider(aiConfig(), messages, schema)).rejects.toMatchObject({ message: "AI_UNAVAILABLE", name: "AiProviderFallback" });
+    await expect(callAiProvider(aiBackupConfig()!, messages, schema)).rejects.toThrow(/^AI_UNAVAILABLE$/);
   });
 
   it("logs only status and provider host when Gemini rejects a production request", async () => {

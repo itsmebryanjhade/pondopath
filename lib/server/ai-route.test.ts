@@ -118,7 +118,7 @@ describe("assistant HTTP boundary", () => {
     expect(mocks.rpc.mock.calls.map(call => call[0])).toEqual(["reserve_ai_request"]);
   });
 
-  it.each(["gemini", "openrouter"] as const)("validates chat through %s after one quota reservation", async provider => {
+  it.each([["gemini", null], ["openrouter", 429], ["openrouter", 401]] as const)("validates chat through %s after Gemini status %s using one reservation", async (provider, geminiStatus) => {
     const workspace = uiWorkspace();
     const invoiceId = workspace.invoices[0].id;
     vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
@@ -134,7 +134,7 @@ describe("assistant HTTP boundary", () => {
     const fetch = vi.fn();
     if (provider === "openrouter") {
       mocks.rpc.mockResolvedValueOnce({ data: workspace });
-      fetch.mockResolvedValueOnce(new Response(null, { status: 429 })).mockResolvedValueOnce(Response.json({
+      fetch.mockResolvedValueOnce(new Response(null, { status: geminiStatus! })).mockResolvedValueOnce(Response.json({
         choices: [{ finish_reason: "stop", message: { content: JSON.stringify(output), refusal: null } }],
         usage: { cost: 0 },
       }));
@@ -161,7 +161,7 @@ describe("assistant HTTP boundary", () => {
     );
   });
 
-  it("stops before OpenRouter when the records changed during the Gemini attempt", async () => {
+  it.each([429, 401] as const)("stops before OpenRouter on Gemini %i when records changed", async status => {
     const workspace = uiWorkspace();
     vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
     vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", workspace.actor.userId);
@@ -172,7 +172,7 @@ describe("assistant HTTP boundary", () => {
     mocks.workspace.mockResolvedValue(workspace);
     mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: { ...workspace, revision: 2 } });
     mocks.request.mockImplementation((await vi.importActual<typeof import("./ai")>("./ai")).requestAssistant);
-    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 429 }));
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status }));
     vi.stubGlobal("fetch", fetch);
 
     const response = await POST(request(JSON.stringify({ task: "chat", question: "What should I do first?", history: [], expectedRevision: 1 })));
