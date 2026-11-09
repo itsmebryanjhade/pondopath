@@ -130,6 +130,8 @@ Choose one spreadsheet parser for the agreed formats. Schema validation does not
 
 The earlier n8n research remains relevant only as an alternative: its [repository license](https://github.com/n8n-io/n8n/blob/master/LICENSE.md) uses the Sustainable Use License with separate enterprise-file terms. Its [use-case guidance](https://support.n8n.io/article/can-i-use-your-license-for-my-use-case) distinguishes configured workflows from offering an automation service to outside users. Third-party workflow templates need their own source/license review. Node-RED is the latest proposed low-code option; neither has been installed.
 
+**Update, 6 November 2026:** both automation tools are now in use with separate jobs: Node-RED runs the missed-commitment follow-ups, and n8n 2.46.6 runs the optional operator route for Google Sheet intake (own development and fictional-data demo, within its Sustainable Use License). The parsing libraries in use are Zod, csv-parse and read-excel-file (not Papa Parse or ExcelJS); TanStack Table is still not needed. In-app sign-in connectors are planned instead of more automation platforms; see [connector landscape research](connector-landscape-2026-11.md).
+
 ## Proposed reuse strategy for C01
 
 1. Keep the existing Next.js project rather than merging unrelated application repositories.

@@ -70,7 +70,7 @@ export async function disposeTestBusiness(fixture: TestBusiness): Promise<void> 
     throw new Error("Refusing to delete a business without this fixture's ownership marker.");
   }
   const result = await admin.from("businesses").delete().eq("id", fixture.id).eq("name", fixture.name);
-  if (result.error) throw new Error("Test business cleanup failed: " + result.error.code);
+  if (result.error) throw new Error("Test business cleanup failed: " + (result.error.code || result.error.message));
   for (const account of Object.values(fixture.accounts)) {
     const { error } = await admin.auth.admin.deleteUser(account.id);
     if (error) throw new Error("Test account cleanup failed.");

@@ -538,6 +538,95 @@ export type Database = {
           },
         ]
       }
+      google_connections: {
+        Row: {
+          account_email: string
+          business_id: string
+          created_at: string
+          owner_id: string
+          refresh_token_sealed: string | null
+          scopes: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_email: string
+          business_id: string
+          created_at?: string
+          owner_id: string
+          refresh_token_sealed?: string | null
+          scopes?: string[]
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          account_email?: string
+          business_id?: string
+          created_at?: string
+          owner_id?: string
+          refresh_token_sealed?: string | null
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_connections_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intake_connector_runs: {
+        Row: {
+          business_id: string
+          counts: Json
+          error_code: string | null
+          id: string
+          received_at: string
+          result: string
+          run_id: string
+          source_id: string
+        }
+        Insert: {
+          business_id: string
+          counts?: Json
+          error_code?: string | null
+          id?: string
+          received_at?: string
+          result: string
+          run_id: string
+          source_id: string
+        }
+        Update: {
+          business_id?: string
+          counts?: Json
+          error_code?: string | null
+          id?: string
+          received_at?: string
+          result?: string
+          run_id?: string
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intake_connector_runs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_connector_runs_source_id_business_id_fkey"
+            columns: ["source_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "intake_sources"
+            referencedColumns: ["id", "business_id"]
+          },
+        ]
+      }
       intake_items: {
         Row: {
           business_id: string
@@ -622,27 +711,51 @@ export type Database = {
       intake_sources: {
         Row: {
           business_id: string
+          connector_key_hash: string | null
+          connector_settings: Json | null
+          connector_status: string | null
           created_at: string
           created_by: string
+          google_file_id: string | null
           id: string
           kind: string
           label: string
+          last_run_at: string | null
+          last_run_summary: Json | null
+          mapping: Json | null
+          sync_lease_until: string | null
         }
         Insert: {
           business_id: string
+          connector_key_hash?: string | null
+          connector_settings?: Json | null
+          connector_status?: string | null
           created_at?: string
           created_by: string
+          google_file_id?: string | null
           id?: string
           kind: string
           label: string
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          mapping?: Json | null
+          sync_lease_until?: string | null
         }
         Update: {
           business_id?: string
+          connector_key_hash?: string | null
+          connector_settings?: Json | null
+          connector_status?: string | null
           created_at?: string
           created_by?: string
+          google_file_id?: string | null
           id?: string
           kind?: string
           label?: string
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          mapping?: Json | null
+          sync_lease_until?: string | null
         }
         Relationships: [
           {
@@ -843,18 +956,68 @@ export type Database = {
         Returns: Json
       }
       check_missed_commitments: { Args: never; Returns: Json }
+      connector_ingest: {
+        Args: { p_key: string; p_run: Json; p_source_id: string }
+        Returns: Json
+      }
+      connector_source: {
+        Args: { p_key: string; p_source_id: string }
+        Returns: Json
+      }
       create_business_workspace: {
         Args: { p_display_name: string; p_name: string }
+        Returns: string
+      }
+      create_google_file_connection: {
+        Args: { p_label: string; p_settings: Json }
         Returns: string
       }
       create_intake_source: {
         Args: { p_kind: string; p_label: string }
         Returns: string
       }
+      create_sheet_connection: {
+        Args: { p_key_hash: string; p_label: string; p_settings: Json }
+        Returns: string
+      }
+      disconnect_connector: {
+        Args: { p_source_id: string }
+        Returns: undefined
+      }
+      disconnect_google: { Args: never; Returns: undefined }
       get_approved_reminder_text: { Args: { p_id: string }; Returns: Json }
       get_intake_bindings: {
         Args: { p_external_ids: string[]; p_source_id: string }
         Returns: Json
+      }
+      google_claim_due: {
+        Args: { p_business?: string; p_limit: number }
+        Returns: string[]
+      }
+      google_claim_source: { Args: { p_source_id: string }; Returns: boolean }
+      google_connection_save: {
+        Args: {
+          p_business: string
+          p_email: string
+          p_owner: string
+          p_scopes: string[]
+          p_sealed: string
+        }
+        Returns: undefined
+      }
+      google_connection_status: {
+        Args: { p_business: string; p_status: string }
+        Returns: undefined
+      }
+      google_connection_token: { Args: { p_business: string }; Returns: string }
+      google_file_ingest: {
+        Args: { p_run: Json; p_source_id: string }
+        Returns: Json
+      }
+      google_file_source: { Args: { p_source_id: string }; Returns: Json }
+      replace_connector_key: {
+        Args: { p_key_hash: string; p_source_id: string }
+        Returns: undefined
       }
       reserve_ai_request: {
         Args: {
@@ -872,6 +1035,18 @@ export type Database = {
           p_review_version: number
         }
         Returns: number
+      }
+      save_connector_mapping: {
+        Args: { p_mapping: Json; p_source_id: string }
+        Returns: undefined
+      }
+      set_connector_paused: {
+        Args: { p_paused: boolean; p_source_id: string }
+        Returns: undefined
+      }
+      set_google_file_tab: {
+        Args: { p_source_id: string; p_tab: string }
+        Returns: undefined
       }
       stage_intake: {
         Args: {
@@ -1024,4 +1199,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

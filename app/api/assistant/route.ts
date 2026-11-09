@@ -10,13 +10,17 @@ const failures: Record<string, { status: number; message: string }> = {
   PAYLOAD_TOO_LARGE: { status: 413, message: "That message is too long. Keep customer replies within 4,000 characters." },
   STALE_VERSION: { status: 409, message: "Records changed. Refresh the page before asking again; your message has not been saved." },
   AI_LIMIT: { status: 429, message: "The business's daily AI allowance is used. Manual forms and reminders remain available." },
+  AI_MEMBER_LIMIT: { status: 429, message: "You have reached the assistant’s minute limit. Wait a moment and try again." },
+  AI_PROVIDER_BUSY: { status: 503, message: "The AI provider is temporarily unavailable. Your message is retained." },
   AI_TIMEOUT: { status: 504, message: "The assistant timed out. Your message is retained; try again or use the manual form." },
   AI_DEMO_ONLY: { status: 503, message: "AI is currently enabled only for fictional demo workspaces." },
   AI_UNAVAILABLE: { status: 503, message: "The assistant is unavailable or returned details that need a manual check. Your records have not changed." },
 };
 function failure(code: string) {
-  const detail = failures[code] ?? failures.AI_UNAVAILABLE;
-  return Response.json({ ok: false, code: failures[code] ? code : "AI_UNAVAILABLE", message: detail.message }, { status: detail.status, headers: { "Cache-Control": "no-store" } });
+  const safeCode = Object.hasOwn(failures, code) ? code : "AI_UNAVAILABLE";
+  const detail = failures[safeCode];
+  return Response.json({ ok: false, code: safeCode, message: detail.message },
+    { status: detail.status, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: Request) {

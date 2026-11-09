@@ -1197,7 +1197,6 @@
   bottom: calc(100% + 9px);
   left: 50%;
   width: max-content;
-  max-width: 150px;
   padding: 6px 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
@@ -1308,12 +1307,13 @@
   font-weight: 700;
 }
 
-.workspace-root .records-head button:hover,
-.workspace-root .section-ai-card button:hover,
-.workspace-root .text-button:hover,
-.workspace-root .action-link:hover,
-.workspace-root .table-foot button:hover {
-  gap: 9px;
+/* Hover moves the arrow only. Widening the gap resized auto-width tables and shifted every column. */
+.workspace-root .records-head button:hover svg,
+.workspace-root .section-ai-card button:hover svg,
+.workspace-root .text-button:hover svg,
+.workspace-root .action-link:hover svg,
+.workspace-root .table-foot button:hover svg {
+  transform: translateX(3px);
 }
 
 .workspace-root .record-row {
@@ -2346,8 +2346,9 @@
   white-space: nowrap;
 }
 
+/* No whole-row highlight: it also tinted text the pointer was not on. Interactive elements show their own hover. */
 .workspace-root tbody tr:hover {
-  background: #fbfcfa;
+  background: transparent;
 }
 
 .workspace-root .entity {

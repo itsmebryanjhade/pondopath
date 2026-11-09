@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 vi.mock("server-only", () => ({}));
-const mocks = vi.hoisted(() => ({ request: vi.fn() }));
+const mocks = vi.hoisted(() => ({ request: vi.fn(), workspace: vi.fn(), rpc: vi.fn() }));
 vi.mock("./ai", () => ({ requestAssistant: mocks.request }));
+vi.mock("./workspace", () => ({ getWorkspace: mocks.workspace }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: mocks.rpc }) }));
 vi.mock("next/navigation", () => ({ unstable_rethrow: () => {} }));
 import { POST } from "../../app/api/assistant/route";
 
-afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.resetAllMocks(); });
 function request(body: BodyInit, headers: Record<string, string> = {}) {
   vi.stubEnv("APP_URL", "http://localhost:3000");
   return new Request("http://localhost:3000/api/assistant", { method: "POST", headers: { origin: "http://localhost:3000", "content-type": "application/json", ...headers }, body });
@@ -32,5 +35,108 @@ describe("assistant HTTP boundary", () => {
     const response = await POST(request(body));
     expect(response.status).toBe(503);
     expect(await response.text()).not.toContain("private credential");
+  });
+
+  it.each([["AI_PROVIDER_BUSY", 503], ["AI_TIMEOUT", 504]])("keeps a provider failure distinct without offering a backup: %s", async (code, status) => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only");
+    vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
+    vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
+    const input = { task: "explain", question: "Bakit?", expectedRevision: 1 };
+    mocks.request.mockRejectedValueOnce(new Error(code));
+    const response = await POST(request(JSON.stringify(input)));
+    expect(response.status).toBe(status);
+    const body = await response.json();
+    expect(body.code).toBe(code);
+    expect(body).not.toHaveProperty("canTryBackup");
+  });
+
+  it("keeps app limits distinct and omits retry metadata", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only");
+    vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
+    vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
+    const input = { task: "explain", question: "Bakit?", expectedRevision: 1 };
+    for (const [code, status] of [["AI_LIMIT", 429], ["AI_MEMBER_LIMIT", 429], ["STALE_VERSION", 409], ["AI_UNAVAILABLE", 503], ["AI_DEMO_ONLY", 503]] as const) {
+      mocks.request.mockRejectedValueOnce(new Error(code));
+      const response = await POST(request(JSON.stringify(input)));
+      expect(response.status).toBe(status);
+      const body = await response.json();
+      expect(body.code).toBe(code);
+      expect(body).not.toHaveProperty("canTryBackup");
+    }
+    vi.stubEnv("OPENROUTER_MODEL", "test/paid");
+    mocks.request.mockRejectedValueOnce(new Error("AI_PROVIDER_BUSY"));
+    expect(await (await POST(request(JSON.stringify(input)))).json()).not.toHaveProperty("canTryBackup");
+  });
+
+  it("runs Gemini once and rejects a backup attempt even when OpenRouter is configured", async () => {
+    const workspace = uiWorkspace();
+    vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
+    vi.stubEnv("GEMINI_API_KEY", "test-only");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only");
+    vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
+    vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
+    mocks.workspace.mockResolvedValue(workspace);
+    mocks.rpc.mockResolvedValueOnce({ data: 1 });
+    mocks.request.mockImplementation((await vi.importActual<typeof import("./ai")>("./ai")).requestAssistant);
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 429 }));
+    vi.stubGlobal("fetch", fetch);
+
+    const input = { task: "explain", question: "Bakit?", expectedRevision: 1 };
+    const primary = await POST(request(JSON.stringify(input)));
+    expect(primary.status).toBe(503);
+    const failure = await primary.json();
+    expect(failure.code).toBe("AI_PROVIDER_BUSY");
+    expect(failure).not.toHaveProperty("canTryBackup");
+    expect(fetch.mock.calls.map(call => new URL(call[0]).hostname)).toEqual(["generativelanguage.googleapis.com"]);
+
+    const backup = await POST(request(JSON.stringify({ ...input, attempt: "backup" })));
+    expect(backup.status).toBe(400);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc.mock.calls.map(call => call[0])).toEqual(["reserve_ai_request"]);
+  });
+
+  it("runs the chat route through the real service and Gemini adapter without executing any financial command", async () => {
+    const workspace = uiWorkspace();
+    const invoiceId = workspace.invoices[0].id;
+    vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
+    vi.stubEnv("GEMINI_API_KEY", "test-only");
+    mocks.workspace.mockResolvedValue(workspace);
+    mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: workspace });
+    mocks.request.mockImplementation((await vi.importActual<typeof import("./ai")>("./ai")).requestAssistant);
+    const output = { kind: "answer", summary: "Review this invoice and check the cash plan.", factIds: ["cash-now"], recordIds: [invoiceId], draft: null };
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json({
+      candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(output) }] } }],
+    }));
+    vi.stubGlobal("fetch", fetch);
+
+    const response = await POST(request(JSON.stringify({ task: "chat", question: "What should I do first?", history: [], expectedRevision: 1 })));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      ok: true, model: "gemini-3.1-flash-lite",
+      proposal: { task: "chat", sourceRevision: 1, draft: null,
+        facts: [{ id: "cash-now", value: "₱40,000.00" }], sources: [{ id: invoiceId, href: "/invoices/" + invoiceId }],
+      },
+    });
+    expect(fetch.mock.calls.map(call => new URL(call[0]).hostname)).toEqual(["generativelanguage.googleapis.com"]);
+    expect(mocks.rpc.mock.calls.map(call => call[0])).toEqual(["reserve_ai_request", "workspace_snapshot"]);
+  });
+
+  it("accepts a normal chat turn and enforces the byte limit on multibyte history", async () => {
+    const chat = { task: "chat", question: "What should I do first?", history: [], expectedRevision: 1 };
+    mocks.request.mockResolvedValueOnce({ proposal: { task: "chat" } });
+    const success = await POST(request(JSON.stringify(chat)));
+    expect(success.status).toBe(200);
+    expect(mocks.request).toHaveBeenCalledWith({ ...chat, language: "auto" });
+    const tooLarge = { ...chat, history: Array(3).fill({ question: "Earlier", answer: "あ".repeat(3000) }) };
+    expect((await POST(request(JSON.stringify(tooLarge)))).status).toBe(413);
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects client-selected model, provider, URL or unsupported attempts before inference", async () => {
+    const input = { task: "explain", question: "Bakit?", expectedRevision: 1 };
+    for (const extra of [{ model: "test/paid" }, { provider: "test" }, { url: "https://other.example" }, { attempt: "auto" }]) {
+      expect((await POST(request(JSON.stringify({ ...input, ...extra })))).status).toBe(400);
+    }
+    expect(mocks.request).not.toHaveBeenCalled();
   });
 });

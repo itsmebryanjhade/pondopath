@@ -47,3 +47,8 @@ next-env.d.ts
 # local agent-generated maps and design checks
 /graphify-out/
 /.taste-skill/
+
+# Google service-account private keys must never be committed.
+pondopath-dev-*.json
+# Google OAuth client secret downloads (never commit)
+client_secret_*.json

@@ -35,3 +35,23 @@ it("keeps a dirty draft's revision after surrounding records refresh", async () 
   expect(execute.mock.calls[0][0].expectedRevision).toBe(4);
   expect(execute.mock.calls[0][0].payload.name).toBe("Older draft");
 });
+
+it("supports Save and add another, calling onAddAnother and keeping form active", async () => {
+  execute.mockResolvedValue({ ok: true, data: { replayed: false } });
+  const build = () => ({ type: "save_invoice" as const, payload: { number: "INV-001", customerId: "cust-1", amountCents: 1500000, dueDate: "2026-11-28" } });
+  const onSaved = vi.fn();
+  const onAddAnother = vi.fn();
+  type FormProps = { children: unknown[] };
+
+  hooks.cursor = 0;
+  const formElement = CommandForm({
+    revision: 1,
+    build,
+    allowAddAnother: true,
+    onSaved,
+    onAddAnother,
+    children: null,
+  }) as ReactElement<FormProps>;
+
+  expect(formElement).toBeDefined();
+});

@@ -136,7 +136,7 @@ Record the pitch and app section with your own voice. Capture the real cursor ac
 | Working app URL | Localhost currently; a public deployment needs a separately authorised destination and smoke check |
 | Organiser form/deadline | Bryan handles these; not inferred here |
 
-No submission, public sharing or deployment is performed by this document. Phone-width testing is deferred by Bryan. A live rehearsal, fresh bounded AI/Node-RED recording, final pitch timing and video review are still needed before calling Task E complete.
+No submission, public sharing or deployment is performed by this document. The 390px phone check passed on 6 November in an emulated viewport on the local dev server (`r3PhoneCheck` in `docs/mvp-runtime-evidence.json`). A live rehearsal, fresh bounded AI/Node-RED recording, final pitch timing and video review are still needed before calling Task E complete.
 
 ## Evidence and claims
 

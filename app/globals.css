@@ -911,3 +911,10 @@ th.num,
 @media (max-width: 420px) {
   .cash-metrics.compact-metrics { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* In-page links (the landing navbar) glide to their section and stop below the sticky header.
+   data-scroll-behavior="smooth" on <html> keeps page-to-page navigation instant. */
+html { scroll-padding-top: 88px; }
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}

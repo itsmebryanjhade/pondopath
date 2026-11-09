@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { CustomerInvoices } from "@/components/customer-invoices";
 import { CollectionPanel } from "@/components/collection-panel";
+import { addDays } from "@/lib/domain/dates";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -21,10 +22,7 @@ function fixture() {
 }
 
 function render(workspace = fixture(), params: { page?: string; filter?: string } = {}) {
-  return renderToStaticMarkup(CustomerInvoices({ workspace, params,
-    invoiceControls: createElement("button", null, "Add invoice"),
-    customerControls: createElement("button", null, "Save customer"),
-  }));
+  return renderToStaticMarkup(CustomerInvoices({ workspace, params }));
 }
 
 function chartAmounts(html: string) {
@@ -38,22 +36,25 @@ describe("source Invoices page connected to collection records", () => {
     workspace.expectations[0].remaining_cents = 3_000_000;
     const html = render(workspace);
     expect(html).toContain("section-invoices invoices-page");
-    expect(html.match(/class="section-metric"/g)).toHaveLength(3);
+    // The metric cards became the breakdown inside "Money customers owe you".
+    expect(html).not.toContain('class="section-metric"');
+    expect(html).toContain("Money customers owe you");
     expect(chartAmounts(html)).toEqual([3_000_000, 0, 0, 0, 0]);
     expect(html).toContain("₱50,000.00");
     expect(html).toContain("₱20,000.00");
-    expect(html).toContain("unplanned");
-    expect(html).toContain("2026-10-28");
-    expect(html).toContain("Customer commitment");
+    expect(html).toContain("₱20,000.00 has no payment date");
+    expect(html).toContain("Due 28 Oct");
+    expect(html).toContain("Customer promised");
     expect(html).toContain(`/invoices/${workspace.invoices[0].id}?plan=edit#collection-plan`);
     expect(html).toContain("Update expected payment");
-    expect(html).toMatch(/<th scope="row">[\s\S]*?Update expected payment[\s\S]*?<\/th>/);
-    expect(html).toContain('href="/followups"');
-    expect(html).toContain("Follow-ups");
+    expect(html).toMatch(/<li class="invoice-item[\s\S]*?Update expected payment[\s\S]*?<\/li>/);
+    // One main action in the header; Add records and Follow-ups are in the sidebar.
+    expect(html).not.toContain("Import &amp; review");
     expect(html).toContain(`#collection-plan`);
     expect(html).toContain("Expected receipts are not available cash");
-    expect(html).toContain("Add invoice");
-    expect(html).toContain("Save customer");
+    // The add forms live on Add records; the header opens the invoice form there.
+    expect(html).toContain('href="/add?type=invoice"');
+    expect(html).not.toContain('id="new-invoice"');
   });
 
   it("uses the forecast rules to exclude stale, review-needed, paid and out-of-window amounts", () => {
@@ -81,10 +82,12 @@ describe("source Invoices page connected to collection records", () => {
     let html = render(workspace, { filter: "overdue", page: "2" });
     expect(html).toContain("INV-50");
     expect(html).not.toContain("INV-49");
+    // The checks card names the first five and counts the rest.
+    expect(html).toContain("and 46 more");
     expect(html).toContain('/invoices?filter=overdue&amp;page=1');
     expect(html).toContain("₱2,550,000.00");
     html = render(workspace, { filter: "due" });
-    expect(html).toContain("No invoices match this collection view");
+    expect(html).toContain("No invoices match this filter");
     expect(html).toContain("₱2,550,000.00");
     html = render(workspace, { filter: "__proto__", page: "9999" });
     expect(html).toContain("INV-50");
@@ -99,11 +102,12 @@ describe("source Invoices page connected to collection records", () => {
     workspace.forecastInput.invoices = workspace.invoices.map((invoice) => ({ id: invoice.id, outstandingCents: invoice.outstanding_cents, expectation: null }));
     workspace.expectations = [];
     const html = render(workspace);
-    expect(html).toMatch(/Due in the next 7 days<\/p><strong[^>]*>₱100,000.00/);
-    expect(html).toMatch(/Overdue balance<\/p><strong[^>]*>₱50,000.00/);
+    expect(html).toMatch(/Due in the next 7 days<small>2 invoices<\/small><\/span><strong[^>]*>₱100,000.00/);
+    expect(html).toMatch(/Overdue<small>1 invoice<\/small><\/span><strong[^>]*>₱50,000.00/);
+    expect(html).toMatch(/Due later<small>1 invoice<\/small><\/span><strong[^>]*>₱50,000.00/);
   });
 
-  it("shows a useful empty state and still allows adding the first customer", () => {
+  it("shows a useful empty state that leads to adding the first invoice", () => {
     const workspace = fixture();
     workspace.invoices = [];
     workspace.forecastInput.invoices = [];
@@ -111,9 +115,8 @@ describe("source Invoices page connected to collection records", () => {
     workspace.customers = [];
     const html = render(workspace);
     expect(html).toContain("No invoices yet");
-    expect(html).toContain("Create a customer first");
-    expect(html).not.toContain(">Add invoice<");
-    expect(html).toContain("Save customer");
+    expect(html).toContain("Add your first invoice");
+    expect(html).toContain('href="/add?type=invoice"');
     expect(chartAmounts(html)).toEqual([0, 0, 0, 0, 0]);
   });
 
@@ -129,9 +132,60 @@ describe("source Invoices page connected to collection records", () => {
     const workspace = fixture();
     const invoice = workspace.invoices[0];
     const html = renderToStaticMarkup(createElement(CollectionPanel, { workspace, invoice, openPlan: true }));
-    expect(html).toContain('class="disclosure" open=""');
-    expect(html).toContain(`Original due date: ${invoice.due_date}`);
-    expect(html).toContain("Changing this plan does not record a payment");
-    expect(html).toContain("Expected receipt date");
+    expect(html).toMatch(/aria-expanded="true"[^>]*>Set a new date|aria-expanded="true"[^>]*>Update expected payment|aria-expanded="true"[^>]*>Set expected payment/);
+    expect(html).toContain("For the forecast. Record payment when the money arrives.");
+    expect(html).toContain("Expected payment date");
+    expect(html).toContain("Save payment plan");
+    expect(html).toContain("Customer promised");
+    expect(html).not.toContain("Choose a source");
+  });
+
+  it("identifies a valid payment date outside the current forecast", () => {
+    const workspace = fixture();
+    const invoice = workspace.invoices[0];
+    const expectation = workspace.expectations[0];
+    expectation.state = "active";
+    expectation.remaining_cents = invoice.outstanding_cents;
+    const renderPlan = () => renderToStaticMarkup(createElement(CollectionPanel, { workspace, invoice }));
+    expectation.expected_date = addDays(workspace.forecastInput.referenceDate, 29);
+    expect(renderPlan()).not.toContain("Outside the 30-day forecast");
+    expectation.expected_date = addDays(workspace.forecastInput.referenceDate, 30);
+    expect(renderPlan()).toContain("Outside the 30-day forecast");
+    expect(renderPlan()).not.toContain("needs a payment date");
+  });
+
+  it("names each invoice the forecast can't rely on, with a direct fix, instead of a general warning", () => {
+    const workspace = fixture();
+    workspace.forecastInput.invoices[0].expectation!.remainingCents = 3_000_000;
+    workspace.expectations[0].remaining_cents = 3_000_000;
+    const html = render(workspace);
+    expect(html).toContain("Invoices to fix");
+    expect(html).toContain("Incomplete plan: 1 unpaid invoice has money with no expected date");
+    expect(html).toContain(`/invoices/${workspace.invoices[0].id}?plan=edit#collection-plan`);
+    expect(html).not.toContain("Collection check");
+    expect(html).not.toContain("overdue bill");
+  });
+
+  it("says in one sentence where an invoice's money stands in the forecast", () => {
+    const workspace = fixture();
+    const invoice = workspace.invoices[0];
+    const expectation = workspace.expectations[0];
+    const renderPlan = () => renderToStaticMarkup(createElement(CollectionPanel, { workspace, invoice })).replaceAll("&#x27;", "'");
+    expectation.kind = "commitment";
+    expectation.state = "active";
+    expectation.remaining_cents = invoice.outstanding_cents;
+    expectation.expected_date = "2026-10-20";
+    expect(renderPlan()).toContain("That date has passed, so it isn’t in the forecast.");
+    expect(renderPlan()).toContain("Set a new date");
+    expectation.kind = "assumption";
+    expect(renderPlan()).toContain("You expected payment on 20 Oct. That date has passed");
+    expectation.kind = "commitment";
+    expectation.expected_date = addDays(workspace.forecastInput.referenceDate, 3);
+    expect(renderPlan()).toMatch(/The customer promised to pay ₱50,000.00 on .+\. It’s in the forecast\./);
+    expect(renderPlan()).toContain("Update expected payment");
+    workspace.expectations = [];
+    expect(renderPlan()).toContain("No payment date yet, so this money isn’t in the forecast.");
+    expect(renderPlan()).toContain("Set expected payment");
   });
 });
+

@@ -4,9 +4,9 @@ import { WorkspaceShell } from "@/components/workspace-shell";
 import { FollowupPanel } from "@/components/followup-panel";
 import { NextActions } from "@/components/next-actions";
 import { DashboardIcon } from "@/components/dashboard-icon";
-import { RefreshRecords } from "@/components/refresh-records";
+import { WorkspacePageHeading } from "@/components/workspace-page-heading";
 import { checkedSum, formatPHP } from "@/lib/domain/money";
-import { formatPlanDate } from "@/lib/display";
+import { followupDue } from "@/lib/display";
 import { AutomationCheck } from "@/components/automation-check";
 
 const checkTime = (value?: string | null) => value ? new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value)) + " PHT" : "Never";
@@ -16,77 +16,86 @@ export default async function FollowupsPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const open = workspace.followups.filter((task) => task.state === "open");
   const overdue = open.filter((task) => task.due_date < workspace.forecastInput.referenceDate);
+  // Most urgent first: the earliest open task; invoices with only finished tasks sort after them.
   const dueByInvoice = new Map<string, string>();
-  for (const task of [...workspace.followups].sort((a, b) => a.due_date.localeCompare(b.due_date))) if (!dueByInvoice.has(task.invoice_id)) dueByInvoice.set(task.invoice_id, task.due_date);
+  for (const task of [...workspace.followups].sort((a, b) => Number(a.state !== "open") - Number(b.state !== "open") || a.due_date.localeCompare(b.due_date))) if (!dueByInvoice.has(task.invoice_id)) dueByInvoice.set(task.invoice_id, (task.state === "open" ? "0" : "1") + task.due_date);
   const invoices = workspace.invoices.filter((invoice) => dueByInvoice.has(invoice.id)).sort((a, b) => dueByInvoice.get(a.id)!.localeCompare(dueByInvoice.get(b.id)!) || a.id.localeCompare(b.id));
   const requestedPage = typeof params.page === "string" && /^[1-9]\d{0,4}$/.test(params.page) ? Number(params.page) : 1;
   const pages = Math.max(1, Math.ceil(invoices.length / 20));
   const page = Math.min(requestedPage, pages);
   const openInvoiceIds = new Set(open.map((task) => task.invoice_id));
   const tiedBalance = checkedSum(workspace.invoices.filter((invoice) => openInvoiceIds.has(invoice.id)).map((invoice) => invoice.outstanding_cents));
-  const schedule = [
-    { label: "Overdue", count: overdue.length },
-    { label: "Due today", count: open.filter((task) => task.due_date === workspace.forecastInput.referenceDate).length },
-    { label: "Upcoming", count: open.filter((task) => task.due_date > workspace.forecastInput.referenceDate).length },
+  const today = workspace.forecastInput.referenceDate;
+  const counts = [
+    { key: "late", label: "Overdue", count: overdue.length },
+    { key: "today", label: "Due today", count: open.filter((task) => task.due_date === today).length },
+    { key: "later", label: "Coming up", count: open.filter((task) => task.due_date > today).length },
   ];
-  const chartMaximum = Math.max(1, ...schedule.map((group) => group.count));
-  const metrics = [
-    { label: "Open actions", count: open.length, note: "All saved unresolved tasks", tone: "orange" },
-    { label: "Overdue actions", count: overdue.length, note: "Before the reference date", tone: "blue" },
-    { label: "Completed actions", count: workspace.followups.filter((task) => task.state === "completed").length, note: "Retained completion history", tone: "green" },
-  ];
+  const done = workspace.followups.filter((task) => task.state === "completed").length;
+  const automation = workspace.automation;
   return <WorkspaceShell workspace={workspace} className="section-page section-follow-ups followups-page" header={
-    <header className="section-heading">
-      <div><p className="eyebrow">Action center · {workspace.business.is_demo ? "Fictional demo" : workspace.business.name}</p><h1>Follow-ups</h1><p>Keep the next collection action, owner and due date visible.</p></div>
-      <div className="dashboard-heading-actions"><span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span><RefreshRecords /><Link className="section-primary" href="/invoices?filter=no_followup"><DashboardIcon name="plus" size={17} />Find invoices without a follow-up</Link></div>
-    </header>
+    <WorkspacePageHeading title="Follow-ups" description="Every collection task, who has it and when it’s due." workspace={workspace}
+      actions={<Link className="button" href="/invoices?filter=no_followup"><DashboardIcon name="plus" size={17} />Find invoices without a follow-up</Link>} />
   }>
-    <NextActions workspace={workspace} />
+    <NextActions workspace={workspace} origin="followups" showFollowupAssistant />
     <section className="section-lower-grid">
-      <section className="records-panel" id="followup-queue">
-        <div className="records-head"><div><h2>Follow-up queue and history</h2><p>Expand an invoice to review its actions, assignment and outcomes</p></div><span>{invoices.length} invoices</span></div>
-        {invoices.length ? <div className="followup-list-scroll" role="region" aria-label="Invoice follow-up records" tabIndex={0}>
-          <div className="record-list followup-worklist">{invoices.slice((page - 1) * 20, page * 20).map((invoice) => {
-            const count = open.filter((task) => task.invoice_id === invoice.id).length;
-            return <details className="records-panel followup-invoice-card" key={invoice.id}>
-              <summary className="record-row">
-                <span className="record-icon" aria-hidden="true"><DashboardIcon name="bell" size={16} /></span>
-                <div><strong>{invoice.number}</strong><span>{workspace.customers.find((customer) => customer.id === invoice.customer_id)?.name ?? "Customer unavailable"}</span></div>
-                <strong className="record-amount num">{formatPHP(invoice.outstanding_cents)}</strong><span className={`record-status${count ? " status-1" : ""}`}>{count} open</span><span className="followup-toggle" aria-hidden="true"><DashboardIcon name="chevron" size={16} /></span>
+      <section className="records-panel followup-queue" id="followup-queue" aria-labelledby="followup-queue-heading">
+        <div className="records-head"><div><h2 id="followup-queue-heading">All follow-ups</h2><p>Every invoice with a follow-up, most urgent first. Open one to record what happened.</p></div><span>{invoices.length} {invoices.length === 1 ? "invoice" : "invoices"}</span></div>
+        {invoices.length ? <ul className="followup-queue-list">{invoices.slice((page - 1) * 20, page * 20).map((invoice) => {
+          const tasks = open.filter((task) => task.invoice_id === invoice.id).sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id.localeCompare(b.id));
+          const first = tasks[0];
+          const due = first ? followupDue(first.due_date, workspace.forecastInput.referenceDate) : null;
+          const customer = workspace.customers.find((row) => row.id === invoice.customer_id)?.name ?? "Customer unavailable";
+          return <li key={invoice.id} className={`followup-queue-item is-${due?.tone ?? "done"}`}>
+            <details className="followup-invoice-card">
+              <summary>
+                <span className="followup-queue-main">
+                  <span className="followup-queue-meta"><span className={`next-chip due-${due ? (due.tone === "late" ? "late" : due.tone === "today" ? "soon" : "calm") : "calm"}`}>{due ? due.text : "Nothing open"}</span>{tasks.length > 1 && <span className="next-chip">+{tasks.length - 1} more</span>}</span>
+                  <strong>{first ? first.next_action : "All follow-ups done"}</strong>
+                  <small>{invoice.number} · {customer} · <span className="num">{formatPHP(invoice.outstanding_cents)}</span> {invoice.outstanding_cents > 0 ? "owed" : "paid in full"}</small>
+                </span>
+                <span className="followup-queue-toggle"><span className="when-closed">{first ? "Open" : "History"}</span><span className="when-open">Close</span><DashboardIcon name="chevron" size={16} /></span>
               </summary>
-              <div className="followup-invoice-body"><Link className="text-link" href={`/invoices/${invoice.id}`}>Review source invoice →</Link><FollowupPanel workspace={workspace} invoice={invoice} /></div>
-            </details>;
-          })}</div>
-        </div> : <p className="empty-state">No follow-up tasks entered. Open an unpaid invoice to schedule its next action.</p>}
+              <div className="followup-invoice-body">
+                <FollowupPanel workspace={workspace} invoice={invoice} hideHeading />
+                <Link className="text-link followup-queue-link" href={`/invoices/${invoice.id}?from=followups`}>Open the invoice <DashboardIcon name="arrowRight" size={14} /></Link>
+              </div>
+            </details>
+          </li>;
+        })}</ul> : <p className="empty-state">No follow-up tasks entered. Open an unpaid invoice to schedule its next action.</p>}
         {pages > 1 && <nav className="table-foot" aria-label="Follow-up pages"><span>Page {page} of {pages}</span>{page > 1 && <Link href={`/followups?page=${page - 1}`}>Previous</Link>}{page < pages && <Link href={`/followups?page=${page + 1}`}>Next</Link>}</nav>}
       </section>
-      <aside className="section-ai-card" role={workspace.automation.stale ? "status" : undefined}>
-        <span><DashboardIcon name="bell" size={15} />Follow-up checks</span>
-        <div className="automation-status-copy"><p>{workspace.automation.stale ? "Automatic follow-up checks are not current. Use Check now while the scheduled worker is unavailable." : "Scheduled checks run every 15 minutes. Review the source invoice before contacting a customer."}</p>
-          <small>Scheduled success: {checkTime(workspace.automation.lastSuccessAt)} · Last attempt: {checkTime(workspace.automation.lastAttemptAt)}{workspace.automation.lastStatus ? ` (${workspace.automation.lastStatus}${workspace.automation.lastErrorCode ? `: ${workspace.automation.lastErrorCode}` : ""})` : ""}</small>
-          {workspace.automation.lastManualAt && <small>Manual check: {checkTime(workspace.automation.lastManualAt)}. Scheduled status is tracked separately.</small>}
-          <small>Checks create tasks only. A payment commitment is not received cash.</small>
+      <aside className={`followup-checks${automation.stale ? " is-paused" : ""}`} role={automation.stale ? "status" : undefined} aria-labelledby="followup-checks-heading">
+        <div className="followup-checks-copy">
+          <h2 id="followup-checks-heading"><DashboardIcon name="bell" size={15} />{automation.stale ? "Automatic checks are paused" : "Automatic checks are on"}</h2>
+          <p>{automation.stale
+            ? "Every 15 minutes PondoPath looks for late invoices and passed payment promises, but the last automatic check didn’t run. Press Check now to run it yourself."
+            : "Every 15 minutes PondoPath adds a follow-up when an invoice is late or a promised payment date passes."}</p>
+          <small>Last automatic check: {checkTime(automation.lastSuccessAt)}{automation.lastAttemptAt !== automation.lastSuccessAt ? ` · Last try: ${checkTime(automation.lastAttemptAt)}` : ""}{automation.lastStatus && automation.lastStatus !== "succeeded" ? ` (${automation.lastStatus}${automation.lastErrorCode ? `: ${automation.lastErrorCode}` : ""})` : ""}</small>
+          {automation.lastManualAt && <small>You checked by hand at {checkTime(automation.lastManualAt)}.</small>}
         </div>
-        <AutomationCheck />
-        <Link className="followup-source-link" href="/invoices?filter=commitment">Review commitments <DashboardIcon name="arrowRight" size={15} /></Link>
+        <div className="followup-checks-actions">
+          <AutomationCheck />
+          <Link className="row-action is-quiet" href="/invoices?filter=commitment">See promised payments <DashboardIcon name="arrowRight" size={14} /></Link>
+        </div>
       </aside>
     </section>
-    <section className="section-metrics" aria-label="Follow-up summary">
-      {metrics.map(({ label, count, note, tone }) => <article className="section-metric" key={label}><span className={`metric-mark ${tone}`} aria-hidden="true" /><p>{label}</p><strong className="num">{count}</strong><small>{note}</small></article>)}
-    </section>
-    <section className="section-feature" aria-label="Follow-up analytics">
-      <div className="section-feature-copy">
-        <span>Amount tied to open follow-ups</span><strong className="num">{formatPHP(tiedBalance)}</strong>
-        <p>Unpaid balances on invoices with open tasks. Each invoice is counted once; this is not expected or received cash.</p>
-        <Link className="followup-source-link" href="/invoices?filter=unpaid">Review unpaid invoices <DashboardIcon name="arrowRight" size={15} /></Link>
+    <section className="followup-summary" aria-label="Follow-up summary">
+      <div className="followup-summary-total">
+        <span>Waiting on follow-ups</span>
+        <strong className="num">{formatPHP(tiedBalance)}</strong>
+        <p>Still owed on invoices with an open task. Not cash yet.</p>
+        <Link className="followup-source-link" href="/invoices?filter=unpaid">See unpaid invoices <DashboardIcon name="arrowRight" size={15} /></Link>
       </div>
-      <div className="mini-chart" role="region" aria-labelledby="followup-analytics-title">
-        <div className="mini-chart-head"><div><strong id="followup-analytics-title">Open action schedule</strong><span>Task due dates as of {formatPlanDate(workspace.forecastInput.referenceDate)}</span></div><span className="mini-chart-change">Actions</span></div>
-        <div className="bars followup-bars" aria-label="Open tasks by due-date group">
-          {schedule.map((group) => <button type="button" key={group.label} data-count={group.count} aria-label={`${group.label}: ${group.count} open actions`} data-tooltip={`${group.label}: ${group.count} open actions`}><span aria-hidden="true" style={{ height: `${group.count / chartMaximum * 100}%` }} /></button>)}
+      <div className="followup-summary-tasks">
+        <div className="followup-summary-tasks-head"><span>Open tasks by due date</span><strong className="num">{open.length}</strong></div>
+        <div className="followup-stack" role="img" aria-label={counts.map(({ label, count }) => `${label}: ${count}`).join(", ")}>
+          {open.length ? counts.filter(({ count }) => count > 0).map(({ key, count }) => <span key={key} className={`is-${key}`} style={{ flexGrow: count }} />) : <span className="is-empty" />}
         </div>
-        <div className="bar-dates followup-bar-labels" aria-hidden="true">{schedule.map((group) => <span key={group.label}>{group.label}<strong>{group.count}</strong></span>)}</div>
-        <p className="followup-chart-note">Only open tasks are included. Completed actions remain available in the invoice history.</p>
+        <ul className="followup-legend">
+          {counts.map(({ key, label, count }) => <li key={key} className={`is-${key}`} data-count={count}><i aria-hidden="true" /><span>{label}</span><strong className="num">{count}</strong></li>)}
+          <li className="is-done"><i aria-hidden="true" /><span>Done</span><strong className="num">{done}</strong></li>
+        </ul>
       </div>
     </section>
   </WorkspaceShell>;

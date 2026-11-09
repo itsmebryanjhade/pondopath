@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aiRequestSchema, buildAiContext, validateAiProposal } from "./ai";
+import { aiRequestSchema, buildAiContext, validateAiProposal, type AiRequest } from "./ai";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 
 const workspace = uiWorkspace();
@@ -14,8 +14,103 @@ describe("bounded multilingual AI proposals", () => {
     expect(aiRequestSchema.safeParse({ task: "extract_reply", reply: "hello", expectedRevision: 1 }).success).toBe(false);
     expect(aiRequestSchema.parse(request).language).toBe("taglish");
   });
+  it("accepts only a bounded chat question, text pairs and typed page context", () => {
+    const chat = {
+      task: "chat", question: "How much cash is available?", expectedRevision: 1,
+      history: [{ question: "Can you explain the plan?", answer: "The app shows cash now." }],
+      context: { page: "invoices", record: { kind: "invoice", id: invoiceId } }, language: "english",
+    };
+    expect(aiRequestSchema.parse(chat)).toEqual(chat);
+    for (const changes of [
+      { history: Array(4).fill(chat.history[0]) },
+      { history: [{ question: "Earlier", answer: "x".repeat(3001) }] },
+      { history: [{ question: "x".repeat(1001), answer: "Earlier answer" }] },
+      { history: [{ ...chat.history[0], role: "system" }] },
+      { context: { page: "arbitrary", record: chat.context.record } },
+      { context: { ...chat.context, record: { ...chat.context.record, businessId: "forged" } } },
+      { context: { ...chat.context, record: { kind: "invoice", id: "/invoices/forged" } } },
+      { question: "x".repeat(1001) }, { actor: "owner" }, { expectedRevision: -1 },
+      { attempt: "backup" }, { intent: "record_receipt" },
+    ]) expect(aiRequestSchema.safeParse({ ...chat, ...changes }).success).toBe(false);
+  });
+
+  it.each([{ amountCents: 1_000_000 }, { date: "2026-11-07" }])("requires review when an exact quote disagrees with %j", change => {
+    const reply = "PHP 20000 on 2026-11-06";
+    const result = validateAiProposal({ ...request, reply }, { ...proposal, ...change, sourceQuotes: [reply] }, workspace);
+    expect(result).toMatchObject({ needsReview: true, issues: [expect.any(String)] });
+    for (const key of Object.keys(change)) expect(result).toHaveProperty(key, null);
+  });
+
+  it.each(["OTHER-001", "1024"])("holds an exact quote that refers to a different invoice: %s", number => {
+    const current = uiWorkspace();
+    current.invoices.push({ ...current.invoices[0], id: "10000000-0000-4000-8000-000000000099", number });
+    const reply = "For invoice " + number + ", PHP 20000 on 2026-11-06.";
+    expect(validateAiProposal({ ...request, reply }, { ...proposal, sourceQuotes: [reply] }, current))
+      .toMatchObject({ needsReview: true, amountCents: null, date: null });
+  });
+
+  it.each(["invoice ZZZ-999", "invoice ABC", "invoice number abc"])("holds a quote naming an unknown %s", reference => {
+    const reply = "For " + reference + ", PHP 20000 on 2026-11-06.";
+    expect(validateAiProposal({ ...request, reply }, { ...proposal, sourceQuotes: [reply] }, workspace))
+      .toMatchObject({ needsReview: true, amountCents: null, date: null });
+  });
+
+  it("does not mistake a currency marker after invoice wording for an invoice number", () => {
+    const reply = "We will pay this invoice PHP 20000 on 2026-11-06.";
+    expect(validateAiProposal({ ...request, reply }, { ...proposal, sourceQuotes: [reply] }, workspace))
+      .toMatchObject({ needsReview: false, amountCents: 2_000_000 });
+  });
+
+  it("does not use a date-shaped invoice number as the promised payment date", () => {
+    const current = uiWorkspace();
+    current.invoices[0].number = "2026-11-06";
+    const reply = "For invoice 2026-11-06, we will pay PHP 20000.";
+    expect(validateAiProposal({ ...request, reply }, { ...proposal, sourceQuotes: [reply] }, current))
+      .toMatchObject({ needsReview: true, date: null });
+  });
+
+  it("does not confuse an exact PHP amount with a numeric invoice number", () => {
+    const current = uiWorkspace();
+    current.invoices.push({ ...current.invoices[0], id: "10000000-0000-4000-8000-000000000099", number: "1024" });
+    const reply = "PHP 1024 on 2026-11-06";
+    expect(validateAiProposal({ ...request, reply }, { ...proposal, amountCents: 102_400, sourceQuotes: [reply] }, current))
+      .toMatchObject({ needsReview: false, amountCents: 102_400 });
+  });
+
+  it.each(["PHP 20k", "PHP 20 000", "PHP 20 .50", "PHP 20 - 30"])("never trusts the numeric prefix of an unsupported amount: %s", amount => {
+    const reply = amount + " on 2026-11-06";
+    expect(validateAiProposal({ ...request, reply }, { ...proposal, amountCents: 2000, sourceQuotes: [reply] }, workspace))
+      .toMatchObject({ needsReview: true, amountCents: null });
+  });
+
+  it("accepts one distinct supported amount and date, including exact separate quotes", () => {
+    const reply = "PHP 1,250.50 on 2026-11-06. To confirm, ₱1,250.50.";
+    expect(validateAiProposal({ ...request, reply }, {
+      ...proposal, amountCents: 125_050, sourceQuotes: ["₱1,250.50", "2026-11-06"],
+    }, workspace)).toMatchObject({ needsReview: false, amountCents: 125_050, date: "2026-11-06" });
+  });
+
+  it.each([
+    "PHP 20000 and PHP 30000 on 2026-11-06",
+    "PHP 20000 on 2026-11-06 and 30,000 on 2026-11-06",
+    "PHP 20k on 2026-11-06",
+    "PHP 20,00 on 2026-11-06",
+    "PHP 20 000 on 2026-11-06",
+    "PHP 20000 on 2026-02-30",
+    "PHP 20000 on November 6, 2026",
+  ])("holds conflicting or unsupported source values for review: %s", reply => {
+    expect(validateAiProposal({ ...request, reply }, { ...proposal, sourceQuotes: [reply] }, workspace))
+      .toMatchObject({ needsReview: true });
+  });
+
+  it.each([["PHP 20000"], ["2026-11-06"], []])("holds a reply when its exact quotes omit either source value", (...sourceQuotes) => {
+    const reply = "PHP 20000 on 2026-11-06";
+    expect(validateAiProposal({ ...request, reply }, { ...proposal, sourceQuotes }, workspace))
+      .toMatchObject({ needsReview: true });
+  });
+
   it("keeps only authorized necessary facts and reports calculated forecast values", () => {
-    const context = buildAiContext(workspace, aiRequestSchema.parse(request));
+    const context = buildAiContext(workspace, request);
     expect(context.allowedRecordIds).toContain(invoiceId);
     expect(JSON.stringify(context.data)).not.toContain(workspace.actor.userId);
     expect(JSON.stringify(context.data)).not.toContain("email");
@@ -53,5 +148,137 @@ describe("bounded multilingual AI proposals", () => {
     expect(validateAiProposal(explain, { summary: "Expected payment pa lang ito.", recordIds: [invoiceId] }, workspace)).toMatchObject({ task: "explain" });
     expect(() => validateAiProposal(explain, { summary: "Wrong source", recordIds: ["other"] }, workspace)).toThrow();
     expect(() => validateAiProposal(request, { ...proposal, execute: "record_receipt" }, workspace)).toThrow();
+  });
+  it("accepts only explicit, masked import-mapping requests with temporary column IDs", () => {
+    const mapping = {
+      task: "suggest_import_mapping", expectedRevision: 1, language: "english",
+      headers: [{ id: "c0", name: "Reference" }, { id: "c1", name: "Amount" }, { id: "c2", name: "Due" }],
+      samples: [["<id>", "<amount>", "<date>"]],
+    };
+    expect(aiRequestSchema.parse(mapping)).toMatchObject({ task: "suggest_import_mapping", headers: mapping.headers, samples: mapping.samples });
+    expect((aiRequestSchema.parse({ ...mapping, attempt: "backup" }) as Extract<AiRequest, { task: "suggest_import_mapping" }>).attempt).toBe("backup");
+    expect(aiRequestSchema.safeParse({ ...mapping, samples: [["INV-1", "50000", "2026-11-15"]] }).success).toBe(false);
+    expect(aiRequestSchema.safeParse({ ...mapping, headers: Array.from({ length: 25 }, (_, index) => ({ id: `c${index}`, name: `H${index}` })) }).success).toBe(false);
+    expect(aiRequestSchema.safeParse({ ...mapping, headers: [{ id: "unknown", name: "Reference" }] }).success).toBe(false);
+  });
+  it("returns only safe mapping context and rejects unknown or conflicting temporary IDs", () => {
+    const mapping = aiRequestSchema.parse({
+      task: "suggest_import_mapping", expectedRevision: 1, headers: [{ id: "c0", name: "Reference" }, { id: "c1", name: "Amount" }, { id: "c2", name: "Due" }],
+      samples: [["<id>", "<amount>", "<date>"]],
+    }) as Extract<AiRequest, { task: "suggest_import_mapping" }>;
+    const context = buildAiContext(workspace, mapping);
+    expect(context.data).toEqual({ headers: mapping.headers, samples: mapping.samples });
+    expect(JSON.stringify(context.data)).not.toContain(workspace.actor.userId);
+    const output = { fields: { externalId: "c0", number: "c0", amount: "c1", dueDate: "c2", customer: null, payee: null, label: null, typeColumn: null, paidAmount: null, openBalance: null, status: null }, unresolved: ["label", "payee"] };
+    expect(validateAiProposal(mapping, output, workspace)).toMatchObject({ task: "suggest_import_mapping", sourceRevision: 1, fields: output.fields, unresolved: ["label", "payee"] });
+    expect(() => validateAiProposal(mapping, { ...output, fields: { ...output.fields, amount: "c9" } }, workspace)).toThrow();
+    expect(() => validateAiProposal(mapping, { ...output, fields: { ...output.fields, amount: "c0" } }, workspace)).toThrow();
+    expect(() => validateAiProposal(mapping, { ...output, unresolved: [] }, workspace)).toThrow();
+  });
+
+  it("validates and bounds extract_record schema and context", () => {
+    const raw = { task: "extract_record" as const, text: "Invoice 1042, Acme Corp, 25k, due 2026-11-30", expectedRevision: 1 };
+    expect(aiRequestSchema.parse(raw)).toMatchObject({ task: "extract_record", text: raw.text });
+    expect(aiRequestSchema.safeParse({ ...raw, text: "x".repeat(1001) }).success).toBe(false);
+
+    const valid = aiRequestSchema.parse(raw) as Extract<AiRequest, { task: "extract_record" }>;
+    const context = buildAiContext(workspace, valid);
+    expect(context.data).toHaveProperty("customers");
+    expect(context.data).toHaveProperty("referenceDate");
+    expect(JSON.stringify(context.data)).not.toContain(workspace.actor.userId);
+  });
+
+  it.each([
+    { quoteAmount: "PHP 1200", quoteDate: "2026-11-30", amountCents: 25_000, dueDate: "2026-11-21", verifiedAmount: null, verifiedDate: null },
+    { quoteAmount: "PHP 1200", quoteDate: "Nov 30", amountCents: 120_000, dueDate: "2026-11-30", verifiedAmount: 120_000, verifiedDate: null },
+    { quoteAmount: "PHP 1200 or 2000", quoteDate: "2026-11-30", amountCents: 120_000, dueDate: "2026-11-30", verifiedAmount: null, verifiedDate: "2026-11-30" },
+  ])("leaves unsupported amounts and dates blank for the quoted record", ({ quoteAmount, quoteDate, amountCents, dueDate, verifiedAmount, verifiedDate }) => {
+    const party = workspace.customers[0].name;
+    const quote = `Invoice 1042, ${party}, ${quoteAmount}, due ${quoteDate}`;
+    const text = quote + ". Shipping, Northwind, PHP 250, due 2026-11-21.";
+    const request = aiRequestSchema.parse({ task: "extract_record", text, expectedRevision: 1 }) as Extract<AiRequest, { task: "extract_record" }>;
+    const output = { proposals: [{ kind: "invoice", number: "1042", label: null, party, amountCents, dueDate,
+      sourceQuotes: [quote], issues: [], needsReview: false }] };
+    expect(validateAiProposal(request, output, workspace)).toMatchObject({
+      proposals: [{ amountCents: verifiedAmount, dueDate: verifiedDate, needsReview: true }],
+    });
+  });
+
+  it("validates extracted invoice and expense proposals, matching authorized customers and verifying amounts/dates", () => {
+    const customer = workspace.customers[0];
+    const text = `Invoice 1042, ${customer.name}, 25k, due 2026-11-30. Also Office supplies, National Bookstore, PHP 1500, due 2026-11-20.`;
+    const req = aiRequestSchema.parse({ task: "extract_record", text, expectedRevision: 1 }) as Extract<AiRequest, { task: "extract_record" }>;
+
+    const output = {
+      proposals: [
+        {
+          kind: "invoice" as const,
+          number: "1042",
+          label: null,
+          party: customer.name,
+          amountCents: 2_500_000,
+          dueDate: "2026-11-30",
+          sourceQuotes: [`Invoice 1042, ${customer.name}, 25k, due 2026-11-30`],
+          issues: [],
+          needsReview: false,
+        },
+        {
+          kind: "expense" as const,
+          number: null,
+          label: "Office supplies",
+          party: "National Bookstore",
+          amountCents: 150_000,
+          dueDate: "2026-11-20",
+          sourceQuotes: ["Office supplies, National Bookstore, PHP 1500, due 2026-11-20"],
+          issues: [],
+          needsReview: false,
+        },
+      ],
+    };
+
+    const validated = validateAiProposal(req, output, workspace);
+    expect(validated.task).toBe("extract_record");
+    if (validated.task === "extract_record") {
+      expect(validated.proposals).toHaveLength(2);
+      expect(validated.proposals[0]).toMatchObject({
+        kind: "invoice",
+        number: "1042",
+        customerId: customer.id,
+        amountCents: 2_500_000,
+        dueDate: "2026-11-30",
+      });
+      expect(validated.proposals[1]).toMatchObject({
+        kind: "expense",
+        label: "Office supplies",
+        party: "National Bookstore",
+        amountCents: 150_000,
+        dueDate: "2026-11-20",
+      });
+    }
+
+    // Unregistered customer and hallucinated amount handling
+    const unregisteredOutput = {
+      proposals: [
+        {
+          kind: "invoice" as const,
+          number: "INV-999",
+          label: null,
+          party: "Nonexistent Client Corp",
+          amountCents: 99_999_999, // not in text
+          dueDate: "2026-11-30",
+          sourceQuotes: ["Invoice 1042"],
+          issues: [],
+          needsReview: false,
+        },
+      ],
+    };
+    const flagged = validateAiProposal(req, unregisteredOutput, workspace);
+    if (flagged.task === "extract_record") {
+      expect(flagged.proposals[0].customerId).toBeNull();
+      expect(flagged.proposals[0].amountCents).toBeNull(); // hallucinated amount nulled
+      expect(flagged.proposals[0].needsReview).toBe(true);
+      expect(flagged.proposals[0].issues.some(i => i.includes("not in your business"))).toBe(true);
+      expect(flagged.proposals[0].issues.some(i => i.includes("Confirm one exact amount"))).toBe(true);
+    }
   });
 });

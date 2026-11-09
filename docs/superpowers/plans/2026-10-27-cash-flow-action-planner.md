@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16.4.3, React 19.3.0, TypeScript 5, Tailwind CSS 4, Supabase, OpenRouter, Node-RED, Vercel; n8n is approved but not installed for the new intake work. Use Node.js 24.x for the application; verify the chosen n8n release's runtime separately before installation.
 
-**Spec:** [SoloForge PRD — current revision 1.1](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../c01-sample-business-walkthrough.md). The original spec filename is retained for link stability.
+**Spec:** [SoloForge PRD — current revision 1.1](../specs/SoloForge_Cash-Flow_Action_Planner_PRD_v1.0.md). Numerical reference: [sample business walkthrough](../../research/c01-sample-business-walkthrough.md). The original spec filename is retained for link stability.
 
 **Status — 29 October:** Tasks 1–7 and 9–10 are implemented with development evidence. Task 8's reminder implementation is present; its unchecked clipboard-denied/separate-session UI step remains outstanding. Task 11 is resumed at Bryan's request; reuse prior results and complete only its remaining evidence. Task 12 remains pending/on hold. Tasks 13–21 below record the approved, unimplemented intake/worklist expansion. Prior verification results must be reused rather than rerun as routine setup. Current UI conflict/build changes and acceptance artifacts remain uncommitted; preserve them separately from this documentation update.
 
@@ -286,6 +286,7 @@ Also assert initial Friday closing cash `1_000_000`, delayed Monday closing cash
 - [x] Add a deterministic non-AI reminder template, editable preview, owner review controls and copy action using the server-checked approved text. Draft for the outstanding balance; never the original total after a part payment. Avoid claiming email/phone validation establishes delivery.
 - [x] Verify owner-only direct approval, stale revision/reference-date handling, rejection and manual-send reporting with channel/user-entered time. The mobile browser view shows that copying does not send. Run reminder/access/payment tests and browser checks.
 - [ ] Exercise the clipboard-denied fallback and a separate-session UI flow. The server-side copy recheck, stale-reference invalidation and stale-revision behavior are covered by integration tests.
+  - 6 November (R2): the clipboard-denied fallback passed in the browser. At Bryan's direction, the separate-session rules were accepted on the owner/finance integration tests (4/4 on Node 24) instead of a two-browser UI walkthrough, which is why this box stays open.
 - [x] Commit `feat: review and approve accurate payment reminders`.
 
 ### Task 9: Add bounded AI assistance and evaluate it
@@ -384,9 +385,15 @@ Progress (2 November): Task C completed the Review Inbox, source metadata, edita
 
 **Dependencies:** 15. **Files:** XLSX parser adapter, sheet selection/preview, same normalized candidate contract and owning tests. Reuse the CSV mapping, comparison, Review Inbox and application path.
 
-- [ ] Test a workbook with multiple sheets, date cells, leading-zero IDs, empty rows, formulas/cached values, duplicate records, invalid/corrupt content and compressed-file resource limits.
-- [ ] Evaluate a maintained, compatible XLSX reader and its license before installation. Support XLSX only initially; do not execute macros, formulas or external workbook links. Unsupported/unevaluated values remain errors for review.
-- [ ] Verify the same fictional dataset gives equivalent candidates through CSV and XLSX, with repeat-apply protection across formats. Run only the owning parser/intake checks and one browser upload review.
+**Status — 6 November:** complete (commit `a9d3c01`). Evidence below and in [testing](../../testing.md).
+
+- [x] Test a workbook with multiple sheets, date cells, leading-zero IDs, empty rows, formulas/cached values, duplicate records, invalid/corrupt content and compressed-file resource limits.
+- [x] Evaluate a maintained, compatible XLSX reader and its license before installation. Support XLSX only initially; do not execute macros, formulas or external workbook links. Unsupported/unevaluated values remain errors for review.
+  - License check, 6 November (from installed package metadata, recorded after installation): `read-excel-file` 9.3.10, `fflate` 0.8.3 and `saxen` 11.1.0 are MIT. Transitive dependencies: `unzipper-esm` 0.13.3, `worker-f` 0.1.21 and `node-int64` 0.4.0 are MIT; `graceful-fs` 4.2.11 is ISC. The project's own bounded ZIP check runs before the reader.
+  - Combined code/security review, 6 November: no security blockers. Its four findings were fixed with tests: Excel error and TRUE/FALSE cells are rejected; an unrecognized `date1904` value is rejected; ordinary formatting, hyperlinks, charts and conditional formatting are accepted with specific messages for real rejections; one spreadsheet source covers both formats. Macro parts, external-workbook links and cell formulas (with or without cached values) remain rejected.
+- [x] Verify the same fictional dataset gives equivalent candidates through CSV and XLSX, with repeat-apply protection across formats. Run only the owning parser/intake checks and one browser upload review.
+  - Browser upload review, 6 November (local dev server, Bryan's ordinary development workspace (owner role, fictional test records; not the seeded SoloForge Demo Services workspace), existing "Fictional CSV walkthrough" source): the sample CSV and the sample XLSX (worksheet "Invoices") produced identical previews: sample-001 unchanged, sample-002 new, one invalid amount, two duplicates. Staging the XLSX rows on the same source reported both as "previously received; no duplicate" and added no Review Inbox item. No browser console errors.
+  - Owning checks on Node 24.22.1: 75 unit/UI tests (`xlsx`, `imports`, `intake-review`), 8 intake integration tests including the CSV/XLSX replay case, typecheck and lint of project source passed.
 
 ### Task 17: Connect one Google Sheet through n8n
 

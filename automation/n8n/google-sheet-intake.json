@@ -1,0 +1,108 @@
+{
+  "name": "PondoPath Google Sheet intake",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 10 }] } },
+      "id": "4b6f8f2e-1d6e-4a51-9b0e-000000000001",
+      "name": "Every 10 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {},
+      "id": "4b6f8f2e-1d6e-4a51-9b0e-000000000002",
+      "name": "Run now (first read and tests)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "c1", "name": "spreadsheetId", "value": "REPLACE_WITH_SPREADSHEET_ID", "type": "string" },
+            { "id": "c2", "name": "sheetName", "value": "Sheet1", "type": "string" },
+            { "id": "c3", "name": "appUrl", "value": "http://localhost:3000", "type": "string" },
+            { "id": "c4", "name": "sourceId", "value": "REPLACE_WITH_CONNECTION_ID", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4b6f8f2e-1d6e-4a51-9b0e-000000000003",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [240, 100]
+    },
+    {
+      "parameters": {
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $json.spreadsheetId }}/values/{{ encodeURIComponent($json.sheetName) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "valueRenderOption", "value": "UNFORMATTED_VALUE" },
+            { "name": "dateTimeRenderOption", "value": "SERIAL_NUMBER" },
+            { "name": "majorDimension", "value": "ROWS" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4b6f8f2e-1d6e-4a51-9b0e-000000000004",
+      "name": "Read Sheet (read-only)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 100],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turn Google's raw grid into PondoPath's read: exact headers (duplicates kept), typed cells, and the real Sheet row numbers.\nconst grid = $input.first().json.values ?? [];\nconst headers = (grid[0] ?? []).map(value => String(value ?? ''));\nconst rows = [];\nconst rowNumbers = [];\ngrid.slice(1).forEach((values, index) => {\n  if (!values.some(value => value !== null && value !== '')) return; // skip blank rows\n  const width = Math.max(headers.length, values.length); // Google omits trailing empty cells; keep extra cells so wide rows are flagged\n  rows.push(Array.from({ length: width }, (_, column) => values[column] ?? null));\n  rowNumbers.push(index + 2);\n});\nreturn [{ json: { runId: String($execution.id), headers, rows, rowNumbers } }];"
+      },
+      "id": "4b6f8f2e-1d6e-4a51-9b0e-000000000005",
+      "name": "Build read",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Report a read failure to PondoPath without sending any Sheet content.\nconst text = JSON.stringify($input.first().json).toLowerCase();\nconst error = /403|permission|forbidden/.test(text) ? 'SHEET_ACCESS_DENIED'\n  : /404|not found|unable to parse range/.test(text) ? 'SHEET_NOT_FOUND'\n  : 'READ_FAILED';\nreturn [{ json: { runId: String($execution.id), error } }];"
+      },
+      "id": "4b6f8f2e-1d6e-4a51-9b0e-000000000006",
+      "name": "Build error report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.appUrl }}/api/intake/connectors/{{ $('Config').first().json.sourceId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "4b6f8f2e-1d6e-4a51-9b0e-000000000007",
+      "name": "Send to PondoPath",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 100]
+    }
+  ],
+  "connections": {
+    "Every 10 minutes": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Run now (first read and tests)": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Config": { "main": [[{ "node": "Read Sheet (read-only)", "type": "main", "index": 0 }]] },
+    "Read Sheet (read-only)": { "main": [[{ "node": "Build read", "type": "main", "index": 0 }], [{ "node": "Build error report", "type": "main", "index": 0 }]] },
+    "Build read": { "main": [[{ "node": "Send to PondoPath", "type": "main", "index": 0 }]] },
+    "Build error report": { "main": [[{ "node": "Send to PondoPath", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

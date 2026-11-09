@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { checkedSum, formatPHP } from "@/lib/domain/money";
 import { addDays } from "@/lib/domain/dates";
@@ -8,17 +7,23 @@ import { formatPlanDate } from "@/lib/display";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { DashboardIcon } from "./dashboard-icon";
 import { RefreshRecords } from "./refresh-records";
+import { ForecastCheckList } from "./forecast-check-list";
+import { forecastChecks } from "@/lib/ui/forecast-checks";
 import {
   collectionFilters,
   collectionFlags,
   type CollectionFilter,
 } from "@/lib/domain/collection-status";
 
-export function CustomerInvoices({ workspace, params, invoiceControls, customerControls }: {
+/** Plain names for the collection filters (the stored keys stay the same). */
+const FILTER_LABELS: Record<CollectionFilter, string> = {
+  all: "All", unpaid: "Unpaid", due: "Due today", overdue: "Overdue", commitment: "Customer promised",
+  needs_review: "Needs a new date", no_expectation: "No payment date", no_followup: "No follow-up",
+};
+
+export function CustomerInvoices({ workspace, params }: {
   workspace: WorkspaceSnapshot;
   params: { page?: string | string[]; filter?: string | string[] };
-  invoiceControls: ReactNode;
-  customerControls: ReactNode;
 }) {
   const requestedPage =
     typeof params.page === "string" && /^[1-9]\d{0,4}$/.test(params.page) ? Number(params.page) : 1;
@@ -58,17 +63,20 @@ export function CustomerInvoices({ workspace, params, invoiceControls, customerC
   const unpaid = workspace.invoices.filter((invoice) => invoice.outstanding_cents > 0);
   const dueSoon = unpaid.filter((invoice) => invoice.due_date >= workspace.forecastInput.referenceDate && invoice.due_date <= addDays(workspace.forecastInput.referenceDate, 6));
   const overdue = unpaid.filter((invoice) => flags.get(invoice.id)!.overdue);
-  const missingExpectation = unpaid.filter((invoice) => flags.get(invoice.id)!.no_expectation);
   const forecast = calculateForecast(workspace.forecastInput);
+  // The same plain checks as Overview and Forecast, limited to invoices: passed dates and money with no date.
+  const invoiceChecks = forecastChecks(workspace, forecast, "invoices").filter((check) => check.key !== "overdue-bills");
   const weeks = Array.from({ length: 5 }, (_, index) => {
     const days = forecast.days.slice(index * 7, index * 7 + 7);
     return { start: days[0].date, end: days.at(-1)!.date, cents: checkedSum(days.map((day) => day.expectedInCents)) };
   });
   const maxWeek = Math.max(1, ...weeks.map((week) => week.cents));
-  const metrics = [
-    { label: "Due in the next 7 days", value: formatPHP(checkedSum(dueSoon.map((invoice) => invoice.outstanding_cents))), note: `${dueSoon.length} unpaid invoices · original due dates`, tone: "blue" },
-    { label: "Overdue balance", value: formatPHP(checkedSum(overdue.map((invoice) => invoice.outstanding_cents))), note: `${overdue.length} unpaid invoices need attention`, tone: "orange" },
-    { label: "No current expectation", value: String(missingExpectation.length), note: "Unpaid invoices without a receipt plan", tone: "green" },
+  // What customers owe, split by when it is due. Overdue and due-soon use original due dates.
+  const later = unpaid.filter((invoice) => !flags.get(invoice.id)!.overdue && !dueSoon.includes(invoice));
+  const owed = [
+    { label: "Overdue", invoices: overdue, href: "/invoices?filter=overdue", tone: "late" },
+    { label: "Due in the next 7 days", invoices: dueSoon, href: null, tone: "soon" },
+    { label: "Due later", invoices: later, href: null, tone: "calm" },
   ];
   return (
     <WorkspaceShell workspace={workspace} className="section-page section-invoices invoices-page" header={
@@ -77,143 +85,76 @@ export function CustomerInvoices({ workspace, params, invoiceControls, customerC
         <div className="dashboard-heading-actions">
           <span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span>
           <RefreshRecords />
-          <Link className="button secondary" href="/imports">Import &amp; review</Link>
-          <Link className="button secondary" href="/followups">Follow-ups</Link>
-          <Link className="section-primary" href="#new-invoice"><DashboardIcon name="plus" size={17} />Add an invoice</Link>
+          <Link className="section-primary" href="/add?type=invoice"><DashboardIcon name="plus" size={17} />Add an invoice</Link>
         </div>
       </header>
     }>
       <section className="section-lower-grid">
-      <section className="records-panel">
+      <section className="records-panel invoice-list-card" aria-labelledby="invoice-list-heading">
         <div className="records-head">
-          <div><h2>{matching.length} of {workspace.invoices.length} invoices</h2><p>Saved records · original due dates and remaining balances</p></div>
-          <span className="muted">PHP</span>
+          <div><h2 id="invoice-list-heading">Invoices <span className="next-count">{matching.length}</span></h2><p>Soonest due first. Amounts are what the customer still owes.</p></div>
         </div>
-        <form method="get" action="/invoices" className="collection-filter">
-          <label className="form-field">
-            <span>Collection view</span>
-            <select className="field" name="filter" defaultValue={filter}>
-              {Object.entries(collectionFilters).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="button secondary" type="submit">
-            Apply filter
-          </button>
-        </form>
+        {/* One tap per view: each filter is a link, so there is no separate Apply step. Empty views are hidden. */}
+        <nav className="invoice-filters" aria-label="Show invoices">
+          {(Object.keys(collectionFilters) as CollectionFilter[]).map((value) => {
+            const count = value === "all" ? workspace.invoices.length : workspace.invoices.filter((invoice) => flags.get(invoice.id)![value]).length;
+            if (value !== "all" && value !== filter && !count) return null;
+            return <Link key={value} href={value === "all" ? "/invoices" : `/invoices?filter=${value}`} aria-current={filter === value ? "true" : undefined}>
+              {FILTER_LABELS[value]}<span className="history-count">{count}</span>
+            </Link>;
+          })}
+        </nav>
         {invoices.length ? (
-          <div className="table-scroll" role="region" aria-label="Customer invoices" tabIndex={0}>
-            <table className="invoice-table">
-              <caption className="sr-only">Invoices and unpaid balances</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Invoice / customer</th>
-                  <th scope="col">Original due date</th>
-                  <th scope="col" className="num">
-                    Total
-                  </th>
-                  <th scope="col" className="num">
-                    Outstanding
-                  </th>
-                  <th scope="col">Current expectation</th>
-                  <th scope="col">Next follow-up</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((invoice) => {
-                  const expectation = workspace.expectations.find(
-                    (row) => row.invoice_id === invoice.id,
-                  );
-                  const stale =
-                    expectation &&
-                    (expectation.state === "needs_review" ||
-                      expectation.expected_date < workspace.forecastInput.referenceDate);
-                  const next = nextFollowups.get(invoice.id);
-                  return (
-                    <tr key={invoice.id}>
-                      <th scope="row">
-                        <Link className="invoice-number" href={`/invoices/${invoice.id}`}><DashboardIcon name="receipt" size={16} />{invoice.number}</Link>
-                        <p className="muted">
-                          {workspace.customers.find((row) => row.id === invoice.customer_id)?.name}
-                        </p>
-                        {invoice.outstanding_cents > 0 && <Link className="text-link" href={`/invoices/${invoice.id}?plan=edit#collection-plan`}>{expectation ? "Update expected payment" : "Set expected payment"}</Link>}
-                      </th>
-                      <td>
-                        {invoice.due_date}
-                        {invoice.outstanding_cents > 0 &&
-                          invoice.due_date < workspace.forecastInput.referenceDate && (
-                            <p className="status review">Overdue</p>
-                          )}
-                      </td>
-                      <td className="num">{formatPHP(invoice.amount_cents)}</td>
-                      <td className="num">
-                        {formatPHP(invoice.outstanding_cents)}
-                        {flags.get(invoice.id)!.unplannedCents > 0 && (
-                          <p className="muted">
-                            {formatPHP(flags.get(invoice.id)!.unplannedCents)} unplanned
-                          </p>
-                        )}
-                      </td>
-                      <td>
-                        {invoice.outstanding_cents === 0 ? (
-                          "Fully received"
-                        ) : expectation ? (
-                          <Link className="invoice-expectation" href={`/invoices/${invoice.id}?plan=edit#collection-plan`}>
-                            <span className={`status${stale ? " review" : ""}`}>
-                              {stale
-                                ? "Needs review · Excluded"
-                                : expectation.kind === "commitment"
-                                  ? "Customer commitment"
-                                  : "Due-date assumption"}
-                            </span>
-                            <span className="cell-sub">
-                              {formatPHP(expectation.remaining_cents)} · {expectation.expected_date}
-                            </span>
-                            <span className="invoice-review-label">Review source and plan</span>
-                          </Link>
-                        ) : (
-                          "No current expectation"
-                        )}
-                      </td>
-                      <td>
-                        {next ? (
-                          <>
-                            <Link href={`/invoices/${invoice.id}#followup-${next.id}`}>
-                              {next.next_action}
-                            </Link>
-                            <p
-                              className={
-                                next.due_date < workspace.forecastInput.referenceDate
-                                  ? "negative"
-                                  : "muted"
-                              }
-                            >
-                              {next.due_date} ·{" "}
-                              {workspace.members.find(
-                                (member) => member.user_id === next.assignee_id,
-                              )?.display_name ?? "Previous team member"}
-                            </p>
-                          </>
-                        ) : invoice.outstanding_cents > 0 ? (
-                          "No next follow-up"
-                        ) : (
-                          "Fully received"
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ul className="invoice-list" aria-label="Customer invoices">
+            {invoices.map((invoice) => {
+              const today = workspace.forecastInput.referenceDate;
+              const expectation = workspace.expectations.find((row) => row.invoice_id === invoice.id);
+              const stale = !!expectation && (expectation.state === "needs_review" || expectation.expected_date < today);
+              const next = nextFollowups.get(invoice.id);
+              const paid = invoice.outstanding_cents === 0;
+              const overdue = !paid && invoice.due_date < today;
+              const unplanned = flags.get(invoice.id)!.unplannedCents;
+              const customer = workspace.customers.find((row) => row.id === invoice.customer_id)?.name;
+              const expected = paid ? "Fully received"
+                : !expectation ? "No payment date yet"
+                : stale ? `Expected ${formatPlanDate(expectation.expected_date, true)}, date passed · not counted`
+                : expectation.kind === "commitment" ? `Customer promised ${formatPlanDate(expectation.expected_date, true)}`
+                : `Expected ${formatPlanDate(expectation.expected_date, true)} (due date)`;
+              return (
+                <li key={invoice.id} className={`invoice-item${overdue ? " is-overdue" : ""}${paid ? " is-paid" : ""}`}>
+                  <div className="invoice-who">
+                    <Link className="invoice-number" href={`/invoices/${invoice.id}`}>{invoice.number}</Link>
+                    <span>{customer}</span>
+                  </div>
+                  <div className="invoice-due">
+                    <span>{paid ? "Paid" : `Due ${formatPlanDate(invoice.due_date, true)}`}</span>
+                    {overdue && <span className="status review">Overdue</span>}
+                    {!paid && invoice.due_date === today && <span className="status">Due today</span>}
+                  </div>
+                  <div className="invoice-money">
+                    <strong className="num">{formatPHP(invoice.outstanding_cents)}</strong>
+                    {!paid && invoice.outstanding_cents !== invoice.amount_cents && <span>of {formatPHP(invoice.amount_cents)}</span>}
+                    {paid && <span>{formatPHP(invoice.amount_cents)} received</span>}
+                  </div>
+                  <div className="invoice-plan">
+                    <span className={stale || (!paid && !expectation) ? "is-warn" : undefined}>{expected}</span>
+                    {!paid && unplanned > 0 && expectation && !stale && <span className="is-warn">{formatPHP(unplanned)} has no payment date</span>}
+                    {!paid && <span className={next && next.due_date < today ? "negative" : undefined}>{next
+                      ? `Next: ${next.next_action} · ${formatPlanDate(next.due_date, true)}`
+                      : "No follow-up planned"}</span>}
+                  </div>
+                  {!paid && <Link className="row-action invoice-action" href={`/invoices/${invoice.id}?plan=edit#collection-plan`}>
+                    {expectation ? "Update expected payment" : "Set expected payment"}
+                  </Link>}
+                </li>
+              );
+            })}
+          </ul>
         ) : (
           <p className="empty-state">
             {workspace.invoices.length
-              ? "No invoices match this collection view."
-              : "No invoices yet. Add a customer, then an invoice that remains unpaid at the opening cutoff."}
+              ? "No invoices match this filter."
+              : <>No invoices yet. <Link href="/add?type=invoice">Add your first invoice</Link>.</>}
           </p>
         )}
         {matching.length > 50 && (
@@ -230,29 +171,34 @@ export function CustomerInvoices({ workspace, params, invoiceControls, customerC
           </nav>
         )}
       </section>
-      <aside className="section-ai-card">
-        <span><DashboardIcon name="sparkle" size={15} />Collection check</span>
-        <h2>Review before relying on receipts</h2>
-        <p>{forecast.incompleteInvoiceIds.length} unpaid invoices have an incomplete or unconfirmed receipt plan. Review missing dates, stale expectations and unplanned partial balances.</p>
-        <Link className="invoice-source-link" href="/forecast">Review the cash plan <DashboardIcon name="arrowRight" size={15} /></Link>
-        <div className="source-note"><span>Based on</span><strong>Saved invoice records</strong></div>
+      <aside className={`forecast-checks-card invoice-checks ${invoiceChecks.length ? "is-caution" : "is-clear"}`} aria-labelledby="invoice-checks-heading">
+        <div className="checks-card-head">
+          <span className="checks-eyebrow"><DashboardIcon name={invoiceChecks.length ? "alert" : "check"} size={15} />{invoiceChecks.length ? "Check first" : "All clear"}</span>
+          <h2 id="invoice-checks-heading">Invoices to fix</h2>
+          <p>{invoiceChecks.length ? "These make the forecast less reliable." : "Every unpaid invoice has a current payment date."}</p>
+        </div>
+        <div className="forecast-checks-body"><ForecastCheckList checks={invoiceChecks} empty="No passed payment dates and no money without a date." /></div>
       </aside>
       </section>
 
-      <section className="section-metrics" aria-label="Collection summary">
-        {metrics.map(({ label, value, note, tone }) => <article className="section-metric" key={label}>
-          <span className={`metric-mark ${tone}`} aria-hidden="true" /><p>{label}</p><strong className="num">{value}</strong><small>{note}</small>
-        </article>)}
-      </section>
 
-      <section className="section-feature" aria-label="Outstanding invoices and collection outlook">
-        <div className="section-feature-copy">
-          <span>Total outstanding</span><strong className="num">{formatPHP(checkedSum(unpaid.map((invoice) => invoice.outstanding_cents)))}</strong>
-          <p>{unpaid.length} unpaid invoices · money owed, not received cash</p>
-          <Link className="invoice-source-link" href="/invoices?filter=unpaid">Review unpaid invoices <DashboardIcon name="arrowRight" size={15} /></Link>
+      <section className="section-feature owed-panel" aria-label="Money owed and when it is expected">
+        <div className="section-feature-copy owed-summary">
+          <span>Money customers owe you</span><strong className="num">{formatPHP(checkedSum(unpaid.map((invoice) => invoice.outstanding_cents)))}</strong>
+          <p>{unpaid.length} unpaid {unpaid.length === 1 ? "invoice" : "invoices"} · owed, not cash yet</p>
+          <ul className="owed-breakdown" aria-label="Owed by due date">
+            {owed.map((row) => <li key={row.label} className={`is-${row.tone}`}>
+              {(() => {
+                const inner = <><span>{row.label}<small>{row.invoices.length} {row.invoices.length === 1 ? "invoice" : "invoices"}</small></span>
+                  <strong className="num">{formatPHP(checkedSum(row.invoices.map((invoice) => invoice.outstanding_cents)))}</strong></>;
+                // Only overdue has its own filter; the other rows are figures, not links to the wrong list.
+                return row.href && row.invoices.length ? <Link href={row.href}>{inner}</Link> : <div>{inner}</div>;
+              })()}
+            </li>)}
+          </ul>
         </div>
         <div className="mini-chart" role="region" aria-labelledby="collection-outlook-title">
-          <div className="mini-chart-head"><div><strong id="collection-outlook-title">Collection outlook</strong><span>Expected invoice receipts · {formatPlanDate(forecast.days[0].date, true)}–{formatPlanDate(forecast.days[29].date, true)}</span></div><span className="mini-chart-change">30 days</span></div>
+          <div className="mini-chart-head"><div><strong id="collection-outlook-title">When customers are expected to pay</strong><span>By week · {formatPlanDate(forecast.days[0].date, true)}–{formatPlanDate(forecast.days[29].date, true)}</span></div><span className="mini-chart-change">30 days</span></div>
           <div className="bars invoice-bars" aria-label="Expected receipts grouped into seven-day periods">
             {weeks.map((week) => <button type="button" key={week.start} data-cents={week.cents}
               aria-label={`${formatPlanDate(week.start, true)}–${formatPlanDate(week.end, true)}: ${formatPHP(week.cents)} expected`}
@@ -261,26 +207,10 @@ export function CustomerInvoices({ workspace, params, invoiceControls, customerC
             </button>)}
           </div>
           <div className="bar-dates invoice-week-labels" aria-hidden="true">{weeks.map((week) => <span key={week.start}>{formatPlanDate(week.start, true)}<small>{formatPHP(week.cents)}</small></span>)}</div>
-          <p className="invoice-chart-note">Expected receipts are not available cash. Stale or review-needed amounts are excluded; unplanned balances are not assumed.</p>
+          <p className="invoice-chart-note">Expected receipts are not available cash. Invoices with a passed or missing date aren&rsquo;t counted.</p>
         </div>
       </section>
 
-      <div className="two-column invoice-forms">
-        <section id="new-invoice" className="records-panel">
-          <div className="records-head"><div><h2>Add an unpaid invoice</h2><p>Record what remains unpaid at the opening cutoff</p></div><DashboardIcon name="receipt" size={18} /></div>
-          <div className="invoice-form-body">
-          {workspace.customers.length ? (
-            invoiceControls
-          ) : (
-            <p className="empty-state">Create a customer first using the adjacent form.</p>
-          )}
-          </div>
-        </section>
-        <section className="records-panel">
-          <div className="records-head"><div><h2>Add a customer</h2><p>Keep contact details with their invoices</p></div><DashboardIcon name="plus" size={18} /></div>
-          <div className="invoice-form-body">{customerControls}</div>
-        </section>
-      </div>
     </WorkspaceShell>
   );
 }

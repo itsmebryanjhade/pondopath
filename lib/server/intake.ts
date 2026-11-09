@@ -9,6 +9,8 @@ import type { Json, Tables } from "@/lib/database.types";
 export type IntakeItem = Tables<"intake_items">;
 export type IntakeSource = Pick<Tables<"intake_sources">, "id" | "label" | "kind">;
 export const intakeBatchSchema = z.array(z.strictObject({ externalId: z.string().trim().min(1).max(200), sourceVersion: z.string().trim().min(1).max(200), candidate: z.unknown(), evidence: z.record(z.string(), z.unknown()) })).min(1).max(100);
+const intakeRowsSchema = z.array(z.strictObject({ externalId: z.string().trim().min(1).max(200), sourceVersion: z.string().trim().min(1).max(200), candidate: z.unknown(), evidence: z.record(z.string(), z.unknown()) })).min(1).max(300);
+export const INTAKE_STAGE_BATCH_SIZE = 100;
 export const batchResultSchema = z.array(z.object({ externalId: z.string().nullable(), itemId: z.uuid().nullable().optional(), status: z.string(), code: z.string().optional(), replayed: z.boolean().optional() }));
 export type IntakeBatchResult = z.infer<typeof batchResultSchema>;
 
@@ -45,6 +47,16 @@ export async function stageIntakeBatch(sourceId: string, input: unknown): Promis
   return result.data;
 }
 
+export async function stageIntakeBatches(sourceId: string, input: unknown): Promise<IntakeBatchResult> {
+  const rows = intakeRowsSchema.safeParse(input);
+  if (!rows.success) throw new CommandError("VALIDATION_ERROR");
+  const results: IntakeBatchResult = [];
+  for (let offset = 0; offset < rows.data.length; offset += INTAKE_STAGE_BATCH_SIZE) {
+    results.push(...await stageIntakeBatch(sourceId, rows.data.slice(offset, offset + INTAKE_STAGE_BATCH_SIZE)));
+  }
+  return results;
+}
+
 const reviewSchema = z.strictObject({ id: z.uuid(), reviewVersion: z.number().int().positive(), revision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER), decision: z.enum(["apply", "edit", "reject", "clarify"]), candidate: z.unknown().optional(), note: z.string().trim().max(4000).optional(), confirmed: z.boolean().optional() });
 
 export async function reviewIntake(input: unknown) {
@@ -73,4 +85,37 @@ export async function reviewIntake(input: unknown) {
   const { error } = await client.rpc("review_intake", { p_item_id: value.id, p_review_version: value.reviewVersion, p_decision: value.decision, p_reason: value.note });
   if (error) throw CommandError.fromDatabase(error.message);
   return { message: value.decision === "reject" ? "Proposal rejected. Saved financial records were not changed." : "Proposal held for clarification." };
+}
+
+export function isBulkConfirmable(item: IntakeItem): boolean {
+  if (item.status !== "pending") return false;
+  try { parseIntakeCandidate(item.candidate); return true; } catch { return false; }
+}
+
+const bulkConfirmSchema = z.strictObject({
+  items: z.array(z.strictObject({ id: z.uuid(), reviewVersion: z.number().int().positive().max(2_147_483_647) })).min(1).max(50)
+    .refine(items => new Set(items.map(item => item.id.toLowerCase())).size === items.length),
+  revision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+});
+
+export async function confirmSelectedIntake(input: unknown): Promise<{ confirmed: string[]; failed: { id: string; code: string }[]; revision: number }> {
+  const parsed = bulkConfirmSchema.safeParse(input);
+  if (!parsed.success) throw new CommandError("VALIDATION_ERROR");
+  await requireActor();
+  const client = await createClient();
+  let revision = parsed.data.revision;
+  const confirmed: string[] = [], failed: { id: string; code: string }[] = [];
+  for (const item of parsed.data.items) {
+    try {
+      const { data, error } = await client.rpc("apply_intake", { p_item_id: item.id, p_review_version: item.reviewVersion, p_expected_revision: revision });
+      if (error) throw CommandError.fromDatabase(error.message);
+      const result = commandResultSchema.safeParse(data);
+      if (!result.success) throw new CommandError("SERVICE_UNAVAILABLE");
+      revision = result.data.revision;
+      confirmed.push(item.id);
+    } catch (error) {
+      failed.push({ id: item.id, code: error instanceof CommandError ? error.code : "SERVICE_UNAVAILABLE" });
+    }
+  }
+  return { confirmed, failed, revision };
 }

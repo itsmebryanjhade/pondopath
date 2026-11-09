@@ -1,11 +1,20 @@
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { formatPlanDate } from "@/lib/display";
+import { formatPHP } from "@/lib/domain/money";
+
+/** Amounts in headlines drop a trailing ".00" but keep real centavos. */
+const peso = (cents: number) => formatPHP(cents).replace(/\.00$/, "");
 
 export type NextAction = {
   id: string;
   kind: "missed_promise" | "followup" | "missing_expectation" | "reminder_review" | "intake_review";
+  /** The saved task text (or a fixed description); kept for screen readers and the follow-up ledger. */
   title: string;
+  /** Short plain headline with the customer and amount, shown first. */
+  headline: string;
   detail: string;
+  /** A person's own follow-up instruction, shown under the headline when it adds something. */
+  note?: string;
   href: string;
   assigneeId: string | null;
   dueDate: string | null;
@@ -38,8 +47,13 @@ export function buildNextActions(workspace: WorkspaceSnapshot): NextAction[] {
       id: `followup:${task.id}`,
       kind: missedPromise ? "missed_promise" : "followup",
       title: task.next_action,
+      headline: missedPromise
+        ? `Check if ${customer?.name ?? "the customer"} paid ${peso(missedPromise.remaining_cents)}`
+        : `Follow up with ${customer?.name ?? "the customer"} on ${peso(invoice.outstanding_cents)}`,
+      // The headline already says "check if they paid" for a missed promise, so only plain follow-ups show the person's note.
+      ...(task.automatic_type || missedPromise ? {} : { note: task.next_action }),
       detail: missedPromise
-        ? `${invoice.number} · Expected payment date passed ${formatPlanDate(missedPromise.expected_date)}.`
+        ? `${invoice.number} · promised ${formatPlanDate(missedPromise.expected_date, true)}`
         : `${invoice.number} · ${customer?.name ?? "Customer unavailable"}`,
       href: `/invoices/${invoice.id}`,
       assigneeId: workspace.members.some((member) => member.user_id === task.assignee_id) ? task.assignee_id : null,
@@ -56,7 +70,8 @@ export function buildNextActions(workspace: WorkspaceSnapshot): NextAction[] {
       id: `missed-promise:${expectation.id}`,
       kind: "missed_promise",
       title: "Follow up on the missed payment promise",
-      detail: `${invoice.number} · Expected payment date passed ${formatPlanDate(expectation.expected_date)}.`,
+      headline: `Check if ${customerById.get(invoice.customer_id)?.name ?? "the customer"} paid ${peso(expectation.remaining_cents)}`,
+      detail: `${invoice.number} · promised ${formatPlanDate(expectation.expected_date, true)}`,
       href: `/invoices/${invoice.id}`,
       assigneeId: null,
       dueDate: expectation.expected_date || null,
@@ -73,6 +88,7 @@ export function buildNextActions(workspace: WorkspaceSnapshot): NextAction[] {
       id: `missing-expectation:${invoice.id}`,
       kind: "missing_expectation",
       title: "Set an expected payment date",
+      headline: `Ask ${customer?.name ?? "the customer"} when they'll pay ${peso(invoice.outstanding_cents)}`,
       detail: `${invoice.number} · No current expected receipt is recorded for ${customer?.name ?? "this customer"}.`,
       href: `/invoices/${invoice.id}`,
       assigneeId: null,
@@ -89,6 +105,7 @@ export function buildNextActions(workspace: WorkspaceSnapshot): NextAction[] {
       id: `reminder-review:${reminder.id}`,
       kind: "reminder_review",
       title: "Review payment reminder",
+      headline: `Approve the payment reminder to ${customerById.get(invoice.customer_id)?.name ?? "the customer"}`,
       detail: `${invoice.number} · Owner approval is required before this message can be copied.`,
       href: `/invoices/${invoice.id}`,
       assigneeId: ownerId,
@@ -99,7 +116,7 @@ export function buildNextActions(workspace: WorkspaceSnapshot): NextAction[] {
 
   for (const review of workspace.intakeReviews ?? []) {
     if (!["pending", "needs_match"].includes(review.status)) continue;
-    items.push({ id: `intake:${review.id}`, kind: "intake_review", title: "Review an imported change",
+    items.push({ id: `intake:${review.id}`, kind: "intake_review", title: "Review an imported change", headline: "Review an imported row",
       detail: `Source row ${review.external_id} · ${review.status === "needs_match" ? "Needs matching or clarification." : "Not applied to your financial records."}`,
       href: `/imports?item=${review.id}#item-${review.id}`, assigneeId: null, dueDate: null, ownerReviewRequired: false });
   }
