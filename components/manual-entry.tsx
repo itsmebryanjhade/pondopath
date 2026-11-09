@@ -3,7 +3,7 @@
 import { useId, useState, type KeyboardEvent } from "react";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
-import { CustomerForm, ExpenseForm, InvoiceForm } from "./record-forms";
+import { ExpenseForm, InvoiceForm } from "./record-forms";
 import { PaymentForm } from "./payment-form";
 
 export type EntryKind = "invoice" | "expense" | "receipt";
@@ -41,15 +41,8 @@ export function ManualEntry({ workspace, initial = "invoice" }: { workspace: Wor
         ))}
       </div>
       <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${kind}`} className="add-entry-panel">
-        {kind === "invoice" && (workspace.customers.length
-          ? <>
-            <InvoiceForm workspace={workspace} />
-            <details className="add-entry-more"><summary>Customer not listed? Add a customer</summary><CustomerForm workspace={workspace} /></details>
-          </>
-          : <>
-            <p className="add-entry-note">Add the customer first. Then the invoice form opens here.</p>
-            <CustomerForm workspace={workspace} />
-          </>)}
+        {/* New customers are added from the invoice form's Customer dropdown. */}
+        {kind === "invoice" && <InvoiceForm workspace={workspace} />}
         {kind === "expense" && <ExpenseForm workspace={workspace} />}
         {kind === "receipt" && (unpaid.length
           ? <>

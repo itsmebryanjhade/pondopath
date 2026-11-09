@@ -38,8 +38,10 @@ describe("readable invoice history", () => {
       },
     });
     expect(html).toContain("₱30,000.00");
-    expect(html).toContain("2026-11-02");
-    expect(html).toContain("actual cash unchanged");
+    expect(html).toContain("Expected payment set");
+    expect(html).toContain("2 Nov 2026");
+    expect(html).toContain("Customer promise");
+    expect(html).toContain("Not counted as cash until the payment is recorded.");
     expect(html).toContain("&lt;script&gt;");
     expect(html).toContain("Older changes");
     expect(html).toContain("Latest changes");
@@ -53,8 +55,8 @@ describe("readable invoice history", () => {
       },
       "Duplicate bank entry corrected.",
     );
-    expect(html).toContain("Receipt voided");
-    expect(html).toContain("Unpaid balance restored");
+    expect(html).toContain("Payment voided");
+    expect(html).toContain("₱20,000.00 added back to what");
     expect(html).toContain("?movement=old-payment#payment-history");
     expect(html).toContain("Duplicate bank entry corrected.");
   });
@@ -71,7 +73,15 @@ describe("readable invoice history", () => {
       nextFollowupId: "next-task",
     });
     expect(html).toContain("Customer requested a bank check.");
-    expect(html).toContain("Next action date: 2026-10-30");
+    expect(html).toContain("Follow-up done");
+    expect(html).toContain("Next step on 30 Oct 2026");
     expect(html).toContain("#followup-next-task");
+  });
+  it("names an invoice edit by what changed", () => {
+    const html = render({ before: { amount_cents: 5000000, due_date: "2026-10-31" }, after: { amount_cents: 4500000, due_date: "2026-10-31" } }, "Agreed discount");
+    expect(html).toContain("Invoice details changed");
+    expect(html).toContain("Total ₱50,000.00 → ₱45,000.00");
+    expect(html).not.toContain("Due 31 Oct 2026 →");
+    expect(html).toContain("Agreed discount");
   });
 });

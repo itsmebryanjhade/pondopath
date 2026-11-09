@@ -3,6 +3,7 @@ import type { Json } from "@/lib/database.types";
 import type { AuditEvent, WorkspaceSnapshot } from "@/lib/server/workspace";
 import { formatPHP } from "@/lib/domain/money";
 import { AppIcon } from "./app-icon";
+import { formatPlanDate } from "@/lib/display";
 
 function object(value: Json | undefined): { [key: string]: Json | undefined } {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -13,6 +14,14 @@ function text(value: Json | undefined) {
 function money(value: Json | undefined) {
   return typeof value === "number" && Number.isSafeInteger(value) ? formatPHP(value) : "—";
 }
+
+/** A stored YYYY-MM-DD as "2 Nov 2026"; anything else as-is. */
+function day(value: Json | undefined) {
+  const raw = text(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? formatPlanDate(raw) : raw;
+}
+
+type Kind = "payment" | "void" | "plan" | "followup" | "edit";
 
 export function RecordHistory({
   invoiceId,
@@ -28,14 +37,15 @@ export function RecordHistory({
   members: WorkspaceSnapshot["members"];
 }) {
   const base = `/invoices/${invoiceId}`;
+  const person = (id: Json | undefined) => members.find((member) => member.user_id === id)?.display_name ?? "Previous team member";
   return (
-    <section className="panel" id="record-history">
-      <h2>Invoice history</h2>
-      <p className="muted">
-        Recorded changes, receipt plans and follow-up outcomes. Times are shown in Manila time.
-      </p>
+    <section className="panel invoice-history" id="record-history" aria-labelledby="record-history-heading">
+      <header className="invoice-history-head">
+        <h2 id="record-history-heading">Invoice history</h2>
+        <p className="muted">Every change to this invoice, newest first.</p>
+      </header>
       {events.length ? (
-        <ol className="movement-list">
+        <ol className="invoice-history-list">
           {events.map((event) => {
             const change = object(event.change),
               before = object(change.before),
@@ -47,31 +57,43 @@ export function RecordHistory({
               typeof before.paid_cents === "number" &&
               typeof after.paid_cents === "number";
             const voided = receipt && (after.paid_cents as number) < (before.paid_cents as number);
-            const title =
+            const paidChange = receipt ? Math.abs((after.paid_cents as number) - (before.paid_cents as number)) : 0;
+            const created = !operation && !receipt && Object.keys(before).length === 0;
+            const totalChanged = before.amount_cents !== after.amount_cents;
+            const dueChanged = before.due_date !== after.due_date;
+
+            // A plain title, plus the one fact worth seeing without opening the entry.
+            const [kind, title, fact]: [Kind, string, string] =
               operation === "confirm_expectation"
-                ? "Receipt expectation confirmed"
+                ? ["plan", "Expected payment set", `${money(after.remaining_cents)} on ${day(after.expected_date) || "no date"} · ${after.kind === "commitment" ? "Customer promise" : "Your estimate"}`]
                 : operation === "save_followup"
-                  ? "Follow-up scheduled or updated"
+                  ? ["followup", "Follow-up scheduled", text(after.next_action)]
                   : operation === "complete_followup"
-                    ? "Follow-up completed"
+                    ? ["followup", "Follow-up done", text(after.outcome) || text(after.next_action)]
                     : receipt
                       ? voided
-                        ? "Receipt voided · Unpaid balance restored"
-                        : "Verified receipt recorded"
-                      : "Invoice details saved";
+                        ? ["void", "Payment voided", `${formatPHP(paidChange)} added back to what\u2019s owed`]
+                        : ["payment", "Payment recorded", `+${formatPHP(paidChange)} · ${money(after.outstanding_cents)} still owed`]
+                      : created
+                        ? ["edit", "Invoice created", `${money(after.amount_cents)} · due ${day(after.due_date)}`]
+                        : ["edit", "Invoice details changed", [
+                            totalChanged ? `Total ${money(before.amount_cents)} → ${money(after.amount_cents)}` : "",
+                            dueChanged ? `Due ${day(before.due_date)} → ${day(after.due_date)}` : "",
+                          ].filter(Boolean).join(" · ") || "Number or customer updated"];
             const next = text(change.nextFollowupId),
               priorVoid = object(object(change.effects).priorVoid);
             return (
-              <li key={event.id}>
+              <li key={event.id} className={`is-${kind}`}>
+                <span className="invoice-history-dot" aria-hidden="true" />
                 <details className="invoice-history-entry">
                   <summary>
                     <span>
                       <strong>{title}</strong>
+                      {fact && <span className="invoice-history-fact">{fact}</span>}
                       <small>
                         {new Date(event.created_at).toLocaleString("en-PH", {
                           timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short",
-                        })} ·{" "}
-                        {members.find((member) => member.user_id === event.actor_id)?.display_name ?? "Previous team member"}
+                        })} · {person(event.actor_id)}
                       </small>
                     </span>
                     <AppIcon name="chevron-down" />
@@ -80,65 +102,39 @@ export function RecordHistory({
                     {operation === "confirm_expectation" ? (
                       <>
                         <p>
-                          {money(before.remaining_cents)} on{" "}
-                          {text(before.expected_date) || "no prior date"} →{" "}
-                          {money(after.remaining_cents)} on {text(after.expected_date)}
+                          Before: {money(before.remaining_cents)} on {day(before.expected_date) || "no date"}. Now: {money(after.remaining_cents)} on {day(after.expected_date)}.
                         </p>
-                        <p>
-                          {after.kind === "commitment"
-                            ? "Customer-confirmed promise"
-                            : "Planning assumption"}{" "}
-                          ·{" "}
+                        <p className="muted">
                           {after.state === "needs_review"
-                            ? "Needs review; excluded from projected inflows"
-                            : "Expected receipt; actual cash unchanged"}
+                            ? "Needs review, so it isn\u2019t in the forecast."
+                            : "In the forecast. Not counted as cash until the payment is recorded."}
                         </p>
-                        <blockquote>{text(after.source_note)}</blockquote>
+                        {text(after.source_note) && <blockquote>{text(after.source_note)}</blockquote>}
                       </>
                     ) : operation === "save_followup" || operation === "complete_followup" ? (
                       <>
                         <p>{text(after.next_action)}</p>
-                        <p className="muted">
-                          Due {text(after.due_date)} ·{" "}
-                          {members.find((member) => member.user_id === after.assignee_id)
-                            ?.display_name ?? "Previous team member"}
-                        </p>
+                        <p className="muted">Due {day(after.due_date)} · {person(after.assignee_id)}</p>
                         {after.outcome && <blockquote>{text(after.outcome)}</blockquote>}
-                        {after.next_date && <p>Next action date: {text(after.next_date)}</p>}
+                        {after.next_date && <p>Next step on {day(after.next_date)}</p>}
                       </>
                     ) : receipt ? (
                       <p>
-                        Verified receipts: {money(before.paid_cents)} → {money(after.paid_cents)}.
-                        Outstanding: {money(before.outstanding_cents)} →{" "}
-                        {money(after.outstanding_cents)}.
+                        Received so far: {money(before.paid_cents)} → {money(after.paid_cents)}. Still owed: {money(before.outstanding_cents)} → {money(after.outstanding_cents)}.
                       </p>
                     ) : (
                       <p>
-                        Invoice total: {money(before.amount_cents)} → {money(after.amount_cents)} ·
-                        Original due date: {text(before.due_date) || "—"} → {text(after.due_date)}
+                        Total: {money(before.amount_cents)} → {money(after.amount_cents)} · Due date: {day(before.due_date) || "—"} → {day(after.due_date)}
                       </p>
                     )}
                     {event.reason && operation !== "complete_followup" && (
-                      <blockquote>{event.reason}</blockquote>
+                      <blockquote><span className="muted">Reason: </span>{event.reason}</blockquote>
                     )}
-                    {movement && (
-                      <Link href={`${base}?movement=${encodeURIComponent(movement)}#payment-history`}>
-                        View retained payment record
-                      </Link>
-                    )}
-                    {text(priorVoid.id) && (
-                      <p>
-                        Replacement follows a previous void.{" "}
-                        <Link
-                          href={`${base}?movement=${encodeURIComponent(text(priorVoid.id))}#payment-history`}
-                        >
-                          View previous void
-                        </Link>
-                      </p>
-                    )}
-                    {next && (
-                      <p>
-                        <Link href={`${base}#followup-${next}`}>View next follow-up</Link>
+                    {(movement || text(priorVoid.id) || next) && (
+                      <p className="invoice-history-links">
+                        {movement && <Link href={`${base}?movement=${encodeURIComponent(movement)}#payment-history`}>See the payment</Link>}
+                        {text(priorVoid.id) && <Link href={`${base}?movement=${encodeURIComponent(text(priorVoid.id))}#payment-history`}>See the voided payment it replaces</Link>}
+                        {next && <Link href={`${base}#followup-${next}`}>See the next follow-up</Link>}
                       </p>
                     )}
                   </div>
@@ -148,16 +144,19 @@ export function RecordHistory({
           })}
         </ol>
       ) : (
-        <p className="empty-state">No recorded changes on this page.</p>
+        <p className="invoice-history-empty">No changes recorded yet.</p>
       )}
-      <nav className="pagination" aria-label="Invoice history pages">
-        {cursor && <Link href={`${base}#record-history`}>Latest changes</Link>}
-        {nextCursor && (
-          <Link href={`${base}?history=${encodeURIComponent(nextCursor)}#record-history`}>
-            Older changes
-          </Link>
-        )}
-      </nav>
+      {(cursor || nextCursor) && (
+        <nav className="invoice-history-pages" aria-label="Invoice history pages">
+          {cursor && <Link className="row-action is-quiet" href={`${base}#record-history`}>Latest changes</Link>}
+          {nextCursor && (
+            <Link className="row-action is-quiet" href={`${base}?history=${encodeURIComponent(nextCursor)}#record-history`}>
+              Older changes
+            </Link>
+          )}
+        </nav>
+      )}
+      <p className="invoice-history-foot">Times are in Philippine time.</p>
     </section>
   );
 }

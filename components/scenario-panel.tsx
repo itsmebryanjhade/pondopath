@@ -86,8 +86,7 @@ export function ScenarioPanel({
   if (inline) return <div className="scenario-panel scenario-inline">{body}</div>;
   return (
     <details className="panel disclosure scenario-panel">
-      <summary><AppIcon name="help-circle" /><span>Try a payment scenario</span><AppIcon name="chevron-down" /></summary>
-      <p className="muted">Try a payment date or amount. Nothing is saved.</p>
+      <summary><AppIcon name="bar-chart-2" /><span className="action-text"><span>Try a payment scenario</span><small>See how a different date or amount changes your cash. Nothing is saved.</small></span><AppIcon name="chevron-down" /></summary>
       {body}
     </details>
   );

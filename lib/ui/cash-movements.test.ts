@@ -23,7 +23,7 @@ describe("payment history corrections", () => {
   it("shows a bill-specific confirmation with a required reason and review", () => {
     const { workspace, movement } = paymentHistory();
     const html = renderToStaticMarkup(CashMovements({ workspace, movements: [movement], kind: "expense_payment" }));
-    expect(html).toContain('id="movement-demo-bill-payment"');
+    expect(html).toContain('id="movement-demo-bill-payment" tabindex="-1"');
     expect(html).toContain('name="bill-payment-corrections"');
     expect(html).toContain("Reason for voiding");
     expect(html).toMatch(/<input[^>]*required=""[^>]*name="reason"/);

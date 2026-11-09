@@ -5,6 +5,7 @@ import { historyRows } from "@/lib/ui/cash-overview";
 import { AppIcon } from "./app-icon";
 import { DashboardIcon } from "./dashboard-icon";
 import { VoidForm } from "./payment-form";
+import { FocusHashOnArrival } from "./jump-link";
 
 export function CashMovements({
   movements,
@@ -34,7 +35,7 @@ export function CashMovements({
       {rows.length ? (
         <ul className="history-list">
           {rows.map((row) => (
-            <li id={`movement-${row.id}`} key={row.id}>
+            <li id={`movement-${row.id}`} tabIndex={-1} key={row.id}>
               <div className={`history-row is-${row.direction}${row.voided ? " is-voided" : ""}`}>
                 <span className="history-icon" aria-hidden="true">
                   <DashboardIcon name={row.direction === "in" ? "arrowIn" : "arrowOut"} size={16} />
@@ -68,6 +69,7 @@ export function CashMovements({
       ) : (
         <p className="empty-state">No payments recorded yet.</p>
       )}
+      <FocusHashOnArrival prefix="movement-" />
       {!selected && <p className="muted cash-movements-limit">Showing up to 50 payments.</p>}
     </section>
   );

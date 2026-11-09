@@ -17,13 +17,19 @@ describe("typing a record in on Add records", () => {
     expect(markup).toContain("Add invoice");
     expect(markup).not.toContain('href="/invoices#new-invoice"');
   });
-  it("asks for a customer first when the business has none", () => {
+  it("opens the invoice form with the new-customer panel when the business has no customers", () => {
     const workspace = uiWorkspace();
     workspace.customers = [];
     const markup = html("invoice", workspace);
-    expect(markup).toContain("Add the customer first");
+    expect(markup).toContain("Add your first customer");
     expect(markup).toContain("Add customer");
-    expect(markup).not.toContain("Add invoice");
+    expect(markup).toContain("Add invoice");
+  });
+  it("offers to add a new customer from the invoice's Customer dropdown", () => {
+    const markup = html("invoice");
+    expect(markup).toContain('<option value="__new__">+ Add a new customer…</option>');
+    expect(markup).not.toContain("Customer not listed?");
+    expect(markup).not.toContain("New customer");
   });
   it("opens the expense form in place", () => {
     expect(html("expense")).toContain("Add expense");
