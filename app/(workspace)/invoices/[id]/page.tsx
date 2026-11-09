@@ -78,7 +78,7 @@ export default async function InvoiceDetail({ params, searchParams }: InvoiceDet
         <AiContextButton entry={{
           context: { page: "invoices", record: { kind: "invoice", id: invoice.id } },
           workspace, starterText: "Explain this outstanding balance",
-        }}>Explain balance with AI</AiContextButton>
+        }}>Explain this balance</AiContextButton>
         {!paid && (
           <details className="invoice-record-payment">
             <summary className="button">Record payment <AppIcon name="chevron-down" /></summary>

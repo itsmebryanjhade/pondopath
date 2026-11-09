@@ -73,7 +73,7 @@ export function NextActions({ workspace, limit, viewAllHref, showFollowupAssista
                       context: { page: "followups", record: { kind: "invoice", id: followupInvoiceId } },
                       workspace, starterText: "Help me follow up on this invoice",
                       intent: "draft_followup",
-                    }}>Prepare follow-up with AI</AiContextButton>
+                    }}>Help me follow up</AiContextButton>
                   )}
                 </div>
                 <Link className="next-action-button" href={action.href} aria-label={`Review action: ${action.title}. ${action.detail}`}>

@@ -69,10 +69,28 @@ describe("contextual assistant entry", () => {
       initialEntry: followupEntry(workspace),
     }));
     expect(html).toMatch(/<textarea[^>]*>Help me follow up on this invoice<\/textarea>/);
-    expect(html).toContain(`About invoice ${workspace.invoices[0].number}`);
+    expect(html).not.toContain("Remove context:");
     expect(html).toContain(`value="${workspace.invoices[0].id}" selected=""`);
     expect(fetcher).not.toHaveBeenCalled();
     expect(executeWorkspaceAction).not.toHaveBeenCalled();
+  });
+
+  it("renders the named record in a removable chip for a scoped question", () => {
+    const workspace = uiWorkspace();
+    const invoice = workspace.invoices[0];
+    const props = { workspace, dialog: createRef<HTMLDialogElement>(), onClose: () => {} };
+    const html = renderToStaticMarkup(createElement(AiAssistant, {
+      ...props,
+      initialEntry: {
+        workspace,
+        context: { page: "invoices", record: { kind: "invoice", id: invoice.id } },
+        starterText: "Explain this outstanding balance",
+      },
+    }));
+    expect(html).toContain('aria-label="This question is about"');
+    expect(html).toContain('aria-label="Remove context: Invoice ' + invoice.number + '"');
+    expect(html).toContain("Explain this outstanding balance");
+    expect(renderToStaticMarkup(createElement(AiAssistant, props))).not.toContain("Remove context:");
   });
 
   it("checks the route invoice, workspace membership, and the original revision", () => {
@@ -104,13 +122,14 @@ describe("contextual assistant entry", () => {
       context: { page: "invoices", record: { kind: "invoice", id } },
     } as const;
     const path = "/invoices/" + id;
-    const workspace = assistantContextWorkspace(entry, layout);
+    const workspace = assistantContextWorkspace(entry.workspace, layout);
     expect(workspace).toBe(latest);
+    expect(assistantContextWorkspace(layout, workspace)).toBe(latest);
     expect(assistantContextProblem(entry, path, workspace)).toBeUndefined();
     expect(assistantContextMatchesPath(entry, "/followups")).toBe(false);
     expect(assistantContextMatchesPath(entry, "/invoices/" + layout.invoices[0].id)).toBe(false);
     const anotherActor = { ...layout, actor: { ...layout.actor, userId: "different-user" } };
-    expect(assistantContextWorkspace(entry, anotherActor)).toBe(anotherActor);
+    expect(assistantContextWorkspace(entry.workspace, anotherActor)).toBe(anotherActor);
     expect(assistantContextProblem(entry, path, anotherActor)).toMatch(/workspace/i);
   });
 
@@ -121,7 +140,8 @@ describe("contextual assistant entry", () => {
       params: Promise.resolve({ id }), searchParams: Promise.resolve({}),
     });
     const html = renderToStaticMarkup(await render(workspace.invoices[0].id));
-    expect(html).toMatch(/aria-label="Invoice balance"[\s\S]*?<button[^>]+aria-haspopup="dialog"[^>]*>[\s\S]*?Explain balance with AI<\/button>/);
+    const action = html.match(/aria-label="Invoice balance"[\s\S]*?(<button[^>]+aria-haspopup="dialog"[^>]*>[\s\S]*?<\/button>)/)?.[1];
+    expect(action).toContain("Explain this balance");
     await expect(render("00000000-0000-4000-8000-000000000099")).rejects.toThrow("NOT_FOUND");
   });
 });

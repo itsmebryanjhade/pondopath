@@ -36,10 +36,10 @@ export default async function ForecastPage() {
         <p>{formatPlanDate(end.date)} · includes expected payments that have not been verified as received.</p>
         <p className="forecast-first-shortfall">{forecast.firstShortage ? <>First shortfall · <strong className="num">{formatPHP(forecast.firstShortage.shortfallCents)} on {formatPlanDate(forecast.firstShortage.date)}</strong></> : "No shortfall in the next 30 days"}</p>
         {forecast.firstShortage && (
-          <AiContextButton entry={{
+          <AiContextButton tone="inverse" entry={{
             context: { page: "forecast" }, workspace,
             starterText: "Explain our first cash shortage",
-          }}>Explain shortfall with AI</AiContextButton>
+          }}>Explain this cash gap</AiContextButton>
         )}
         <JumpLink className="forecast-source-link" target="forecast-checks">{checks.length ? `${checks.length} ${checks.length === 1 ? "thing" : "things"} to check` : "Forecast checks"} <DashboardIcon name="arrowRight" size={15} /></JumpLink>
       </div>

@@ -134,8 +134,7 @@ function sameAssistantActor(left: WorkspaceSnapshot, right: WorkspaceSnapshot) {
     left.actor.userId === right.actor.userId && left.actor.role === right.actor.role;
 }
 
-export function assistantContextWorkspace(entry: AssistantContextEntry | undefined, layout: WorkspaceSnapshot) {
-  const page = entry?.workspace;
+export function assistantContextWorkspace(page: WorkspaceSnapshot | undefined, layout: WorkspaceSnapshot) {
   // The layout can retain an earlier snapshot across client navigation.
   return page && page.revision > layout.revision && sameAssistantActor(page, layout) ? page : layout;
 }

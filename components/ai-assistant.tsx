@@ -19,6 +19,7 @@ import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import type { AiProposal, AiRequest } from "@/lib/domain/ai";
 import type { AssistantChatProposal } from "@/lib/domain/assistant-chat";
 import { DashboardIcon } from "./dashboard-icon";
+import { AssistantContextChip } from "./assistant-context-chip";
 import { TextAreaField } from "./command-form";
 import { CollectionPanel } from "./collection-panel";
 import { ReminderPanel } from "./reminder-panel";
@@ -74,7 +75,8 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
   const [mode, setMode] = useState<"chat" | "reply" | "add_record">("chat");
   const [language, setLanguage] = useState<AiRequest["language"]>("auto");
   const [entry, setEntry] = useState(initialEntry);
-  const workspace = assistantContextWorkspace(entry, layoutWorkspace);
+  const [cardWorkspace, setCardWorkspace] = useState(initialEntry?.workspace);
+  const workspace = assistantContextWorkspace(cardWorkspace, layoutWorkspace);
   const [composerText, setComposerText] = useState(initialEntry?.starterText ?? "");
   const [isSending, setIsSending] = useState(false);
   const [chatError, setChatError] = useState("");
@@ -139,7 +141,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
   const starters = generatePageStarters(pathname);
   const contextualInvoiceId = entry?.context.record?.kind === "invoice" ? entry.context.record.id : undefined;
   const currentInvoice = workspace.invoices.find(row => contextualInvoiceId ? row.id === contextualInvoiceId : pathname === "/invoices/" + row.id);
-  const contextLabel = entry && (currentInvoice ? "About invoice " + currentInvoice.number : "About this page");
+  const contextLabel = entry && (currentInvoice ? "Invoice " + currentInvoice.number : entry.context.page === "forecast" ? "Cash forecast" : "This page");
   const openInvoices = workspace.invoices.filter(row => row.outstanding_cents > 0);
   const currentOpenInvoice = openInvoices.find(row => row.id === currentInvoice?.id);
   const draftInvoice = openInvoices.find(row => row.id === draftInvoiceId);
@@ -212,6 +214,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
     setActiveFormProposal(null);
     setToolsOpen(false);
     setMode("chat");
+    composerInputRef.current?.focus();
   }
 
   useImperativeHandle(prepareEntryRef, () => nextEntry => {
@@ -227,6 +230,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
     clearChat();
     if (nextEntry) {
       setEntry(nextEntry);
+      setCardWorkspace(assistantContextWorkspace(nextEntry.workspace, workspace));
       setComposerText(nextEntry.starterText);
       setDraftIntent(nextEntry.intent);
       setDraftInvoiceId(nextEntry.context.record?.id ?? "");
@@ -426,9 +430,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
           <div>
             <span className="eyebrow">PondoPath · AI assistance</span>
             <h2 id={headingId}>Ask about your cash plan</h2>
-            <p style={contextLabel ? { display: "block", overflowWrap: "anywhere" } : undefined}>
-              {contextLabel ?? "English, Tagalog or Taglish"}
-            </p>
+            <p>English, Tagalog or Taglish</p>
           </div>
           <div className="assistant-header-controls">
             <select
@@ -879,6 +881,9 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
         {/* Anchored Bottom Composer */}
         <footer className="assistant-composer-wrap">
           <ComposerPrimitive.Root className="assistant-composer-root" onSubmit={handleSend}>
+            {contextLabel && !draftIntent && (
+              <AssistantContextChip label={contextLabel} disabled={isSending} onClear={clearChat} />
+            )}
             {draftIntent && (
               <div className="assistant-draft-context-bar">
                 <label className="form-field">

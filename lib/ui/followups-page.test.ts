@@ -38,11 +38,11 @@ describe("source Follow-ups layout preserves the action ledger", () => {
     ];
     const html = await render(workspace);
     const entries = html.match(/<li class="next-actions-item[\s\S]*?<\/li>/g) ?? [];
-    expect(entries.filter(entry => entry.includes("Prepare follow-up with AI"))).toHaveLength(1);
-    expect(entries.find(entry => entry.includes("DEMO-002"))).toContain("Prepare follow-up with AI");
-    expect(entries.find(entry => entry.includes("DEMO-001"))).not.toContain("Prepare follow-up with AI");
+    expect(entries.filter(entry => entry.includes("Help me follow up"))).toHaveLength(1);
+    expect(entries.find(entry => entry.includes("DEMO-002"))).toContain("Help me follow up");
+    expect(entries.find(entry => entry.includes("DEMO-001"))).not.toContain("Help me follow up");
     workspace.followups = [task(0, "2026-10-28", "completed")];
-    expect(await render(workspace)).not.toContain("Prepare follow-up with AI");
+    expect(await render(workspace)).not.toContain("Help me follow up");
   });
   it("counts task categories but includes each unpaid invoice balance only once", async () => {
     const workspace = uiWorkspace();
