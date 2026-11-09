@@ -32,14 +32,15 @@ function readError(message: string): never {
 
 // Share a snapshot only within this server render, never between users or requests.
 export const getWorkspace = cache(async (): Promise<WorkspaceSnapshot> => {
-  const actor = await requireActor();
   const client = await createClient();
-  const [{ data, error }, intake] = await Promise.all([
+  const [actor, snapshotResult] = await Promise.all([
+    requireActor(),
     client.rpc("workspace_snapshot"),
-    client.from("intake_items").select("id,external_id,status").eq("business_id", actor.businessId)
-      .in("status", ["pending", "needs_match"]).order("observed_at", { ascending: false }).order("id", { ascending: false }).limit(20),
   ]);
+  const { data, error } = snapshotResult;
   if (error || !data) readError(error?.message ?? "");
+  const intake = await client.from("intake_items").select("id,external_id,status").eq("business_id", actor.businessId)
+    .in("status", ["pending", "needs_match"]).order("observed_at", { ascending: false }).order("id", { ascending: false }).limit(20);
   if (intake.error) readError(intake.error.message);
   // This JSON contract is produced by our versioned SQL function, not user input.
   const snapshot = data as unknown as WorkspaceSnapshot;
