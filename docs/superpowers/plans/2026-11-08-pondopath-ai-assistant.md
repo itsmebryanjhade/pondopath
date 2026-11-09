@@ -1,4 +1,4 @@
-# PondoPath assistant, import, and laptop offline implementation plan
+﻿# PondoPath assistant, import, and laptop offline implementation plan
 
 Updated 9 November 2026 after review and demo-slice scoping. Proposed implementation for [the design](../specs/2026-11-08-pondopath-ai-assistant-design.md). Build steps and acceptance checks are pending owner approval to start.
 
@@ -37,7 +37,8 @@ Node 24, the installed Next.js App Router and React, `@assistant-ui/react` `0.15
 | Later | 1 | Per-member per-minute limit and its table. Revisit the optional provider backup after the demo. |
 | Later | 8 | Rework of the Google connection. The existing connection keeps working. |
 | Later | 9 | Laptop view of a saved forecast and a local file preview. Read-only, no AI. |
-| Later | 10–11 | The optional local model and the contextual shortcuts. |
+| 5 | 11 | Contextual AI entry points on Forecast, Invoice detail and Follow-ups. |
+| Later | 10 | The optional local model (separate pilot). |
 
 ## Review focus
 
@@ -220,14 +221,71 @@ Plan `app/offline/page.tsx` for the offline entry, `public/pondopath-offline-sw.
 - [ ] Check a cold start after closing the browser and blocking the network. Try the English and Taglish fixture questions and column samples. Verify exact app figures and allowed column suggestions, and test an unavailable model or cleared model cache. Workbook preview must still open. Record first-answer time and the laptop/browser used.
 - [ ] Present the result for a separate demo decision. Keep the cloud assistant and the offline workbook path usable regardless of the local evaluation.
 
-## Task 11 — Add contextual shortcuts as a follow-up
+## Task 11 — Contextual AI entry points
 
-**Later:** after the first release works.
+Updated 9 November 2026 to align with the AI-native financial workspace vision. Task 11 is now part of the **hackathon MVP** — not a later follow-up — and replaces the former stub.
+
+**Vision:** PondoPath should feel like an AI-native financial workspace where AI assistance is accessible in context, beside relevant cards, records, and workflows. All contextual actions open the **single shared AI Assistant** (`components/ai-assistant.tsx`) with pre-filled page or record context. No separate AI implementations are introduced.
+
+**Build order:** After Tasks 4 and 7A are verified. The contextual buttons extend `assistantPage()` and `WORKSPACE_TOOLS`; they do not replace the launcher or the + menu.
 
 **Files**
 
-The existing Overview, Forecast, invoice, Follow-ups, Expenses and Cash sections. Add the Review Inbox shortcut in [intake review](../../../components/intake-review.tsx) with the scoped [intake reader](../../../lib/server/intake.ts). Reuse the shared assistant entry and page tests.
+Contextual trigger components: `app/(workspace)/forecast/page.tsx`, `app/(workspace)/invoices/[id]/page.tsx`, `app/(workspace)/follow-ups/page.tsx`, and their owning test files. Assistant context routing: `lib/ui/assistant-chat-adapter.ts`. Shared assistant entry: `components/ai-assistant.tsx`, `components/ai-assistant-launcher.tsx`. Shared tests: `lib/ui/ai-assistant.test.ts`.
 
-- [ ] Verify one **Ask AI** shortcut beside the relevant check or record, and zero provider calls on render or opening the launcher. Start with Overview's Next Actions, Forecast's first gap, an unpaid invoice, and an open Follow-ups task. Add an overdue bill and a Cash explanation where those facts exist. Keep the label specific to the question and open the same composer with editable context before sending. Avoid adding a second task list.
-- [ ] Extend the chat context with `page: "review"` and `record: { kind: "intake", id, reviewVersion }`. Read only the selected, authorized item's allowed structured comparison and status. Enforce `pending` or `needs_match` before and after inference. Test a version or status change without a workspace revision change and expect the refresh response. Show a safe Inbox source link, and keep the review decision in the normal form.
-- [ ] Run the focused page, intake and assistant tests, then verify actual opening and keyboard focus at the three widths with mocked providers. Repeat the owning route/security tests after adding the new context. Report the demo chat and later shortcut slice separately.
+**Deferred to Phase 2 (post-hackathon):** Expenses contextual buttons, Review Inbox context integration, smart dismissible suggestion chips, proactive push notifications, autonomous AI task creation, and broad cross-page suggestions.
+
+### Acceptance criteria
+
+- [ ] **CTX-01** Contextual AI trigger buttons render on the Forecast page (beside the first projected gap), Invoice detail page (beside outstanding-balance summary), and Follow-ups page (beside the first open follow-up task).
+- [ ] **CTX-02** Each contextual trigger opens the existing `AiAssistant` dialog with the correct page context pre-filled. No second assistant instance is created.
+- [ ] **CTX-03** Opening a contextual trigger makes **zero** provider calls. `executeWorkspaceAction` is not called on open.
+- [ ] **CTX-04** The assistant correctly pre-fills the page or record context via `assistantPage()` / the context argument. The correct starter question is pre-suggested or pre-filled in the composer.
+- [ ] **CTX-05** Role and revision checks pass. Finance can open the assistant context; owner approval is still required for any financial record mutation. A stale context surfaces the existing stale-revision error.
+- [ ] **CTX-06** All existing tests (770+ unit, TypeScript, ESLint, build) continue passing after the contextual additions.
+- [ ] **CTX-07** Contextual trigger buttons meet the 44 px minimum touch target, receive visible keyboard focus, support Escape, and pass the existing reduced-motion convention.
+- [ ] **CTX-08** No automatic Gemini call occurs simply because a page containing a contextual button renders.
+
+### Contextual entry points (Phase 1 MVP)
+
+| Page | Trigger location | Pre-filled context | Suggested starter |
+| --- | --- | --- | --- |
+| Forecast | Beside the first projected cash gap | `page: "forecast"` | "Explain our first cash shortage" |
+| Invoice detail | Beside the outstanding-balance summary | `page: "invoices"`, `record: { kind: "invoice", id }` | "Explain this outstanding balance" or "Draft a payment reminder" |
+| Follow-ups | Beside the first open follow-up task | `page: "followups"`, `record: { kind: "invoice", id }` | "Help me follow up on this invoice" |
+
+Context-aware capabilities per page (responses grounded in existing workspace tools and authorized context):
+
+- **Forecast:** Explain shortage, analyse risk, suggest short-term actions.
+- **Invoice detail:** Explain outstanding balance, draft payment reminder, plan follow-up. *(Existing + menu tools already support this; contextual button provides one-click entry.)*
+- **Follow-ups:** Prioritise open tasks, suggest message tone, draft follow-up text.
+
+### Authorization and safety
+
+- Finance users may open any contextual entry point and see the assistant with correct context.
+- Owner approval is still required before saving any AI-proposed financial action (existing approval workflow; not bypassed by contextual entry).
+- Revision check is applied on the fresh snapshot after inference; a stale context returns the existing stale-revision error.
+- Zero automatic Gemini calls on page render; triggers are user-initiated only.
+- No silent database writes from AI proposal or review (inviolable rule; unchanged by this task).
+
+### Phase 2 — Post-hackathon scope
+
+- Expenses: Summarize upcoming obligations, flag concentration risks.
+- Review Inbox: Explain a staged import row, ask about mapping decisions. Extend the chat context with `page: "review"` and `record: { kind: "intake", id, reviewVersion }`. Enforce `pending` or `needs_match` status before and after inference. Test a version or status change without a workspace revision change. Show a safe Inbox source link.
+- Smart dismissible suggestion chips triggered by deterministic client-side rules (e.g., overdue invoice → "AI can help draft a reminder"). No automatic Gemini requests on render.
+- Proactive AI notifications and broader autonomous actions.
+
+### Implementation checklist
+
+- [ ] Read the existing `assistantPage()` mapping in `lib/ui/assistant-chat-adapter.ts` and `WORKSPACE_TOOLS` before adding context routes. Extend only the strictly needed routes.
+- [ ] Add a lightweight `AiContextButton` component (or reuse an existing button variant) for the contextual trigger. It must call `openAssistant({ page, record?, starterText? })` from the existing launcher API; no new state stores or providers.
+- [ ] Write failing tests: contextual trigger renders beside the right element; clicking it calls the launcher with the correct context object; zero `fetch` or `executeWorkspaceAction` calls occur on render or on open; the existing assistant tests continue to pass unmodified.
+- [ ] Add the trigger to the Forecast page beside the first projected gap. Use the programmed gap calculation already exposed to the page; do not re-fetch from the provider.
+- [ ] Add the trigger to the Invoice detail page beside the outstanding-balance summary. Bind `record.id` from the route params; verify the record belongs to the authenticated workspace before passing context.
+- [ ] Add the trigger to the Follow-ups page beside the first open task row. Bind `record.id` from the row; apply the same ownership check.
+- [ ] Extend `assistantPage()` and `generatePageStarters()` to handle the new context routes and produce the agreed starter texts. Keep existing routes unchanged.
+- [ ] Verify role check: a finance user opening any contextual trigger sees the assistant with correct context; the server enforces owner approval before any financial mutation.
+- [ ] Run `npx vitest run lib/ui/ai-assistant.test.ts` and the owning page tests. Confirm zero regressions.
+- [ ] Verify actual opening, keyboard focus, Escape, 44 px touch targets and reduced-motion at 1880 px, 1100 px and 375 px with mocked providers.
+- [ ] Run `npm run typecheck`, `npm run lint`, and `next build --webpack`. Report any failures.
+- [ ] Record PASS / FAIL / BLOCKED against CTX-01 through CTX-08 before claiming completion.
