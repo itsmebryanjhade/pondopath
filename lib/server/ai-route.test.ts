@@ -20,6 +20,35 @@ describe("assistant HTTP boundary", () => {
     }
     expect(mocks.request).not.toHaveBeenCalled();
   });
+  it.each(["pondopath.vercel.app", "pondopath.sanx.dev"])("accepts a same-origin request to %s on Vercel without APP_URL", async host => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("APP_URL", undefined);
+    const input = { task: "chat", question: "What should I do first?", history: [], expectedRevision: 1 };
+    mocks.request.mockResolvedValueOnce({ proposal: { task: "chat" } });
+    const response = await POST(new Request("http://localhost:3000/api/assistant", {
+      method: "POST",
+      headers: { host, origin: "https://" + host, "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }));
+    expect(response.status).toBe(200);
+    expect(mocks.request).toHaveBeenCalledWith({ ...input, language: "auto" });
+  });
+
+  it("rejects a foreign origin on Vercel even when forwarded headers or APP_URL match it", async () => {
+    const origin = "https://elsewhere.example";
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("APP_URL", origin);
+    const response = await POST(new Request("http://localhost:3000/api/assistant", {
+      method: "POST",
+      headers: { host: "pondopath.vercel.app", origin, "x-forwarded-host": "elsewhere.example",
+        "x-forwarded-proto": "https", "content-type": "application/json" },
+      body: JSON.stringify({ task: "chat", question: "What should I do first?", history: [], expectedRevision: 1 }),
+    }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ ok: false, code: "FORBIDDEN" });
+    expect(mocks.request).not.toHaveBeenCalled();
+  });
+
   it("returns a validation error for broken JSON and counts actual bytes, not Content-Length", async () => {
     expect((await POST(request("{"))).status).toBe(400);
     const stream = new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('"' + "あ".repeat(6000) + '"')); controller.close(); } });

@@ -7,6 +7,7 @@ export const maxDuration = 30;
 
 const failures: Record<string, { status: number; message: string }> = {
   INVALID_REQUEST: { status: 400, message: "Review the selected task and required fields." },
+  FORBIDDEN: { status: 403, message: "Open PondoPath directly in this tab before asking the assistant." },
   PAYLOAD_TOO_LARGE: { status: 413, message: "That message is too long. Keep customer replies within 4,000 characters." },
   STALE_VERSION: { status: 409, message: "Records changed. Refresh the page before asking again; your message has not been saved." },
   AI_LIMIT: { status: 429, message: "The business's daily AI allowance is used. Manual forms and reminders remain available." },
@@ -25,8 +26,12 @@ function failure(code: string) {
 
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
-  const trustedOrigin = process.env.APP_URL;
-  if (!origin || !trustedOrigin || origin !== new URL(trustedOrigin).origin) return Response.json({ ok: false, code: "FORBIDDEN", message: "Open the assistant from your signed-in PondoPath workspace." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+  const host = request.headers.get("host");
+  // Vercel supplies the public host even when Next's request URL uses an internal address.
+  const trustedOrigin = process.env.VERCEL === "1"
+    ? host && "https://" + host
+    : URL.parse(process.env.APP_URL ?? request.url)?.origin;
+  if (!origin || origin !== trustedOrigin) return failure("FORBIDDEN");
   if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") return failure("INVALID_REQUEST");
   try {
     const input = aiRequestSchema.safeParse(await readLimitedJson(request, 16_384));
