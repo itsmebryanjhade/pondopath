@@ -918,3 +918,14 @@ html { scroll-padding-top: 88px; }
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
+
+/* Installable app: offline page and install suggestion */
+.offline-page { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; background: #f6f8f4; color: #1d2a24; }
+.offline-page h1 { margin: 0; font-size: 24px; font-weight: 700; }
+.offline-page p { margin: 0; max-width: 34ch; color: #55645b; line-height: 1.5; }
+.offline-retry { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 12px; background: #1e4b3c; color: #fff; font-weight: 600; text-decoration: none; }
+.pwa-install { position: fixed; z-index: 60; left: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 8px 8px 8px 14px; border: 1px solid #d6dfd7; border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgba(20, 40, 30, 0.14); font-size: 13px; color: #1d2a24; }
+@media (min-width: 900px) { .pwa-install { bottom: 20px; } }
+.pwa-install-btn { min-height: 34px; padding: 0 14px; border: 0; border-radius: 10px; background: #1e4b3c; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.pwa-install-close { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #55645b; font-size: 20px; line-height: 1; cursor: pointer; }
+.pwa-install-btn:focus-visible, .pwa-install-close:focus-visible { outline: 2px solid #1e4b3c; outline-offset: 2px; }
