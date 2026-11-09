@@ -58,6 +58,7 @@ export function AiAssistant({ workspace, dialog, onClose }: {
   const toolsButton = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const replyPicker = useRef<HTMLSelectElement>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -150,6 +151,20 @@ export function AiAssistant({ workspace, dialog, onClose }: {
   useEffect(() => {
     if (mode === "reply") replyPicker.current?.focus();
   }, [mode]);
+
+  useEffect(() => {
+    const el = composerInputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const nextHeight = Math.min(Math.max(el.scrollHeight, 40), 140);
+    el.style.height = `${nextHeight}px`;
+  }, [composerText]);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [isSending]);
 
   function close() {
     dialog.current?.close();
@@ -403,32 +418,41 @@ export function AiAssistant({ workspace, dialog, onClose }: {
           </div>
         </header>
 
-        <div className="assistant-content">
-          <p className="assistant-notice">
-            Selected records and messages are processed externally by Gemini. Use fictional data
-            only. Review suggestions before saving.
-          </p>
+        <div className="assistant-content assistant-body">
+          <div className="assistant-scroll-area">
+            <p className="assistant-notice">
+              Selected records and messages are processed externally by Gemini. Use fictional data
+              only. Review suggestions before saving.
+            </p>
 
-          <dl className="assistant-extracted assistant-notice" aria-label="Calculated cash facts">
-            <div>
-              <dt>Recorded available cash</dt>
-              <dd>{formatPHP(workspace.forecastInput.availableCents)}</dd>
-            </div>
-            <div>
-              <dt>Baseline projected closing cash · 30 days</dt>
-              <dd>{formatPHP(forecast.days[29].closingCents)}</dd>
-            </div>
-            <div>
-              <dt>First baseline shortage</dt>
-              <dd>
-                {forecast.firstShortage
-                  ? `${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(
-                    forecast.firstShortage.date
-                  )}`
-                  : "None projected from entered records"}
-              </dd>
-            </div>
-          </dl>
+            <dl className="assistant-extracted assistant-notice assistant-cash-facts" aria-label="Calculated cash facts">
+              <div className="assistant-cash-facts-header">
+                <span className="assistant-cash-facts-title">Calculated cash facts</span>
+                <span className="assistant-cash-facts-tag">30-day projection</span>
+              </div>
+              <div className="assistant-cash-facts-grid">
+                <div className="assistant-fact-card">
+                  <dt>Recorded available cash</dt>
+                  <dd>{formatPHP(workspace.forecastInput.availableCents)}</dd>
+                </div>
+                <div className="assistant-fact-card">
+                  <dt>Baseline projected closing cash · 30 days</dt>
+                  <dd className={forecast.days[29].closingCents < 0 ? "negative-val" : ""}>
+                    {formatPHP(forecast.days[29].closingCents)}
+                  </dd>
+                </div>
+                <div className="assistant-fact-card">
+                  <dt>First baseline shortage</dt>
+                  <dd>
+                    {forecast.firstShortage
+                      ? `${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(
+                        forecast.firstShortage.date
+                      )}`
+                      : "None projected from entered records"}
+                  </dd>
+                </div>
+              </div>
+            </dl>
 
           {mode === "reply" ? (
             /* Preserved Separate Source-Reply Input */
@@ -695,12 +719,16 @@ export function AiAssistant({ workspace, dialog, onClose }: {
             <ThreadPrimitive.Root className="assistant-chat-mode">
               <AuiIf condition={state => state.thread.messages.length === 0}>
                 <div className="assistant-empty-thread">
-                  <p className="muted">Ask a question or pick a starter.</p>
+                  <div className="assistant-empty-lead">
+                    <DashboardIcon name="sparkle" size={15} />
+                    <p className="muted">Ask a question or pick a starter.</p>
+                  </div>
                   <div className="assistant-starters" role="group" aria-label="Suggested questions">
                     {starters.map(starter => (
                       <button key={starter} type="button" className="assistant-starter-btn" disabled={isSending}
                         onClick={() => prepareQuestion(starter)}>
-                        <strong>{starter}</strong>
+                        <span className="assistant-starter-text"><strong>{starter}</strong></span>
+                        <span className="assistant-starter-arrow">→</span>
                       </button>
                     ))}
                   </div>
@@ -724,6 +752,11 @@ export function AiAssistant({ workspace, dialog, onClose }: {
                     const target = proposal?.draft && resolveAssistantDraftTarget(workspace, proposal);
                     return (
                       <MessagePrimitive.Root className={"assistant-msg " + message.role}>
+                        <div className="assistant-msg-header">
+                          <span className="assistant-avatar-badge">
+                            {message.role === "user" ? "You" : "PondoPath AI"}
+                          </span>
+                        </div>
                         <p className="assistant-msg-text">{text.text}</p>
                         {!!proposal?.facts.length && (
                           <dl className="assistant-extracted">
@@ -757,6 +790,22 @@ export function AiAssistant({ workspace, dialog, onClose }: {
                     );
                   }}
                 </ThreadPrimitive.Messages>
+
+                {isSending && (
+                  <div className="assistant-msg assistant assistant-thinking" aria-label="Thinking">
+                    <div className="assistant-msg-header">
+                      <span className="assistant-avatar-badge">PondoPath AI</span>
+                      <span className="assistant-thinking-text">Thinking…</span>
+                    </div>
+                    <div className="assistant-typing-dots">
+                      <span className="dot" />
+                      <span className="dot" />
+                      <span className="dot" />
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
               </div>
 
               {activeReview?.draft && (
@@ -781,75 +830,87 @@ export function AiAssistant({ workspace, dialog, onClose }: {
                   <button type="button" className="text-link" onClick={() => router.refresh()}>Refresh records</button>
                 </div>
               )}
-
-              <ComposerPrimitive.Root className="assistant-composer-root" onSubmit={handleSend}>
-                {draftIntent && (
-                  <label className="form-field">
-                    <span>Invoice for this draft</span>
-                    <select className="field" value={draftInvoice?.id ?? ""} disabled={isSending} required
-                      onChange={event => setDraftInvoiceId(event.target.value)}>
-                      <option value="">Choose an unpaid invoice</option>
-                      {openInvoices.map(invoice => <option key={invoice.id} value={invoice.id}>{invoice.number}</option>)}
-                    </select>
-                    {draftIntent === "draft_followup" && <small>Include one due date in YYYY-MM-DD format.</small>}
-                  </label>
-                )}
-                <div className="assistant-composer-bar">
-                  <div className="assistant-tools-container">
-                    <button
-                      ref={toolsButton}
-                      type="button"
-                      className="assistant-tools-btn"
-                      aria-haspopup="menu"
-                      aria-expanded={toolsOpen}
-                      aria-label="Workspace tools"
-                      disabled={isSending}
-                      onClick={() => { setFocusedMenuIndex(0); setToolsOpen(!toolsOpen); }}
-                    >
-                      + Workspace tools
-                    </button>
-                    {toolsOpen && (
-                      <div ref={menuRef} className="assistant-tools-menu" role="menu" aria-label="Workspace tools" onKeyDown={handleMenuKeyDown}>
-                        {WORKSPACE_TOOLS.map((tool, index) => (
-                          <button key={tool.id} type="button" role="menuitem" tabIndex={focusedMenuIndex === index ? 0 : -1}
-                            className="assistant-tools-item" onClick={() => selectTool(tool.id)}>
-                            {tool.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <textarea
-                    ref={composerInputRef}
-                    className="field assistant-composer-input"
-                    rows={1}
-                    aria-label="Your message"
-                    placeholder="Ask about cash, invoices, or bills…"
-                    maxLength={1000}
-                    value={composerText}
-                    disabled={isSending}
-                    onChange={event => setComposerText(event.target.value)}
-                    onKeyDown={event => {
-                      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                        event.preventDefault();
-                        event.currentTarget.form?.requestSubmit();
-                      }
-                    }}
-                  />
-                  <button type="submit" className="section-primary assistant-send-btn"
-                    disabled={!composerText.trim() || isSending} aria-label="Send message">
-                    {isSending ? "Sending…" : "Send"}
-                    <DashboardIcon name="arrowRight" size={15} />
-                  </button>
-                </div>
-              </ComposerPrimitive.Root>
             </ThreadPrimitive.Root>
           )}
+        </div>
 
-          <p className="muted">
+        {/* Anchored Bottom Composer */}
+        <footer className="assistant-composer-wrap">
+          <ComposerPrimitive.Root className="assistant-composer-root" onSubmit={handleSend}>
+            {draftIntent && (
+              <div className="assistant-draft-context-bar">
+                <label className="form-field">
+                  <span>Invoice for this draft</span>
+                  <select className="field" value={draftInvoice?.id ?? ""} disabled={isSending} required
+                    onChange={event => setDraftInvoiceId(event.target.value)}>
+                    <option value="">Choose an unpaid invoice</option>
+                    {openInvoices.map(invoice => <option key={invoice.id} value={invoice.id}>{invoice.number}</option>)}
+                  </select>
+                  {draftIntent === "draft_followup" && <small>Include one due date in YYYY-MM-DD format.</small>}
+                </label>
+              </div>
+            )}
+            <div className="assistant-composer-card">
+              <textarea
+                ref={composerInputRef}
+                className="field assistant-composer-input assistant-composer-textarea"
+                rows={1}
+                aria-label="Your message"
+                placeholder="Ask about cash, invoices, or bills…"
+                maxLength={1000}
+                value={composerText}
+                disabled={isSending}
+                onChange={event => setComposerText(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }}
+              />
+              <div className="assistant-composer-actions">
+                <div className="assistant-tools-container">
+                  <button
+                    ref={toolsButton}
+                    type="button"
+                    className="assistant-tools-btn"
+                    aria-haspopup="menu"
+                    aria-expanded={toolsOpen}
+                    aria-label="Workspace tools"
+                    disabled={isSending}
+                    onClick={() => { setFocusedMenuIndex(0); setToolsOpen(!toolsOpen); }}
+                  >
+                    + Workspace tools
+                  </button>
+                  {toolsOpen && (
+                    <div ref={menuRef} className="assistant-tools-menu" role="menu" aria-label="Workspace tools" onKeyDown={handleMenuKeyDown}>
+                      {WORKSPACE_TOOLS.map((tool, index) => (
+                        <button key={tool.id} type="button" role="menuitem" tabIndex={focusedMenuIndex === index ? 0 : -1}
+                          className="assistant-tools-item" onClick={() => selectTool(tool.id)}>
+                          {tool.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="section-primary assistant-send-btn"
+                  disabled={!composerText.trim() || isSending}
+                  aria-label="Send message"
+                >
+                  <span className="assistant-send-label">Send</span>
+                  <DashboardIcon name="arrowRight" size={14} />
+                </button>
+              </div>
+            </div>
+          </ComposerPrimitive.Root>
+
+          <p className="muted assistant-disclaimer">
             Manual entry and reminder templates remain available when AI is unavailable. Each Gemini request uses the business’s daily allowance.
           </p>
-        </div>
+        </footer>
+      </div>
       </dialog>
     </AssistantRuntimeProvider>
   );
