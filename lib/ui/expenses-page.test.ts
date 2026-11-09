@@ -8,6 +8,7 @@ const readers = vi.hoisted(() => ({ getWorkspace: vi.fn(), getCashMovements: vi.
 vi.mock("@/lib/server/workspace", () => readers);
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/record-forms", () => ({ ExpenseForm: ({ expense }: { expense?: { id: string } }) => createElement("form", { "data-expense": expense?.id ?? "new" }) }));
+vi.mock("@/components/delete-record-form", () => ({ DeleteRecordForm: ({ id, hasPayments }: { id: string; hasPayments: boolean }) => createElement("form", { "data-delete": id, "data-has-payments": String(hasPayments) }) }));
 vi.mock("@/components/payment-form", () => ({ PaymentForm: ({ parentId, remainingCents }: { parentId: string; remainingCents: number }) => createElement("form", { "data-payment": parentId, "data-remaining": remainingCents }), VoidForm: () => null }));
 
 async function render(workspace = uiWorkspace(), page?: string) {
@@ -17,6 +18,15 @@ async function render(workspace = uiWorkspace(), page?: string) {
 }
 
 describe("source Expenses page with real planned outflows", () => {
+  it("offers Edit bill and Delete bill on every bill, flagging a bill that already has payments", async () => {
+    const workspace = uiWorkspace();
+    workspace.expenses[0] = { ...workspace.expenses[0], paid_cents: 1_000, unpaid_cents: workspace.expenses[0].amount_cents - 1_000 };
+    const html = await render(workspace);
+    expect((html.match(/>Edit bill</g) ?? []).length).toBe(workspace.expenses.length);
+    expect((html.match(/>Delete bill</g) ?? []).length).toBe(workspace.expenses.length);
+    expect(html).toContain(`data-delete="${workspace.expenses[0].id}" data-has-payments="true"`);
+  });
+
   it("offers a contextual AI suggestion beside overdue bills, and not when none are overdue", async () => {
     const overdue = uiWorkspace();
     overdue.expenses[0] = { ...overdue.expenses[0], due_date: "2026-10-28", unpaid_cents: 3_000_000 };
@@ -45,8 +55,8 @@ describe("source Expenses page with real planned outflows", () => {
     expect(bill).toContain("Overdue");
     expect(bill).toContain("Left of ₱50,000.00");
     expect(bill).not.toContain("Counted as due today");
-    // Two buttons in a fixed row (Record payment, Edit bill); their forms slide open below.
-    expect(bill.match(/aria-expanded="false"/g)).toHaveLength(2);
+    // Three buttons in a fixed row (Record payment, Edit bill, Delete bill); their forms slide open below.
+    expect(bill.match(/aria-expanded="false"/g)).toHaveLength(3);
     expect(html).toContain("Overdue bills count as due today");
     expect(html).toContain('data-remaining="3000000"');
     expect(html).toContain(`data-expense="${workspace.expenses[0].id}"`);

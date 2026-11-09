@@ -55,13 +55,13 @@ export function CashMovements({
                   className="disclosure cash-movement-correction"
                   name={billPayments ? "bill-payment-corrections" : "receipt-corrections"}
                 >
-                  <summary className="row-action is-quiet" aria-label={billPayments ? `Void payment for ${row.what}` : undefined}>
-                    Void payment <AppIcon name="chevron-down" />
+                  <summary className="row-action is-quiet" aria-label={billPayments ? `Delete payment for ${row.what}` : undefined}>
+                    Delete payment <AppIcon name="chevron-down" />
                   </summary>
                   <VoidForm revision={workspace.revision} movementId={row.id} kind={kind} />
                 </details>
               ) : (
-                <p className="muted cash-movement-correction">Only the owner can void an incorrect entry.</p>
+                <p className="muted cash-movement-correction">Only the owner can delete an incorrect payment.</p>
               ))}
             </li>
           ))}

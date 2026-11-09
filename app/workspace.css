@@ -1276,6 +1276,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .invoice-item.is-paid { opacity: .7; }
 .workspace-root .invoice-item.is-overdue .invoice-money strong { color: var(--negative); }
 .workspace-root .invoice-action { justify-self: end; }
+.workspace-root .invoice-action-group { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 /* In a narrow card the row wraps: who and amount on top, details and the action below. */
 @container (max-width: 760px) {
   .workspace-root .invoice-item { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who money" "due due" "plan plan" "action action"; }

@@ -106,7 +106,7 @@ export function VoidForm({
   return (
     <CommandForm
       revision={revision}
-      label="Confirm void"
+      label="Delete payment"
       build={(data) => ({
         type: "void_cash_movement",
         payload: { movementId, reason: String(data.get("reason") ?? "") },
@@ -114,11 +114,11 @@ export function VoidForm({
     >
       <p className="muted">
         {billPayment
-          ? "The entry stays in history. PondoPath adds the amount back to available cash and the bill’s unpaid balance."
-          : "The entry stays in history. PondoPath subtracts the amount from available cash and adds it back to the unpaid balance. Any expected payment goes back for review."}
+          ? "The payment stays in history, crossed out. PondoPath adds the amount back to available cash and the bill’s unpaid balance. To fix an amount or date, delete the payment and record it again."
+          : "The payment stays in history, crossed out. PondoPath subtracts the amount from available cash and adds it back to the unpaid balance. Any expected payment goes back for review. To fix an amount or date, delete the payment and record it again."}
       </p>
       <Field
-        label="Reason for voiding"
+        label="Reason for deleting"
         name="reason"
         maxLength={4000}
         required

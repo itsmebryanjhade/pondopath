@@ -25,10 +25,10 @@ describe("payment history corrections", () => {
     const html = renderToStaticMarkup(CashMovements({ workspace, movements: [movement], kind: "expense_payment" }));
     expect(html).toContain('id="movement-demo-bill-payment" tabindex="-1"');
     expect(html).toContain('name="bill-payment-corrections"');
-    expect(html).toContain("Reason for voiding");
+    expect(html).toContain("Reason for deleting");
     expect(html).toMatch(/<input[^>]*required=""[^>]*name="reason"/);
     expect(html).toContain('<input type="checkbox" required=""/>');
-    expect(html).toContain("Confirm void");
+    expect(html).toContain("Delete payment");
     expect(html).not.toContain("customer receipt");
   });
 
@@ -37,10 +37,10 @@ describe("payment history corrections", () => {
     const receipt = { ...movement, kind: "receipt" as const, invoice_id: workspace.invoices[0].id, expense_id: null };
     let html = renderToStaticMarkup(CashMovements({ workspace, movements: [receipt], selected: true }));
     expect(html).toContain("Any expected payment goes back for review.");
-    expect(html).toContain("Confirm void");
+    expect(html).toContain("Delete payment");
     workspace.actor.role = "finance";
     html = renderToStaticMarkup(CashMovements({ workspace, movements: [movement], kind: "expense_payment" }));
-    expect(html).toContain("Only the owner can void an incorrect entry.");
+    expect(html).toContain("Only the owner can delete an incorrect payment.");
     expect(html).not.toContain('name="reason"');
   });
 });

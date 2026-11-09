@@ -1061,6 +1061,7 @@ export type Database = {
         Args: { p_rows: Json; p_source_id: string }
         Returns: Json
       }
+      delete_workspace_record: { Args: { p_command: Json }; Returns: Json }
       workspace_command: { Args: { p_command: Json }; Returns: Json }
       workspace_history: {
         Args: { p_cursor?: string; p_id: string; p_kind: string }

@@ -38,14 +38,14 @@ describe("Payments received on an invoice", () => {
     expect(html).toContain("Ref OR-12 · Recorded by you");
     expect(html).toContain("Voided: Bounced cheque");
     expect(html).toMatch(/class="is-voided"/);
-    expect((html.match(/>Void this payment</g) ?? []).length).toBe(1);
+    expect((html.match(/>Delete this payment</g) ?? []).length).toBe(1);
   });
 
   it("tells a teammate to ask the owner instead of showing void controls", () => {
     const workspace = uiWorkspace();
     workspace.actor.role = "finance" as typeof workspace.actor.role;
     const html = renderToStaticMarkup(InvoicePayments({ workspace, movements: [receipt(workspace, "p1")] }));
-    expect(html).not.toContain("Void this payment");
+    expect(html).not.toContain("Delete this payment");
     expect(html).toContain("Ask the owner to void it.");
   });
 });

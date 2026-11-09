@@ -59,3 +59,26 @@ describe("record command boundary", () => {
     expect(CommandError.fromDatabase("FORBIDDEN").code).toBe("FORBIDDEN");
   });
 });
+
+describe("delete commands", () => {
+  const id = randomUUID();
+  it.each(["delete_invoice", "delete_expense"])("accepts %s with an id and a reason", type => {
+    expect(workspaceCommandSchema.safeParse({ ...envelope, type, payload: { id, reason: "Entered by mistake" } }).success).toBe(true);
+  });
+
+  it.each([
+    { id, reason: "" },
+    { id, reason: "   " },
+    { id: "not-a-uuid", reason: "Entered by mistake" },
+    { id },
+    { id, reason: "Entered by mistake", extra: true },
+  ])("rejects an incomplete or padded delete payload %#", payload => {
+    expect(workspaceCommandSchema.safeParse({ ...envelope, type: "delete_invoice", payload }).success).toBe(false);
+  });
+
+  it("explains why a record with payment history cannot be deleted", () => {
+    expect(CommandError.fromDatabase("HAS_PAYMENTS").code).toBe("HAS_PAYMENTS");
+    expect(CommandError.fromDatabase("HAS_PAYMENTS").message).toMatch(/payment history/);
+  });
+});
+

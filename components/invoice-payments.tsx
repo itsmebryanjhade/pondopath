@@ -51,7 +51,7 @@ export function InvoicePayments({
                 </div>
                 {!voided && isOwner && (
                   <InlineActions actions={[{
-                    key: "void", label: "Void this payment", ariaLabel: `Void the ${formatPHP(row.amount_cents)} payment from ${formatPlanDate(row.payment_date)}`,
+                    key: "void", label: "Delete this payment", ariaLabel: `Delete the ${formatPHP(row.amount_cents)} payment from ${formatPlanDate(row.payment_date)}`,
                     content: <VoidForm revision={workspace.revision} movementId={row.id} kind="receipt" />,
                   }]} />
                 )}

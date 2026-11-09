@@ -6,6 +6,7 @@ import { formatPlanDate } from "@/lib/display";
 import { AppIcon } from "@/components/app-icon";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { InvoiceForm, CustomerForm } from "@/components/record-forms";
+import { DeleteRecordForm } from "@/components/delete-record-form";
 import { PaymentForm } from "@/components/payment-form";
 import { RecordPaymentToggle } from "@/components/record-payment-toggle";
 import { InvoicePayments } from "@/components/invoice-payments";
@@ -20,7 +21,7 @@ import { z } from "zod";
 
 type InvoiceDetailProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ history?: string; movement?: string; plan?: string; from?: string | string[] }>;
+  searchParams: Promise<{ history?: string; movement?: string; plan?: string; edit?: string; delete?: string; from?: string | string[] }>;
 };
 
 const invoiceOrigins = new Map([
@@ -118,9 +119,13 @@ export default async function InvoiceDetail({ params, searchParams }: InvoiceDet
         <div className="overview-disclosures">
           <ReminderPanel workspace={workspace} invoice={invoice} customer={customer} template={reminderDraft} collapsible />
           <ScenarioPanel key={workspace.revision} workspace={workspace} invoiceId={invoice.id} />
-          <details className="panel disclosure">
+          <details className="panel disclosure" id="invoice-edit" open={query.edit === "1" || undefined}>
             <summary><AppIcon name="edit-3" /><span className="action-text"><span>Edit invoice</span><small>{movements.length > 0 ? "Correct the total or due date. Owner only, with a reason." : "Fix the invoice number, customer, total or due date."}</small></span><AppIcon name="chevron-down" /></summary>
             <InvoiceForm workspace={workspace} invoice={invoice} locked={movements.length > 0} />
+          </details>
+          <details className="panel disclosure" id="invoice-delete" open={query.delete === "1" || undefined}>
+            <summary><AppIcon name="trash-2" /><span className="action-text"><span>Delete invoice</span><small>{movements.length > 0 ? "Not available: this invoice has payment history." : "Entered by mistake? Remove it from your cash plan."}</small></span><AppIcon name="chevron-down" /></summary>
+            <DeleteRecordForm workspace={workspace} kind="invoice" id={invoice.id} name={invoice.number} hasPayments={movements.length > 0} redirectTo="/invoices" />
           </details>
           <details className="panel disclosure">
             <summary><AppIcon name="users" /><span className="action-text"><span>Customer contact</span><small>{[customer.contact_name, customer.email || customer.phone].filter(Boolean).join(" · ") || "Who to contact about payment"}</small></span><AppIcon name="chevron-down" /></summary>

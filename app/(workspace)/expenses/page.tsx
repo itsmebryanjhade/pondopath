@@ -10,6 +10,7 @@ import { AiContextButton } from "@/components/ai-context-button";
 import { ExpenseForm } from "@/components/record-forms";
 import { PaymentForm } from "@/components/payment-form";
 import { CashMovements } from "@/components/cash-movements";
+import { DeleteRecordForm } from "@/components/delete-record-form";
 import { InlineActions } from "@/components/inline-actions";
 import { FocusHashOnArrival } from "@/components/jump-link";
 import { ForecastCheckList } from "@/components/forecast-check-list";
@@ -86,6 +87,7 @@ export default async function Expenses({ searchParams }: ExpensePageProps) {
                   <InlineActions actions={[
                     ...(!paid ? [{ key: "pay", label: "Record payment", ariaLabel: `Record payment for ${expense.label}`, tone: "main" as const, content: <PaymentForm workspace={workspace} kind="expense_payment" parentId={expense.id} remainingCents={expense.unpaid_cents} /> }] : []),
                     { key: "edit", label: "Edit bill", ariaLabel: `Edit bill: ${expense.label}`, content: <ExpenseForm workspace={workspace} expense={expense} /> },
+                    { key: "delete", label: "Delete bill", ariaLabel: `Delete bill: ${expense.label}`, content: <DeleteRecordForm workspace={workspace} kind="expense" id={expense.id} name={expense.label} hasPayments={expense.paid_cents > 0 || movements.some((row) => row.expense_id === expense.id)} /> },
                   ]} />
                 </li>
               );

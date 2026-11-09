@@ -144,9 +144,13 @@ export function CustomerInvoices({ workspace, params }: {
                       ? `Next: ${next.next_action} · ${formatPlanDate(next.due_date, true)}`
                       : "No follow-up planned"}</span>}
                   </div>
-                  {!paid && <Link className="row-action invoice-action" href={`/invoices/${invoice.id}?plan=edit#collection-plan`}>
-                    {expectation ? "Update expected payment" : "Set expected payment"}
-                  </Link>}
+                  <div className="invoice-action invoice-action-group">
+                    {!paid && <Link className="row-action" href={`/invoices/${invoice.id}?plan=edit#collection-plan`}>
+                      {expectation ? "Update expected payment" : "Set expected payment"}
+                    </Link>}
+                    <Link className="row-action is-quiet" href={`/invoices/${invoice.id}?edit=1#invoice-edit`} aria-label={`Edit invoice ${invoice.number}`}>Edit</Link>
+                    <Link className="row-action is-quiet" href={`/invoices/${invoice.id}?delete=1#invoice-delete`} aria-label={`Delete invoice ${invoice.number}`}>Delete</Link>
+                  </div>
                 </li>
               );
             })}

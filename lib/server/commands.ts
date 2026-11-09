@@ -10,7 +10,7 @@ export async function runCommand(command: WorkspaceCommand): Promise<CommandResu
   }
   await requireActor();
   const client = await createClient();
-  const { data, error } = await client.rpc("workspace_command", { p_command: parsed.data });
+  const { data, error } = await client.rpc(parsed.data.type.startsWith("delete_") ? "delete_workspace_record" : "workspace_command", { p_command: parsed.data });
   if (error) {
     throw CommandError.fromDatabase(error.message);
   }
