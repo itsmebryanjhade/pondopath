@@ -2,7 +2,8 @@ import { Parser } from "saxen";
 import { readSheet } from "read-excel-file/node";
 import { Unzip, UnzipInflate, zipSync } from "fflate";
 import { crc32 } from "node:zlib";
-import { CSV_LIMITS, validateImportRows, type CsvFile } from "./imports";
+import { CSV_LIMITS, checkImportHeaders, validateImportRows, type CsvFile } from "./imports";
+export const MAX_WORKBOOK_DATA_ROWS = 300;
 function invalid(): never { throw new Error("Choose a valid, unencrypted XLSX workbook without macros or external links."); }
 const decode = (bytes: Uint8Array) => new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 const safePath = (name: string) => !/[\\:\x00-\x1f]/.test(name) && !name.startsWith("/") && name.replace(/\/$/, "").split("/").every(part => part && part !== "." && part !== "..");
@@ -101,7 +102,7 @@ function inspectXml(files: Record<string, Uint8Array>) {
   const sheets: { name: string; relation: string }[] = [];
   const relations = new Map<string, string>();
   const cellInfo = new Map<string, Map<string, CellInfo>>();
-  let totalCells = 0;
+  let totalCells = 0, totalDataRows = 0;
   for (const [path, bytes] of Object.entries(files)) {
     if (!/\.(?:xml|rels)$/i.test(path)) continue;
     const xml = decode(bytes);
@@ -191,16 +192,17 @@ function inspectXml(files: Record<string, Uint8Array>) {
     });
     const error = parser.parse(xml);
     if (error || stack.length || roots !== 1) invalid();
-    if (worksheet) cellInfo.set(path, cells);
+    if (worksheet) {
+      totalDataRows += Math.max(0, rows - 1);
+      if (totalDataRows > MAX_WORKBOOK_DATA_ROWS) throw new Error(`The workbook exceeds the ${MAX_WORKBOOK_DATA_ROWS} data-row limit.`);
+      cellInfo.set(path, cells);
+    }
   }
   if (!sheets.length || !files["xl/workbook.xml"] || !files["xl/_rels/workbook.xml.rels"] || sheets.some(sheet => !cellInfo.has(relations.get(sheet.relation) || ""))) invalid();
   return { sheets, relations, cellInfo };
 }
 
-export async function readXlsx(bytes: Uint8Array, sheet?: string): Promise<{ sheets: string[]; sheet: string | null; file: CsvFile | null }> {
-  const files = boundedMembers(bytes), inspected = inspectXml(files);
-  const sheets = inspected.sheets.map(sheet => sheet.name);
-  if (sheet === undefined) return { sheets, sheet: null, file: null };
+async function readSelectedSheet(files: Record<string, Uint8Array>, inspected: ReturnType<typeof inspectXml>, sheet: string, maximumRows: number = CSV_LIMITS.rows): Promise<CsvFile> {
   const selected = inspected.sheets.find(item => item.name === sheet);
   if (!selected) throw new Error("Select an existing worksheet in this workbook.");
   // The reader only receives a canonical archive of members already bounded and verified.
@@ -222,10 +224,37 @@ export async function readXlsx(bytes: Uint8Array, sheet?: string): Promise<{ she
     }
     return typeof value === "object" ? value.raw : String(value);
   }));
-  const file = validateImportRows(records);
+  const file = validateImportRows(records, maximumRows);
   file.rowNumbers = nonempty.slice(1).map(item => item.row);
   file.nonTextCells = nonempty.slice(1).map(({ values }) => values.map(value => value !== null && typeof value !== "string"));
+  return file;
+}
+
+export async function readXlsx(bytes: Uint8Array, sheet?: string): Promise<{ sheets: string[]; sheet: string | null; file: CsvFile | null }> {
+  const files = boundedMembers(bytes), inspected = inspectXml(files);
+  const sheets = inspected.sheets.map(sheet => sheet.name);
+  if (sheet === undefined) return { sheets, sheet: null, file: null };
+  const file = await readSelectedSheet(files, inspected, sheet);
   return { sheets, sheet, file };
+}
+
+export async function readXlsxSheets(bytes: Uint8Array, selectedSheets: string[]): Promise<{ sheets: string[]; selectedSheets: string[]; file: CsvFile }> {
+  const files = boundedMembers(bytes), inspected = inspectXml(files);
+  const sheets = inspected.sheets.map(sheet => sheet.name);
+  if (!selectedSheets.length || selectedSheets.length > sheets.length || new Set(selectedSheets).size !== selectedSheets.length)
+    throw new Error("Select one or more different worksheets from this workbook.");
+  const selectedFiles: { name: string; file: CsvFile }[] = [];
+  for (const name of selectedSheets) selectedFiles.push({ name, file: await readSelectedSheet(files, inspected, name, MAX_WORKBOOK_DATA_ROWS) });
+  const headers = checkImportHeaders([...new Set(selectedFiles.flatMap(item => item.file.headers))]);
+  const rows: string[][] = [], rowNumbers: number[] = [], rowSheets: string[] = [], nonTextCells: boolean[][] = [];
+  for (const { name, file } of selectedFiles) file.rows.forEach((values, index) => {
+    rows.push(headers.map(header => values[file.headers.indexOf(header)] ?? ""));
+    rowNumbers.push(file.rowNumbers?.[index] ?? index + 2);
+    rowSheets.push(name);
+    nonTextCells.push(headers.map(header => file.nonTextCells?.[index]?.[file.headers.indexOf(header)] ?? false));
+  });
+  if (rows.length > MAX_WORKBOOK_DATA_ROWS) throw new Error(`The workbook exceeds the ${MAX_WORKBOOK_DATA_ROWS} data-row limit.`);
+  return { sheets, selectedSheets: [...selectedSheets], file: { headers, rows, rowNumbers, rowSheets, nonTextCells } };
 }
 
 

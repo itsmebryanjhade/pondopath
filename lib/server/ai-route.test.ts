@@ -33,4 +33,30 @@ describe("assistant HTTP boundary", () => {
     expect(response.status).toBe(503);
     expect(await response.text()).not.toContain("private credential");
   });
+  it.each([["AI_PROVIDER_BUSY", 503], ["AI_TIMEOUT", 504]] as const)("offers a configured free retry after primary %s only", async (code, status) => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only");
+    vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
+    vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
+    const body = { task: "explain", question: "Why?", expectedRevision: 1 };
+    mocks.request.mockRejectedValueOnce(new Error(code));
+    const primary = await POST(request(JSON.stringify(body)));
+    expect(primary.status).toBe(status);
+    expect(await primary.json()).toMatchObject({ code, canTryBackup: true });
+    mocks.request.mockRejectedValueOnce(new Error(code));
+    const retry = await POST(request(JSON.stringify({ ...body, attempt: "backup" })));
+    expect(retry.status).toBe(status);
+    expect(await retry.json()).not.toHaveProperty("canTryBackup");
+  });
+  it("rejects caller-selected provider routing and does not offer a paid fallback", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only");
+    vi.stubEnv("OPENROUTER_MODEL", "test/paid");
+    vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
+    const body = { task: "explain", question: "Why?", expectedRevision: 1 };
+    for (const extra of [{ model: "test/paid" }, { provider: "other" }, { url: "https://other.example" }, { attempt: "auto" }]) {
+      expect((await POST(request(JSON.stringify({ ...body, ...extra })))).status).toBe(400);
+    }
+    mocks.request.mockRejectedValueOnce(new Error("AI_PROVIDER_BUSY"));
+    expect(await (await POST(request(JSON.stringify(body)))).json()).not.toHaveProperty("canTryBackup");
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+  });
 });

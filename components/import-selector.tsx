@@ -16,6 +16,9 @@ const ROLE_FIELDS: { name: keyof AutoFields; label: string; required: boolean }[
   { name: "payee", label: "Supplier / payee column", required: true },
   { name: "label", label: "Description / expense label", required: true },
   { name: "typeColumn", label: "Type column (optional)", required: false },
+  { name: "paidAmount", label: "Already paid (optional)", required: false },
+  { name: "openBalance", label: "Open balance (optional)", required: false },
+  { name: "status", label: "Payment status (optional)", required: false },
 ];
 
 /** Column/row selector with the reader's labels. Field names are read by `readSelectorForm`; the server validates the result. */
@@ -27,9 +30,10 @@ export function relabel(headers: string[], rows: (string | number | boolean | nu
   return labelRows(file, { externalId: text("externalId"), amount: text("amount"), overrides: {}, ...optional("customer"), ...optional("payee"), ...optional("label"), ...optional("typeColumn") });
 }
 
-export function ImportSelector({ headers, rows, labels: initial, fields, customers, saved, disabled = false, onLabels }: {
+export function ImportSelector({ headers, rows, labels: initial, fields, customers, saved, disabled = false, onLabels, onHelpMatchColumns }: {
   headers: string[]; rows: (string | number | boolean | null)[][]; labels: SelectorLabel[]; fields: AutoFields; customers: Customer[]; saved?: Partial<AutoMapping>; disabled?: boolean;
   onLabels?: (labels: SelectorLabel[]) => void;
+  onHelpMatchColumns?: () => void;
 }) {
   const table = useRef<HTMLDivElement>(null);
   const [labels, setLabels] = useState(initial);
@@ -54,6 +58,13 @@ export function ImportSelector({ headers, rows, labels: initial, fields, custome
           <option value="">Select an existing customer</option>{customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
         </select><small>Create missing customers using the existing invoice page.</small></label>
     </div>
+    {onHelpMatchColumns && (
+      <div className="import-help-action" style={{ margin: "8px 0" }}>
+        <button type="button" className="button secondary" disabled={disabled} onClick={onHelpMatchColumns}>
+          Help match columns
+        </button>
+      </div>
+    )}
     <p className="muted">PondoPath labelled each row. Untick anything you do not want, and change a label if it is wrong. Payment rows are never imported as cash.</p>
     <button type="button" className="button secondary" disabled={disabled} onClick={selectAll}>Select all</button>
     <div className="intake-table-scroll" ref={table}><table className="intake-table">
@@ -90,7 +101,7 @@ export function readSelectorForm(data: FormData, labels: SelectorLabel[], saved?
   }
   return {
     kind: "auto", externalId: text("externalId"), amount: text("amount"), dueDate: text("dueDate"), number: text("number"), customerId: text("customerId"),
-    label: text("label"), payee: text("payee"), ...optional("customer"), ...optional("typeColumn"),
+    label: text("label"), payee: text("payee"), ...optional("customer"), ...optional("typeColumn"), ...optional("paidAmount"), ...optional("openBalance"), ...optional("status"),
     columns: data.getAll("column").map(String), overrides,
     // Payment rows have no checkbox: they are held as payments, never counted as rows the owner left out.
     excludedIds: [...labels.filter(item => item.label !== "payment" && item.externalId && !ticked.has(item.externalId)).map(item => item.externalId),

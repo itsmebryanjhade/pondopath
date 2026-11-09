@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aiRequestSchema, buildAiContext, validateAiProposal } from "./ai";
+import { aiRequestSchema, buildAiContext, validateAiProposal, type AiRequest } from "./ai";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 
 const workspace = uiWorkspace();
@@ -53,5 +53,31 @@ describe("bounded multilingual AI proposals", () => {
     expect(validateAiProposal(explain, { summary: "Expected payment pa lang ito.", recordIds: [invoiceId] }, workspace)).toMatchObject({ task: "explain" });
     expect(() => validateAiProposal(explain, { summary: "Wrong source", recordIds: ["other"] }, workspace)).toThrow();
     expect(() => validateAiProposal(request, { ...proposal, execute: "record_receipt" }, workspace)).toThrow();
+  });
+  it("accepts only explicit, masked import-mapping requests with temporary column IDs", () => {
+    const mapping = {
+      task: "suggest_import_mapping", expectedRevision: 1, language: "english",
+      headers: [{ id: "c0", name: "Reference" }, { id: "c1", name: "Amount" }, { id: "c2", name: "Due" }],
+      samples: [["<id>", "<amount>", "<date>"]],
+    };
+    expect(aiRequestSchema.parse(mapping)).toMatchObject({ task: "suggest_import_mapping", headers: mapping.headers, samples: mapping.samples });
+    expect(aiRequestSchema.parse({ ...mapping, attempt: "backup" }).attempt).toBe("backup");
+    expect(aiRequestSchema.safeParse({ ...mapping, samples: [["INV-1", "50000", "2026-11-15"]] }).success).toBe(false);
+    expect(aiRequestSchema.safeParse({ ...mapping, headers: Array.from({ length: 25 }, (_, index) => ({ id: `c${index}`, name: `H${index}` })) }).success).toBe(false);
+    expect(aiRequestSchema.safeParse({ ...mapping, headers: [{ id: "unknown", name: "Reference" }] }).success).toBe(false);
+  });
+  it("returns only safe mapping context and rejects unknown or conflicting temporary IDs", () => {
+    const mapping = aiRequestSchema.parse({
+      task: "suggest_import_mapping", expectedRevision: 1, headers: [{ id: "c0", name: "Reference" }, { id: "c1", name: "Amount" }, { id: "c2", name: "Due" }],
+      samples: [["<id>", "<amount>", "<date>"]],
+    }) as Extract<AiRequest, { task: "suggest_import_mapping" }>;
+    const context = buildAiContext(workspace, mapping);
+    expect(context.data).toEqual({ headers: mapping.headers, samples: mapping.samples });
+    expect(JSON.stringify(context.data)).not.toContain(workspace.actor.userId);
+    const output = { fields: { externalId: "c0", number: "c0", amount: "c1", dueDate: "c2", customer: null, payee: null, label: null, typeColumn: null, paidAmount: null, openBalance: null, status: null }, unresolved: ["label", "payee"] };
+    expect(validateAiProposal(mapping, output, workspace)).toMatchObject({ task: "suggest_import_mapping", sourceRevision: 1, fields: output.fields, unresolved: ["label", "payee"] });
+    expect(() => validateAiProposal(mapping, { ...output, fields: { ...output.fields, amount: "c9" } }, workspace)).toThrow();
+    expect(() => validateAiProposal(mapping, { ...output, fields: { ...output.fields, amount: "c0" } }, workspace)).toThrow();
+    expect(() => validateAiProposal(mapping, { ...output, unresolved: [] }, workspace)).toThrow();
   });
 });

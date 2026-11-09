@@ -39,6 +39,13 @@ describe("bounded CSV proposals", () => {
     expect(() => mapCsv(file, { ...mapping, amount: "Missing" }, context)).toThrow();
   });
 
+  it("resolves an exact imported customer name to its existing business ID", () => {
+    const file = csv("ID,Customer,Invoice,Amount,Due\nrow-1,Mabuhay Cafe,INV-1,500,2026-11-15");
+    const result = mapCsv(file, { ...mapping, currency: undefined, customer: "Customer" }, { ...context, customers: [{ id: customerId, name: "Mabuhay Cafe" }] })[0];
+    expect(result.status).toBe("new");
+    expect(result.candidate?.payload).toMatchObject({ customerId });
+  });
+
   it("uses a previous source binding when an expense changes, rather than creating another bill", () => {
     const expenseId = "00000000-0000-4000-8000-000000000002";
     const file = csv("ID,Label,Payee,Amount,Due\n0001,Changed bill,Vendor,12,2026-11-05");
@@ -76,7 +83,7 @@ it("produces the same literal proposals from the matching CSV and Excel samples"
   const excelRows = mapCsv(workbook.file!, mappingForSample(), context);
   expect(excelRows.map(row => row.status)).toEqual(["new", "new", "invalid", "duplicate", "duplicate"]);
   expect(excelRows[0].candidate?.payload).toMatchObject({ number: "SAMPLE-INV-001", amountCents: 1_250_000, dueDate: "2026-11-10" });
-  expect(excelRows).toEqual(csvRows);
+  expect(excelRows.map(row => { const copy = { ...row }; delete copy.sheet; return copy; })).toEqual(csvRows);
 });
 
 function mappingForSample(): CsvMapping {
@@ -119,6 +126,29 @@ describe("mixed mapping and row filter", () => {
     const bindings = [{ externalId: "a", type: "save_invoice", recordId: "00000000-0000-4000-8000-000000000009" }];
     const [row] = mapCsv(sheet("a,Bill,,Rent,Landlord,20.00,2026-11-06,Unpaid"), mixed, { ...context, bindings });
     expect(row).toMatchObject({ status: "invalid", message: "This source ID already belongs to a different record kind." });
+  });
+});
+
+describe("workbook balance and date exceptions", () => {
+  it("holds partly paid rows and excludes settled rows without creating financial proposals", () => {
+    const file = csv("ID,Invoice,Amount,Paid,Open Balance,Status,Due,Currency\n" +
+      "partial,INV-PARTIAL,50000,20000,30000,Partially Paid,2026-11-15,PHP\n" +
+      "settled,INV-SETTLED,50000,50000,0,Settled,2026-11-15,PHP");
+    const balanceMapping = { ...mapping, paidAmount: "Paid", openBalance: "Open Balance", status: "Status" } as CsvMapping;
+    const rows = mapCsv(file, balanceMapping, context);
+    expect(rows.map(({ status, candidate }) => [status, candidate])).toEqual([
+      ["balance_review", undefined], ["settled", undefined],
+    ]);
+    expect(rows[0].message).toMatch(/open balance|partly paid/i);
+    expect(rows[1].message).toMatch(/settled|paid/i);
+  });
+
+  it("keeps ambiguous dates out of proposals and identifies the source row", () => {
+    const file = csv("ID,Invoice,Amount,Due,Currency\nambiguous,INV-A,100,11/15/2026,PHP");
+    const [row] = mapCsv(file, mapping, context);
+    expect(row).toMatchObject({ row: 2, status: "invalid" });
+    expect(row.candidate).toBeUndefined();
+    expect(row.message).toMatch(/date|YYYY-MM-DD/i);
   });
 });
 

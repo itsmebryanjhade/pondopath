@@ -3,7 +3,7 @@ import { parseMoney } from "./money";
 import type { CsvFile, CsvMapping } from "./imports";
 
 /** Programmed reader: suggests what each imported column means. It never decides money values; the owner confirms every suggestion. */
-export type ColumnRole = "externalId" | "date" | "dueDate" | "customer" | "supplier" | "amount" | "type" | "description" | "number" | "ignore";
+export type ColumnRole = "externalId" | "date" | "dueDate" | "customer" | "supplier" | "amount" | "paidAmount" | "openBalance" | "status" | "type" | "description" | "number" | "ignore";
 export type ColumnSuggestion = { header: string; role: ColumnRole; confidence: "high" | "low" };
 
 /** Header words per role (English, Taglish, Filipino), compared after lower-casing and removing accents and punctuation. */
@@ -15,6 +15,9 @@ export const ROLE_WORDS: Record<Exclude<ColumnRole, "ignore">, string[]> = {
   customer: ["customer", "customer name", "client", "kliyente", "buyer", "mamimili", "bill to", "sold to", "suki"],
   supplier: ["supplier", "supplier name", "vendor", "payee", "paid to", "binayaran", "tindahan"],
   amount: ["amount", "halaga", "total", "amount php", "price", "presyo", "gross", "kabuuan"],
+  paidAmount: ["paid", "paid amount", "amount paid", "payment amount", "settled amount", "paid to date"],
+  openBalance: ["open balance", "outstanding", "outstanding balance", "balance due", "amount due", "remaining balance", "unpaid balance"],
+  status: ["status", "payment status", "invoice status", "settlement status", "state"],
   type: ["type", "uri", "kind", "category", "kategorya", "record type", "transaction type", "klase"],
   description: ["description", "paliwanag", "details", "particulars", "item", "memo", "label", "purpose", "detalye"],
 };
@@ -71,6 +74,22 @@ export function suggestColumns(headers: string[], samples: string[][]): ColumnSu
   return result;
 }
 
+export function maskImportSamples(file: CsvFile): { headers: { id: string; name: string }[]; samples: string[][] } {
+  const mask = (value: string) => {
+    const text = value.trim();
+    if (!text) return "";
+    if (isDate(text)) return "<date>";
+    if (isMoney(text)) return "<amount>";
+    if (isIdLike(text)) return "<id>";
+    if (/^(invoice|bill|payment|paid|unpaid|settled|open|partially paid|partly paid)$/i.test(text)) return "<choice>";
+    return "<text>";
+  };
+  return {
+    headers: file.headers.slice(0, 24).map((name, index) => ({ id: `c${index}`, name: name.slice(0, 80) })),
+    samples: file.rows.slice(0, 3).map(row => file.headers.slice(0, 24).map((_, index) => mask(String(row[index] ?? "")))),
+  };
+}
+
 export type RowLabel = "invoice" | "expense" | "payment" | "choose";
 export type AutoMapping = Extract<CsvMapping, { kind: "auto" }>;
 export type MixedMapping = Extract<CsvMapping, { kind: "mixed" }>;
@@ -121,7 +140,7 @@ export function applyReader(file: CsvFile, mapping: AutoMapping): { file: CsvFil
   for (const { externalId } of labels) if (externalId) counts.set(externalId, (counts.get(externalId) ?? 0) + 1);
   const keep = mapping.columns.map(header => file.headers.indexOf(header));
   const amountAt = mapping.columns.indexOf(mapping.amount);
-  const result: CsvFile = { headers: [...mapping.columns, READER_TYPE_COLUMN], rows: [], rowNumbers: [], ...(file.nonTextCells ? { nonTextCells: [] } : {}) };
+  const result: CsvFile = { headers: [...mapping.columns, READER_TYPE_COLUMN], rows: [], rowNumbers: [], ...(file.rowSheets ? { rowSheets: [] } : {}), ...(file.nonTextCells ? { nonTextCells: [] } : {}) };
   const payments: number[] = [], choose: number[] = [];
   let excluded = 0;
   labels.forEach(({ row, externalId, label }, index) => {
@@ -135,6 +154,7 @@ export function applyReader(file: CsvFile, mapping: AutoMapping): { file: CsvFil
     if (label === "expense" && amountAt >= 0) values[amountAt] = values[amountAt].trim().replace(/^-/, "");
     result.rows.push([...values, label]);
     result.rowNumbers!.push(row);
+    if (file.rowSheets) result.rowSheets!.push(file.rowSheets[index]);
     result.nonTextCells?.push([...keep.map(at => at >= 0 && !!file.nonTextCells?.[index]?.[at]), false]);
   });
   const mixed: MixedMapping = {
@@ -142,16 +162,19 @@ export function applyReader(file: CsvFile, mapping: AutoMapping): { file: CsvFil
     invoiceValues: ["invoice"], expenseValues: ["expense"], number: mapping.number, customerId: mapping.customerId, label: mapping.label, payee: mapping.payee,
     ...(mapping.customer ? { customer: mapping.customer } : {}), ...(mapping.recordId ? { recordId: mapping.recordId } : {}),
     ...(mapping.currency ? { currency: mapping.currency } : {}), ...(mapping.filter ? { filter: mapping.filter } : {}),
+    ...(mapping.paidAmount ? { paidAmount: mapping.paidAmount } : {}), ...(mapping.openBalance ? { openBalance: mapping.openBalance } : {}),
+    ...(mapping.status ? { status: mapping.status } : {}),
   };
   return { file: result, mixed, payments, choose, excluded };
 }
 
-export type AutoFields = Partial<Record<"externalId" | "number" | "amount" | "dueDate" | "customer" | "payee" | "label" | "typeColumn", string>>;
+export type AutoFields = Partial<Record<"externalId" | "number" | "amount" | "paidAmount" | "openBalance" | "status" | "dueDate" | "customer" | "payee" | "label" | "typeColumn", string>>;
 /** Turns column suggestions into mapping fields, with fallbacks the owner can change: due date ← date, invoice number ← row ID, payee/label ← nearest text column. */
 export function suggestAutoFields(suggestions: ColumnSuggestion[]): AutoFields {
   const of = (role: ColumnRole) => suggestions.find(item => item.role === role)?.header;
   const fields: AutoFields = {
     externalId: of("externalId"), number: of("number") ?? of("externalId"), amount: of("amount"), dueDate: of("dueDate") ?? of("date"),
+    paidAmount: of("paidAmount"), openBalance: of("openBalance"), status: of("status"),
     customer: of("customer"), payee: of("supplier") ?? of("customer") ?? of("description"),
     label: of("description") ?? of("type") ?? of("supplier") ?? of("customer"), typeColumn: of("type"),
   };

@@ -1,4 +1,5 @@
 import type { AutoFields, RowLabel } from "./reader";
+import type { CsvRow } from "./imports";
 
 /** Plain-words helpers for the Add records page. No file is parsed here; the server reads and validates every file. */
 export type LabelCounts = { invoice: number; expense: number; payment: number; choose: number };
@@ -79,11 +80,48 @@ export function sheetToRead(kind: "csv" | "xlsx" | null, sheet: string | null, s
 
 /** New rows, rows already sent before, and rows that could not be added (bad values in the file, or refused by the server). */
 export function summarizeOutcome(previewStatuses: string[], results: { status: string; replayed?: boolean }[]) {
-  const skippedInPreview = previewStatuses.filter((status) => status === "invalid" || status === "duplicate").length;
+  const skippedInPreview = previewStatuses.filter((status) => ["invalid", "duplicate", "balance_review", "settled"].includes(status)).length;
   const open = results.filter((result) => ["pending", "needs_match"].includes(result.status));
   return {
     fresh: open.filter((result) => !result.replayed).length,
-    already: results.filter((result) => result.replayed || result.status === "unchanged").length,
+    already: previewStatuses.filter((status) => status === "unchanged").length + results.filter((result) => result.replayed || result.status === "unchanged").length,
     skipped: skippedInPreview + results.filter((result) => result.status === "error").length,
+  };
+}
+
+export function summarizeWorkbookRows(rows: Pick<CsvRow, "sheet" | "row" | "externalId" | "status" | "message" | "candidate" | "openCents">[]) {
+  const groups = new Map<string, { sheet: string; readyCount: number; readyCents: number; exceptionCount: number; excludedOpenCount: number; excludedOpenCents: number; exceptions: { row: number; externalId: string; status: string; message: string }[] }>();
+  for (const row of rows) {
+    const sheet = row.sheet ?? "File";
+    const group = groups.get(sheet) ?? { sheet, readyCount: 0, readyCents: 0, exceptionCount: 0, excludedOpenCount: 0, excludedOpenCents: 0, exceptions: [] };
+    if (["new", "changed", "needs_match"].includes(row.status) && row.candidate) {
+      group.readyCount++;
+      group.readyCents += row.candidate.payload.amountCents;
+    } else if (!["unchanged", "filtered"].includes(row.status)) {
+      group.exceptionCount++;
+      group.exceptions.push({ row: row.row, externalId: row.externalId, status: row.status, message: row.message });
+      if (row.status === "balance_review" && (row.openCents ?? 0) > 0) {
+        group.excludedOpenCount++;
+        group.excludedOpenCents += row.openCents!;
+      }
+    }
+    groups.set(sheet, group);
+  }
+  const values = [...groups.values()];
+  return values.reduce((total, group) => ({
+    readyCount: total.readyCount + group.readyCount,
+    readyCents: total.readyCents + group.readyCents,
+    exceptionCount: total.exceptionCount + group.exceptions.length,
+    excludedOpenCount: total.excludedOpenCount + group.excludedOpenCount,
+    excludedOpenCents: total.excludedOpenCents + group.excludedOpenCents,
+  }), { readyCount: 0, readyCents: 0, exceptionCount: 0, excludedOpenCount: 0, excludedOpenCents: 0 }) && {
+    ...values.reduce((total, group) => ({
+      readyCount: total.readyCount + group.readyCount,
+      readyCents: total.readyCents + group.readyCents,
+      exceptionCount: total.exceptionCount + group.exceptions.length,
+      excludedOpenCount: total.excludedOpenCount + group.excludedOpenCount,
+      excludedOpenCents: total.excludedOpenCents + group.excludedOpenCents,
+    }), { readyCount: 0, readyCents: 0, exceptionCount: 0, excludedOpenCount: 0, excludedOpenCents: 0 }),
+    groups: values,
   };
 }

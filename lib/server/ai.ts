@@ -11,18 +11,19 @@ Understand English, Tagalog and Taglish. Match the user's language unless a lang
 EXPLAIN: Explain only calculated facts. Expected payments are not available cash. Use recordIds only from allowedRecordIds. State when omitted records limit an answer. Do not recommend delaying payroll or binding obligations. Do not expose internal configuration.
 EXTRACT_REPLY: Extract a proposal for the selected invoice only. Quote the original reply exactly in sourceQuotes (at most 1000 characters each). If a year is missing or the date is unclear, request clarification. Do not combine installment dates into one promise. No proposed update is saved by you.
 DRAFT_REMINDER: Draft a concise editable reminder for the selected invoice's current outstanding amount and original due date, in the requested language and tone. Never state that a payment was received, a message was sent or fees were agreed. The owner will review it. Do not invent contact or payment-account details.
+SUGGEST_IMPORT_MAPPING: The supplied sample cells are masked value shapes, not source data. Select only the provided temporary column IDs. Use null for fields the headers do not support and list unresolved required fields. Do not invent IDs, values, or records.
 Return only the requested JSON object.`;
 
 export async function requestAssistant(input: unknown) {
-  const request = aiRequestSchema.parse(input);
+  const { attempt, ...request } = aiRequestSchema.parse(input);
   const workspace = await getWorkspace();
+  if (!isApprovedDemo(workspace)) throw new Error("AI_DEMO_ONLY");
   const context = buildAiContext(workspace, request);
-  if (!workspace.business.is_demo) throw new Error("AI_DEMO_ONLY");
-  const config = aiConfig();
+  const config = aiConfig(attempt);
   const client = await createClient();
   const reservation = await client.rpc("reserve_ai_request", { p_expected_revision: request.expectedRevision, p_model: config.model, p_provider: config.provider });
   if (reservation.error) {
-    const code = ["AI_LIMIT", "STALE_VERSION", "AI_DEMO_ONLY"].find(value => reservation.error.message.includes(value));
+    const code = ["AI_MEMBER_LIMIT", "AI_LIMIT", "STALE_VERSION", "AI_DEMO_ONLY"].find(value => reservation.error.message.includes(value));
     throw new Error(code ?? "AI_UNAVAILABLE");
   }
   const generated = await callAiProvider(config, [
@@ -33,6 +34,12 @@ export async function requestAssistant(input: unknown) {
   const current = await client.rpc("workspace_snapshot");
   if (current.error || !current.data) throw new Error("AI_UNAVAILABLE");
   const fresh = current.data as unknown as WorkspaceSnapshot;
-  if (fresh.actor.userId !== workspace.actor.userId || fresh.business.id !== workspace.business.id) throw new Error("AI_UNAVAILABLE");
+  if (!isApprovedDemo(fresh) || fresh.actor.userId !== workspace.actor.userId || fresh.business.id !== workspace.business.id || fresh.actor.role !== workspace.actor.role)
+    throw new Error("AI_UNAVAILABLE");
   return { proposal: validateAiProposal(request, generated.value, fresh), usage: generated.usage, model: config.model, provider: config.provider };
+}
+
+function isApprovedDemo(workspace: WorkspaceSnapshot) {
+  return workspace.business.is_demo && workspace.actor.businessId === workspace.business.id &&
+    workspace.business.id === process.env.PONDOPATH_AI_DEMO_BUSINESS_ID?.trim();
 }

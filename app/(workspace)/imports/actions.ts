@@ -6,9 +6,10 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { CommandError, type ActionResult } from "@/lib/domain/commands";
 import { CSV_LIMITS, csvMappingSchema, mapCsv, readCsv, type IntakeBinding } from "@/lib/domain/imports";
-import { stageIntakeBatch, reviewIntake, confirmSelectedIntake } from "@/lib/server/intake";
+import { summarizeWorkbookRows } from "@/lib/domain/add-records";
+import { stageIntakeBatches, reviewIntake, confirmSelectedIntake } from "@/lib/server/intake";
 import { ensureFileSource } from "@/lib/server/file-source";
-import { readXlsx } from "@/lib/domain/xlsx";
+import { readXlsx, readXlsxSheets } from "@/lib/domain/xlsx";
 import { applyReader, labelRows, suggestAutoFields, suggestColumns } from "@/lib/domain/reader";
 import { requireActor } from "@/lib/server/auth";
 import { getWorkspace } from "@/lib/server/workspace";
@@ -31,12 +32,16 @@ async function csvFile(form: FormData) {
   const bytes = new Uint8Array(await file.arrayBuffer());
   try {
     if (file.name.toLowerCase().endsWith(".xlsx")) {
-      const sheet = form.get("sheet");
-      if (sheet !== null && (typeof sheet !== "string" || !sheet || sheet.length > 200)) throw new Error("Select a worksheet.");
-      const workbook = await readXlsx(bytes, typeof sheet === "string" ? sheet : undefined);
-      return { file, bytes, csv: workbook.file, sheets: workbook.sheets, sheet: workbook.sheet };
+      const selectedSheets = form.getAll("sheet");
+      if (selectedSheets.some(sheet => typeof sheet !== "string" || !sheet || sheet.length > 200)) throw new Error("Select a worksheet.");
+      if (selectedSheets.length) {
+        const workbook = await readXlsxSheets(bytes, selectedSheets as string[]);
+        return { file, bytes, csv: workbook.file, sheets: workbook.sheets, selectedSheets: workbook.selectedSheets };
+      }
+      const workbook = await readXlsx(bytes);
+      return { file, bytes, csv: workbook.file, sheets: workbook.sheets, selectedSheets: [] as string[] };
     }
-    return { file, bytes, csv: readCsv(bytes), sheets: [] as string[], sheet: null };
+    return { file, bytes, csv: readCsv(bytes), sheets: [] as string[], selectedSheets: [] as string[] };
   } catch (error) {
     throw new CommandError("VALIDATION_ERROR", { file: error instanceof Error ? error.message : "Check the spreadsheet file." });
   }
@@ -44,17 +49,17 @@ async function csvFile(form: FormData) {
 
 export async function inspectCsvAction(form: FormData) {
   return perform(async () => {
-    const { csv, sheets, sheet } = await csvFile(form);
+    const { csv, sheets, selectedSheets } = await csvFile(form);
     // The reader's suggestions and labels are hints for the selector; the saved mapping is validated again on preview and staging.
     const suggestions = csv ? suggestColumns(csv.headers, csv.rows.slice(0, 20)) : [];
     const fields = suggestAutoFields(suggestions);
-    const labels = csv ? labelRows(csv, { externalId: fields.externalId ?? "", amount: fields.amount ?? "", overrides: {}, ...fields }).slice(0, 100) : [];
-    return { headers: csv?.headers ?? [], sample: csv?.rows.slice(0, 3) ?? [], rows: csv?.rows.slice(0, 100) ?? [], count: csv?.rows.length ?? 0, sheets, sheet, fields, labels };
+    const labels = csv ? labelRows(csv, { externalId: fields.externalId ?? "", amount: fields.amount ?? "", overrides: {}, ...fields }) : [];
+    return { headers: csv?.headers ?? [], sample: csv?.rows.slice(0, 3) ?? [], rows: csv?.rows ?? [], count: csv?.rows.length ?? 0, sheets, sheet: selectedSheets[0] ?? null, selectedSheets, fields, labels };
   });
 }
 
 async function prepareCsv(form: FormData) {
-  const { file, bytes, csv, sheet } = await csvFile(form);
+  const { file, bytes, csv, selectedSheets } = await csvFile(form);
   if (!csv) throw new CommandError("VALIDATION_ERROR", { sheet: "Select a worksheet and read its columns first." });
   let mapping;
   const raw = form.get("mapping");
@@ -78,26 +83,29 @@ async function prepareCsv(form: FormData) {
     } else rows = mapCsv(csv, mapping, context);
   }
   catch (error) { throw new CommandError("VALIDATION_ERROR", { mapping: error instanceof Error ? error.message : "Check the column mapping." }); }
-  return { file, bytes, mapping, rows, held, sheet, sourceId: sourceId as string };
+  return { file, bytes, mapping, rows, held, selectedSheets, sourceId: sourceId as string };
 }
 
 export async function previewCsvAction(form: FormData) {
-  return perform(async () => { const { rows, held } = await prepareCsv(form); return { rows, held }; });
+  return perform(async () => {
+    const { rows, held } = await prepareCsv(form);
+    return { rows, held, groups: summarizeWorkbookRows(rows).groups, previewStatuses: rows.map(row => row.status), hasSendable: rows.some(row => row.candidate && !["invalid", "duplicate", "unchanged", "balance_review", "settled"].includes(row.status)) };
+  });
 }
 
 export async function stageCsvAction(form: FormData) {
   return perform(async () => {
-    const { file, bytes, mapping, rows, sheet, sourceId } = await prepareCsv(form);
+    const { file, bytes, mapping, rows, sourceId } = await prepareCsv(form);
     const fileHash = createHash("sha256").update(bytes).digest("hex");
-    const proposals = rows.filter(row => row.candidate && row.status !== "invalid" && row.status !== "duplicate").map(row => {
+    const proposals = rows.filter(row => row.candidate && !["invalid", "duplicate", "unchanged", "balance_review", "settled"].includes(row.status)).map(row => {
       const candidate = structuredClone(row.candidate!);
       // Bindings are resolved again in SQL; only an explicit mapped record ID belongs to the source payload.
       if (!mapping.recordId || !row.fields[mapping.recordId]?.trim()) delete candidate.payload.id;
       return { externalId: row.externalId, sourceVersion: createHash("sha256").update(JSON.stringify(candidate)).digest("hex"), candidate,
-        evidence: { filename: file.name.slice(0, 200), fileHash, ...(sheet ? { sheet } : {}), row: row.row, fields: row.fields } };
+        evidence: { filename: file.name.slice(0, 200), fileHash, ...(row.sheet ? { sheet: row.sheet } : {}), row: row.row, fields: row.fields } };
     });
     if (!proposals.length) throw new CommandError("VALIDATION_ERROR");
-    const results = await stageIntakeBatch(sourceId, proposals);
+    const results = await stageIntakeBatches(sourceId, proposals);
     revalidatePath("/(workspace)", "layout");
     return results;
   });
