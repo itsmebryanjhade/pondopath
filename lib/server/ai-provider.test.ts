@@ -20,7 +20,7 @@ function configure() {
   vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
   vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
 }
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("Gemini and OpenRouter transport", () => {
   it("uses Gemini once by default and sends a bounded supported schema", async () => {
@@ -126,6 +126,35 @@ describe("Gemini and OpenRouter transport", () => {
     vi.stubGlobal("fetch", fetcher);
     await expect(callAiProvider(aiConfig(), messages, schema)).rejects.toThrow(/^AI_UNAVAILABLE$/);
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs only status and provider host when Gemini rejects a production request", async () => {
+    configure();
+    vi.stubEnv("VERCEL", "1");
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("private provider details", { status: 400 })));
+    await expect(callAiProvider(aiConfig(), messages, schema)).rejects.toThrow("AI_UNAVAILABLE");
+    expect(warning).toHaveBeenCalledWith("Assistant provider HTTP failure", "generativelanguage.googleapis.com", 400);
+    expect(JSON.stringify(warning.mock.calls)).not.toContain("private provider details");
+  });
+
+  it("logs the failure class without logging a malformed production reply", async () => {
+    configure();
+    vi.stubEnv("VERCEL", "1");
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("private malformed reply")));
+    await expect(callAiProvider(aiConfig(), messages, schema)).rejects.toThrow("AI_UNAVAILABLE");
+    expect(warning).toHaveBeenCalledWith("Assistant provider unreadable reply", "generativelanguage.googleapis.com", "SyntaxError");
+    expect(JSON.stringify(warning.mock.calls)).not.toContain("private malformed reply");
+  });
+
+  it("logs only the response shape failure when Gemini returns invalid JSON data", async () => {
+    configure();
+    vi.stubEnv("VERCEL", "1");
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ candidates: [] })));
+    await expect(callAiProvider(aiConfig(), messages, schema)).rejects.toThrow("AI_UNAVAILABLE");
+    expect(warning).toHaveBeenCalledWith("Assistant provider invalid reply", "gemini", "schema");
   });
 
   it.each([

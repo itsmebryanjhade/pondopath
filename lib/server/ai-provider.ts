@@ -100,6 +100,7 @@ async function fetchProviderJson(url: string, headers: Record<string, string>, b
     throw providerTransportError(error, signal);
   }
   if (!response.ok) {
+    if (process.env.VERCEL === "1") console.warn("Assistant provider HTTP failure", new URL(url).hostname, response.status);
     await response.body?.cancel().catch(() => {});
     if (response.status === 408) throw new Error("AI_TIMEOUT");
     if (response.status === 429) throw new AiProviderRateLimit();
@@ -108,6 +109,7 @@ async function fetchProviderJson(url: string, headers: Record<string, string>, b
   try {
     return await readLimitedJson(response, 65_536);
   } catch (error) {
+    if (process.env.VERCEL === "1") console.warn("Assistant provider unreadable reply", new URL(url).hostname, error instanceof Error ? error.name : "unknown");
     throw providerTransportError(error, signal);
   }
 }
@@ -149,7 +151,8 @@ export async function callAiProvider(config: AiConfig, messages: AiMessage[], sc
       promptTokens: result.usage?.prompt_tokens ?? null,
       completionTokens: result.usage?.completion_tokens ?? null, cost: result.usage?.cost ?? null,
     } };
-  } catch {
+  } catch (error) {
+    if (process.env.VERCEL === "1") console.warn("Assistant provider invalid reply", config.kind, error instanceof z.ZodError ? "schema" : error instanceof SyntaxError ? "json" : "content");
     throw new Error("AI_UNAVAILABLE");
   }
 }
