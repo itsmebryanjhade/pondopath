@@ -58,6 +58,8 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
   const toast = useToast();
   const [busy, start] = useTransition();
   const busyRef = useRef(false);
+  const fixRef = useRef<HTMLParagraphElement>(null);
+  const [fixNote, setFixNote] = useState("");
   const [helpPending, setHelpPending] = useState(false);
   const [phase, setPhase] = useState<Phase>({ step: "file" });
   const [error, setError] = useState("");
@@ -151,10 +153,23 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
 
   const send = (event: React.FormEvent<HTMLFormElement>, current: Read) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const data = new FormData(formElement);
     const problems = selectorProblems(data, labels);
-    for (const name of missingChoices(data)) if (name !== "The column that names each row") problems.push(name === "Customer for invoices without one" && !customers.length ? "Add a customer on the Invoices page first." : `Choose a column for: ${name}.`);
-    if (problems.length) { setError([...new Set(problems)].join(" ")); if (adjust.current) adjust.current.open = true; return; }
+    for (const name of missingChoices(data)) if (name !== "The column that names each row") problems.push(name === "Customer for invoices without one" && !customers.length ? "Add a customer on the Invoices page first." : name === "Customer for invoices without one" ? "Choose which customer these invoices belong to, in the \"Customer for invoice rows without a customer\" list." : `Choose a column for: ${name}.`);
+    if (problems.length) {
+      // Say what to fix right beside the controls, and bring them into view: the click must never seem ignored.
+      setError("");
+      setFixNote([...new Set(problems)].join(" "));
+      if (adjust.current) adjust.current.open = true;
+      const empty = FIELD_LABELS.find(([key]) => !String(data.get(key) ?? "").trim());
+      const control = empty && formElement.elements.namedItem(empty[0]);
+      window.requestAnimationFrame(() => {
+        fixRef.current?.scrollIntoView({ block: "start" });
+        if (control instanceof HTMLElement) control.focus({ preventScroll: true });
+      });
+      return;
+    }
     const mapping: CsvMapping = readSelectorForm(data, labels);
     const form = new FormData();
     form.set("file", current.file); form.set("sourceId", current.sourceId); form.set("mapping", JSON.stringify(mapping));
@@ -181,11 +196,11 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
   const sendable = picked.invoice + picked.expense;
   const readyCount = phase.step === "check" ? (phase.read.preview?.groups.reduce((total, group) => total + group.readyCount, 0) ?? 0) : 0;
   const exceptionsCount = phase.step === "check" ? (phase.read.preview?.groups.reduce((total, group) => total + group.exceptionCount, 0) ?? 0) : 0;
-  const again = () => { setError(""); setPhase({ step: "file" }); };
+  const again = () => { setError(""); setFixNote(""); setPhase({ step: "file" }); };
   return (
     <div className="add-page">
       <StepIndicator step={phase.step} />
-      {error && <p role="alert" className="add-note">{error}</p>}
+      {error && phase.step !== "check" && <p role="alert" className="add-note">{error}</p>}
 
       {phase.step === "file" && <>
         <div className="add-grid">
@@ -201,6 +216,7 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
         <form key={phase.read.id} className="add-check" noValidate aria-busy={busy}
           onSubmit={(event) => send(event, phase.read)}
           onChange={(event) => {
+            setFixNote("");
             setSelection(countSelection(new FormData(event.currentTarget), labels));
             setPhase(value => value.step === "check" && value.read.preview ? { step: "check", read: { ...value.read, preview: undefined } } : value);
           }}>
@@ -217,11 +233,13 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
           })()}
           {phase.read.headers.length > 0 && <details ref={adjust} className="add-adjust" open={needsAttention({ fields: phase.read.fields, labels: phase.read.labels, customers: customers.length })}>
             <summary>Check columns and rows</summary>
+            {fixNote && <p role="alert" ref={fixRef} className="add-note">{fixNote}</p>}
             <ImportSelector headers={phase.read.headers} rows={phase.read.rows} labels={phase.read.labels} fields={phase.read.fields} customers={customers}
               saved={customers.length === 1 ? { customerId: customers[0].id } : undefined} disabled={busy || helpPending}
               onLabels={(next) => { setLabels(next); setSelection(null); setPhase(value => value.step === "check" ? { step: "check", read: { ...value.read, preview: undefined } } : value); }}
               onHelpMatchColumns={requestMappingHelp} />
           </details>}
+          {error && <p role="alert" className="add-note">{error}</p>}
           <div className="add-done-actions" style={{ justifyContent: "flex-start" }}>
             {phase.read.headers.length > 0 && <button className="add-button" disabled={!canSend({ busy, rows: phase.read.preview ? Number(phase.read.preview.hasSendable) : sendable })}>{busy ? "Working…" : phase.read.preview ? `Send ${readyCount} ${readyCount === 1 ? "row" : "rows"} to review` : `Review ${sendable} ${sendable === 1 ? "row" : "rows"}`}</button>}
             <button type="button" className="add-button secondary" disabled={busy} onClick={again}>Choose a different file</button>
