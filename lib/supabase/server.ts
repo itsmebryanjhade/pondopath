@@ -1,11 +1,12 @@
 import "server-only";
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { connection } from "next/server";
 import type { Database } from "@/lib/database.types";
 import { publicSupabaseConfig } from "./config";
 
-export async function createClient() {
+export const createClient = cache(async () => {
   // Auth also reads the clock in background callbacks; keep initialization request-bound.
   await connection();
   const store = await cookies();
@@ -22,4 +23,4 @@ export async function createClient() {
       },
     },
   });
-}
+});

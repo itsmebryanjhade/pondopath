@@ -31,7 +31,7 @@ export function MobileTabBar({ followupCount, inboxCount }: { followupCount: num
         <div id="more-sheet" ref={sheet} className="mobile-sheet" role="group" aria-label="More pages">
           <ul>{moreItems(counts).map((item) => (
             <li key={item.href}>
-              <Link href={item.href} className={`mobile-sheet-link${current === item.href ? " active" : ""}`} aria-current={current === item.href ? "page" : undefined} onNavigate={() => setOpen(false)}>
+              <Link href={item.href} prefetch={true} className={`mobile-sheet-link${current === item.href ? " active" : ""}`} aria-current={current === item.href ? "page" : undefined} onNavigate={() => setOpen(false)}>
                 <SideIconGlyph name={item.icon} size={20} /><span>{item.label}</span>
                 {item.count && <span className={`side-count${item.href === "/followups" ? " urgent" : ""}`} aria-label={item.countLabel}>{item.count}</span>}
               </Link>
@@ -43,7 +43,7 @@ export function MobileTabBar({ followupCount, inboxCount }: { followupCount: num
         <ul>{mobileTabs(counts).map((tab) => (
           <li key={tab.label}>
             {tab.kind === "link" ? (
-              <Link href={tab.href} className={`mobile-tab${tab.fab ? " mobile-fab" : ""}${current === tab.href ? " active" : ""}`} aria-current={current === tab.href ? "page" : undefined} onNavigate={() => setOpen(false)}>
+              <Link href={tab.href} prefetch={true} className={`mobile-tab${tab.fab ? " mobile-fab" : ""}${current === tab.href ? " active" : ""}`} aria-current={current === tab.href ? "page" : undefined} onNavigate={() => setOpen(false)}>
                 <SideIconGlyph name={tab.icon} size={tab.fab ? 22 : 21} /><span>{tab.label}</span>
                 {tab.count && <span className="side-count" aria-label={tab.countLabel}>{tab.count}</span>}
               </Link>

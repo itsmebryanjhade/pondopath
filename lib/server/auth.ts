@@ -1,10 +1,11 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export type Actor = { userId: string; businessId: string; role: "owner" | "finance" };
 
-export async function requireActor(): Promise<Actor> {
+export const requireActor = cache(async (): Promise<Actor> => {
   const client = await createClient();
   const { data, error } = await client.auth.getClaims();
   if (error || !data?.claims.sub) redirect("/login?reason=session");
@@ -16,4 +17,4 @@ export async function requireActor(): Promise<Actor> {
     redirect("/login?reason=access");
   }
   return { userId: data.claims.sub, businessId: membership.data.business_id, role: membership.data.role as Actor["role"] };
-}
+});

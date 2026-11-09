@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState, useTransition, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { reviewIntakeAction } from "@/app/(workspace)/imports/actions";
 import { parseIntakeCandidate, type IntakeCandidate } from "@/lib/domain/intake";
 import { parseMoney, formatPHP } from "@/lib/domain/money";
@@ -34,7 +33,6 @@ function SourceRow({ value }: { value: unknown }) {
 }
 
 export function IntakeReview({ item, sourceLabel, workspace }: { item: IntakeItem; sourceLabel: string; workspace: Pick<WorkspaceSnapshot, "revision" | "actor" | "customers" | "invoices" | "expenses" | "members"> }) {
-  const router = useRouter();
   const [busy, start] = useTransition();
   const [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -104,7 +102,7 @@ export function IntakeReview({ item, sourceLabel, workspace }: { item: IntakeIte
           setNotice("");
           start(async () => {
             const result = await reviewIntakeAction({ id: item.id, reviewVersion: item.review_version, revision: workspace.revision, decision, ...(edited ? { candidate: edited } : {}), note, confirmed: data.get("confirmed") === "on" });
-            if (result.ok) { setNotice(result.data.message); setDirty(false); router.refresh(); } else setNotice(result.message);
+            if (result.ok) { setNotice(result.data.message); setDirty(false); } else setNotice(result.message);
           });
         };
         const onSubmit = (decision: Decision) => (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); send(decision, event.currentTarget); };

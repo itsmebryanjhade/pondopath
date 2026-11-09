@@ -70,13 +70,22 @@ export async function getRecordHistory(
   return data as unknown as { events: AuditEvent[]; nextCursor: string | null };
 }
 
+const getBusinessRevision = cache(async (businessId: string) => {
+  const client = await createClient();
+  const current = await client.from("businesses").select("revision").eq("id", businessId).single();
+  if (current.error || current.data?.revision === undefined) {
+    throw new Error("Records changed while loading. Retry to load matching balances and history.");
+  }
+  return current.data.revision;
+});
+
 async function assertRevision(
-  client: Awaited<ReturnType<typeof createClient>>,
+  _client: Awaited<ReturnType<typeof createClient>>,
   businessId: string,
   expectedRevision: number,
 ) {
-  const current = await client.from("businesses").select("revision").eq("id", businessId).single();
-  if (current.error || current.data?.revision !== expectedRevision) {
+  const revision = await getBusinessRevision(businessId);
+  if (revision !== expectedRevision) {
     throw new Error("Records changed while loading. Retry to load matching balances and history.");
   }
 }

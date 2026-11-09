@@ -71,7 +71,6 @@ export function CustomerSelect({ customers, revision, defaultValue = "" }: { cus
       // The panel closes once the new customer is listed; keep keyboard focus on the dropdown it belongs to.
       select.current?.focus();
       toast.show(`Customer added: ${original.type === "save_customer" ? original.payload.name : ""}`);
-      router.refresh();
     });
   }
   const onKey = (event: KeyboardEvent<HTMLInputElement>) => {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { confirmSelectedIntakeAction } from "@/app/(workspace)/imports/actions";
 import { parseIntakeCandidate, type IntakeCandidate } from "@/lib/domain/intake";
 import { formatPHP } from "@/lib/domain/money";
@@ -42,7 +41,6 @@ const lookalikeKey = (candidate: IntakeCandidate) =>
   [candidate.type, (candidate.type === "save_invoice" ? candidate.payload.number : candidate.payload.label).trim().toLowerCase(), candidate.payload.amountCents, candidate.payload.dueDate].join("|");
 
 export function IntakeBulkConfirm({ items, revision, sourceLabels = {} }: { items: IntakeItem[]; revision: number; sourceLabels?: Record<string, string> }) {
-  const router = useRouter();
   const [busy, start] = useTransition();
   const [selection, setSelection] = useState<string[]>([]);
   const [result, setResult] = useState<BulkResult | null>(null);
@@ -66,7 +64,6 @@ export function IntakeBulkConfirm({ items, revision, sourceLabels = {} }: { item
       start(async () => {
         const response = await confirmSelectedIntakeAction({ items: selected.map(item => ({ id: item.id, reviewVersion: item.review_version })), revision });
         if (response.ok) { setResult(response.data); setSelection([]); } else setNotice(response.message);
-        router.refresh();
       });
     }}>
       <ul className="bulk-list">

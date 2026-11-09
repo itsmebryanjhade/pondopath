@@ -19,7 +19,7 @@ export function WorkspaceNavigation({ followupCount = 0, inboxCount = 0 }: { fol
   const current = activeHref(pathname);
   return (
     <nav ref={navigation} aria-label="Cash planning">
-      <Link href="/add" className={`side-add${current === "/add" ? " active" : ""}`} data-tip="Add records" aria-current={current === "/add" ? "page" : undefined}>
+      <Link href="/add" prefetch={true} className={`side-add${current === "/add" ? " active" : ""}`} data-tip="Add records" aria-current={current === "/add" ? "page" : undefined}>
         <span className="side-add-icon"><DashboardIcon name="plus" size={17} /></span><span className="side-label">Add records</span>
         <NavigationFeedback label="Add records" />
       </Link>
@@ -28,7 +28,7 @@ export function WorkspaceNavigation({ followupCount = 0, inboxCount = 0 }: { fol
           <p className="side-group-title">{group.title}</p>
           <ul>{group.items.map((item) => (
             <li key={item.href}>
-              <Link href={item.href} className={`side-link${current === item.href ? " active" : ""}`}
+              <Link href={item.href} prefetch={true} className={`side-link${current === item.href ? " active" : ""}`}
                 data-tip={item.countLabel ? `${item.label}, ${item.countLabel}` : item.label}
                 aria-current={current === item.href ? "page" : undefined}>
                 <span className="side-link-icon"><SideIconGlyph name={item.icon} size={17} /></span>

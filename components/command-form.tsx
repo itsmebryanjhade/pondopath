@@ -279,7 +279,6 @@ export function CommandForm({
         draftRevision.current = null;
         setFailure(null);
         form.current?.reset();
-        router.refresh();
         if (addAnother) {
           setNotice("Saved. Ready for the next one.");
           onAddAnother?.();
@@ -296,6 +295,7 @@ export function CommandForm({
         if (result.code !== "SERVICE_UNAVAILABLE") submitted.current = null;
         if (result.code === "STALE_VERSION") {
           setFailedRevision(revision);
+          router.refresh();
         }
       }
     });
