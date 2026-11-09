@@ -20,13 +20,13 @@ import type { AiProposal, AiRequest } from "@/lib/domain/ai";
 import type { AssistantChatProposal } from "@/lib/domain/assistant-chat";
 import { DashboardIcon } from "./dashboard-icon";
 import { AssistantContextChip } from "./assistant-context-chip";
-import { TextAreaField } from "./command-form";
+import { AssistantIcon } from "./assistant-icon";
 import { CollectionPanel } from "./collection-panel";
 import { ReminderPanel } from "./reminder-panel";
 import { FollowupForm } from "./followup-panel";
 import { CustomerForm, ExpenseForm, InvoiceForm } from "./record-forms";
 import { CashImpact } from "./cash-impact";
-import { calculateForecast, compareScenario } from "@/lib/domain/forecast";
+import { compareScenario } from "@/lib/domain/forecast";
 import { formatPHP } from "@/lib/domain/money";
 import { formatPlanDate } from "@/lib/display";
 import {
@@ -64,6 +64,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
   prepareEntryRef?: RefObject<((entry?: AssistantContextEntry) => void) | null>;
 }) {
   const toolsButton = useRef<HTMLButtonElement>(null);
+  const pressedOutside = useRef(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -85,6 +86,10 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
   const [draftIntent, setDraftIntent] = useState(initialEntry?.intent);
   const [draftInvoiceId, setDraftInvoiceId] = useState(initialEntry?.context.record?.id ?? "");
   const [review, setReview] = useState<{ messageId: string; proposal: AssistantChatProposal } | null>(null);
+  const [lastQuestion, setLastQuestion] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [copiedId, setCopiedId] = useState("");
+  const [sentTags, setSentTags] = useState<string[]>([]);
   const activeRequest = useRef<AbortController | null>(null);
   const queuedChat = useRef<AssistantChatScope | null>(null);
 
@@ -137,7 +142,6 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
     },
   }), []);
   const runtime = useLocalRuntime(adapter);
-  const forecast = useMemo(() => calculateForecast(workspace.forecastInput), [workspace.forecastInput]);
   const starters = generatePageStarters(pathname);
   const contextualInvoiceId = entry?.context.record?.kind === "invoice" ? entry.context.record.id : undefined;
   const currentInvoice = workspace.invoices.find(row => contextualInvoiceId ? row.id === contextualInvoiceId : pathname === "/invoices/" + row.id);
@@ -183,12 +187,33 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
     }
   }, [isSending]);
 
+  // Shrink back toward the launcher, then close. Instant when the person prefers reduced motion.
   function close() {
-    dialog.current?.close();
+    const element = dialog.current;
+    if (!element?.open || element.classList.contains("is-closing")) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { element.close(); return; }
+    element.classList.add("is-closing");
+    window.setTimeout(() => { element.classList.remove("is-closing"); element.close(); }, 180);
+  }
+
+  // Something worth keeping is on screen: a conversation, a tool result or text in the box.
+  const hasWork = (text = composerText) => runtime.thread.getState().messages.length > 0 || !!replyProposal || !!recordProposal
+    || !!text.trim() || !!replyText.trim() || !!recordText.trim();
+  function requestNewChat() {
+    if (hasWork()) setConfirmClear(true);
+    else clearChat();
+  }
+
+  function clearContext() {
+    if (hasWork(composerText === entry?.starterText ? "" : composerText)) setConfirmClear(true);
+    else clearChat();
   }
 
   function clearChat() {
     setEntry(undefined);
+    setConfirmClear(false);
+    setLastQuestion("");
+    setSentTags([]);
     activeRequest.current?.abort();
     activeRequest.current = null;
     queuedChat.current = null;
@@ -261,6 +286,16 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
     queuedChat.current = scope;
     setChatError("");
     setIsSending(true);
+    setLastQuestion(text);
+    setComposerText("");
+    setSentTags(tags => [...tags, draftIntent && invoice
+      ? (draftIntent === "draft_reminder" ? "Draft a follow-up message" : "Plan a follow-up task") + " · " + invoice.number
+      : ""]);
+    // A contextual draft may need another turn to clarify a date.
+    if (!entry) {
+      setDraftIntent(undefined);
+      setDraftInvoiceId("");
+    }
     runtime.thread.append({ role: "user", content: [{ type: "text", text }] });
   }
 
@@ -288,7 +323,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
       return;
     }
     if (toolId === "reply") {
-      setSelectedInvoiceId(currentOpenInvoice?.id ?? "");
+      setSelectedInvoiceId(currentOpenInvoice?.id ?? selectedInvoiceId);
       setMode("reply");
       return;
     }
@@ -334,10 +369,13 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
 
   async function extractCustomerReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (activeRequest.current || !replyInvoice) return;
+    if (activeRequest.current) return;
+    if (!replyInvoice) { setReplyError("Choose the invoice this reply is about."); return; }
+    if (!replyText.trim()) { setReplyError("Paste the customer's message first."); return; }
     const controller = new AbortController();
     activeRequest.current = controller;
     setReplyPending(true);
+    setMode("chat");
     setReplyError("");
     setReplyProposal(null);
     setReplyReviewOpen(false);
@@ -367,6 +405,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
     const controller = new AbortController();
     activeRequest.current = controller;
     setRecordPending(true);
+    setMode("chat");
     setRecordError("");
     setRecordProposal(null);
     setActiveFormProposal(null);
@@ -422,362 +461,109 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
     });
   }
 
+  // One composer for everything. A chosen tool only changes what the composer sends.
+  const tool: "reminder" | "followup" | "reply" | "add_record" | null =
+    mode === "reply" ? "reply" : mode === "add_record" ? "add_record"
+      : draftIntent === "draft_reminder" ? "reminder" : draftIntent === "draft_followup" ? "followup" : null;
+  const busy = isSending || replyPending || recordPending;
+  const composerValue = mode === "reply" ? replyText : mode === "add_record" ? recordText : composerText;
+  const setComposerValue = (value: string) => {
+    if (mode === "reply") setReplyText(value);
+    else if (mode === "add_record") setRecordText(value);
+    else setComposerText(value);
+  };
+  const placeholder = mode === "reply" ? "Paste the customer's message, e.g. Sa 2026-11-06 po, PHP 20000 muna."
+    : mode === "add_record" ? "Type or paste the details, e.g. Invoice 1042, Northbay, 25k, due Nov 30"
+    : tool === "followup" ? "Describe the follow-up and include a date (YYYY-MM-DD)"
+    : "Ask about cash, invoices, or bills…";
+  const toolLabel = tool === "reply" ? "Understand a customer reply" : tool === "add_record" ? "Add a record from text"
+    : tool === "reminder" ? "Draft a follow-up message" : tool === "followup" ? "Plan a follow-up task" : "";
+  const toolHint = tool === "reply" ? "Pick the invoice, paste the reply, then press Send. You review before anything is saved."
+    : tool === "add_record" ? "Up to 3 records. Each opens in the normal form for you to check and save."
+    : "Pick the unpaid invoice this is for.";
+  const toolInvoice = tool === "reply" ? replyInvoice?.id ?? "" : draftInvoice?.id ?? "";
+  const setToolInvoice = (id: string) => (tool === "reply" ? setSelectedInvoiceId(id) : setDraftInvoiceId(id));
+
+  function closeTool() {
+    setMode("chat");
+    setDraftIntent(undefined);
+    setDraftInvoiceId("");
+    setReplyError("");
+    setRecordError("");
+    composerInputRef.current?.focus();
+  }
+  function submitComposer(event: FormEvent<HTMLFormElement>) {
+    if (mode === "reply") return void extractCustomerReply(event);
+    if (mode === "add_record") return void extractRecordFromText(event);
+    handleSend(event);
+  }
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <dialog ref={dialog} className="assistant-dialog" aria-labelledby={headingId}
+        onCancel={event => { event.preventDefault(); if (!toolsOpen && !confirmClear) close(); }}
+        // A click on the dimmed area outside the panel closes it. Both the press and the release must land
+        // there, so dragging to select text and letting go outside never closes it. Nothing is cleared.
+        onPointerDown={event => { pressedOutside.current = event.target === event.currentTarget; }}
+        onClick={event => {
+          if (event.target !== event.currentTarget || !pressedOutside.current) return;
+          const box = event.currentTarget.getBoundingClientRect();
+          const inside = event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
+          if (!inside) close();
+        }}
         onClose={() => { setToolsOpen(false); onClose(); }}>
         <header className="assistant-heading">
-          <div>
-            <span className="eyebrow">PondoPath · AI assistance</span>
-            <h2 id={headingId}>Ask about your cash plan</h2>
-            <p>English, Tagalog or Taglish</p>
+          <div className="assistant-title">
+            <span className="assistant-mark" aria-hidden="true"><AssistantIcon size={18} /></span>
+            <div>
+              <h2 id={headingId}>PondoPath Assistant</h2>
+              <p>Ask about your cash, invoices and bills</p>
+            </div>
           </div>
           <div className="assistant-header-controls">
-            <select
-              className="field assistant-lang-select"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as AiRequest["language"])}
-              aria-label="Response language"
-            >
-              <option value="auto">Match my language</option>
-              <option value="english">English</option>
-              <option value="tagalog">Tagalog</option>
-              <option value="taglish">Taglish</option>
-            </select>
-            <button
-              type="button"
-              className="button secondary assistant-new-chat"
-              onClick={clearChat}
-            >
-              New chat
+            <button type="button" className="assistant-new-chat" aria-label="New chat" aria-expanded={confirmClear} onClick={requestNewChat}>
+              <DashboardIcon name="plus" size={14} /><span className="assistant-new-chat-label">New chat</span>
             </button>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Close AI assistant"
-              onClick={close}
-            >
-              ×
-            </button>
+            <button type="button" className="assistant-close" aria-label="Close AI assistant" onClick={close}>×</button>
           </div>
         </header>
 
+        {confirmClear && (
+          <div className="assistant-confirm" role="alertdialog" aria-labelledby={headingId + "-confirm"}>
+            <p id={headingId + "-confirm"}><strong>Start a new chat?</strong> This conversation and any unsaved drafts will be cleared.</p>
+            <div>
+              <button type="button" className="assistant-confirm-keep" autoFocus onClick={() => setConfirmClear(false)}>Keep chat</button>
+              <button type="button" className="assistant-confirm-clear" onClick={clearChat}>Clear and start new</button>
+            </div>
+          </div>
+        )}
+
         <div className="assistant-content assistant-body">
           <div className="assistant-scroll-area">
-            <p className="assistant-notice">
-              Selected records and messages are processed externally by Gemini. Use fictional data
-              only. Review suggestions before saving.
-            </p>
-
-            <dl className="assistant-extracted assistant-notice assistant-cash-facts" aria-label="Calculated cash facts">
-              <div className="assistant-cash-facts-header">
-                <span className="assistant-cash-facts-title">Calculated cash facts</span>
-                <span className="assistant-cash-facts-tag">30-day projection</span>
-              </div>
-              <div className="assistant-cash-facts-grid">
-                <div className="assistant-fact-card">
-                  <dt>Recorded available cash</dt>
-                  <dd>{formatPHP(workspace.forecastInput.availableCents)}</dd>
-                </div>
-                <div className="assistant-fact-card">
-                  <dt>Baseline projected closing cash · 30 days</dt>
-                  <dd className={forecast.days[29].closingCents < 0 ? "negative-val" : ""}>
-                    {formatPHP(forecast.days[29].closingCents)}
-                  </dd>
-                </div>
-                <div className="assistant-fact-card">
-                  <dt>First baseline shortage</dt>
-                  <dd>
-                    {forecast.firstShortage
-                      ? `${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(
-                        forecast.firstShortage.date
-                      )}`
-                      : "None projected from entered records"}
-                  </dd>
-                </div>
-              </div>
-            </dl>
-
-          {mode === "reply" ? (
-            /* Preserved Separate Source-Reply Input */
-            <div className="assistant-reply-mode">
-              <div className="assistant-mode-header">
-                <button
-                  type="button"
-                  className="text-link"
-                  onClick={() => setMode("chat")}
-                >
-                  ← Back to conversation
-                </button>
-                <strong>Understand a customer reply</strong>
-              </div>
-
-              <form onSubmit={extractCustomerReply} className="assistant-form">
-                <fieldset disabled={replyPending}>
-                  <label className="form-field">
-                    <span>Invoice (required)</span>
-                    <select
-                      className="field"
-                      ref={replyPicker}
-                      value={replyInvoice?.id ?? ""}
-                      required
-                      onChange={(e) => setSelectedInvoiceId(e.target.value)}
-                    >
-                      <option value="">
-                        Select an invoice
-                      </option>
-                      {openInvoices.map((inv) => (
-                        <option key={inv.id} value={inv.id}>
-                          {inv.number}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <TextAreaField
-                    label="Original customer reply"
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Sa 2026-11-06 po, PHP 20000 muna."
-                    maxLength={4000}
-                    rows={4}
-                    required
-                  />
-
-                  <button type="submit" className="section-primary">
-                    {replyPending ? "Extracting reply…" : "Extract customer reply"}
-                    <DashboardIcon name="arrowRight" size={15} />
-                  </button>
-                </fieldset>
-              </form>
-
-              {replyError && (
-                <div role="alert" className="assistant-notice negative">
-                  <p>{replyError}</p>
-                  <button type="button" className="text-link" onClick={() => router.refresh()}>
-                    Refresh records
-                  </button>
-                </div>
-              )}
-
-              {replyProposal && replyProposal.task === "extract_reply" && (
-                <section
-                  tabIndex={-1}
-                  className="assistant-answer"
-                  aria-label="Extracted reply proposal"
-                >
-                  <p className="muted">
-                    Based on record revision {replyProposal.sourceRevision}. Expected receipts are
-                    not available cash.
-                  </p>
-                  <blockquote className="assistant-response">{sourceReplySaved}</blockquote>
-                  <dl className="assistant-extracted">
-                    <div>
-                      <dt>Proposed remaining receipt</dt>
-                      <dd>
-                        {replyProposal.amountCents === null
-                          ? "Needs clarification"
-                          : formatPHP(replyProposal.amountCents)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Proposed date</dt>
-                      <dd>
-                        {replyProposal.date
-                          ? formatPlanDate(replyProposal.date)
-                          : "Needs clarification"}
-                      </dd>
-                    </div>
-                  </dl>
-                  {replyProposal.reason && <p>{replyProposal.reason}</p>}
-                  {replyProposal.needsReview && (
-                    <div className="negative">
-                      <p>Clarification or payment verification is required. Check the original reply before saving.</p>
-                      <ul>{replyProposal.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>
-                    </div>
-                  )}
-                  {replyImpact && <CashImpact {...replyImpact} />}
-                  {replyConfirmed && !replyStale && (
-                    <button
-                      type="button"
-                      className="section-primary"
-                      onClick={() => setReplyReviewOpen(true)}
-                    >
-                      Review receipt-plan fields
-                    </button>
-                  )}
-                  {replyReviewOpen && replyConfirmed && !replyStale && (
-                    <CollectionPanel
-                      key={sourceReplySaved}
-                      workspace={workspace}
-                      invoice={proposalInvoice}
-                      proposed={{
-                        amountCents: replyProposal.amountCents!,
-                        date: replyProposal.date!,
-                        sourceNote: sourceReplySaved,
-                      }}
-                    />
-                  )}
-                </section>
-              )}
-            </div>
-          ) : mode === "add_record" ? (
-            <div className="assistant-add-record-mode">
-              <div className="assistant-mode-header">
-                <button
-                  type="button"
-                  className="text-link"
-                  onClick={() => setMode("chat")}
-                >
-                  ← Back to conversation
-                </button>
-                <strong>Add a record from text</strong>
-              </div>
-              <p className="muted">
-                Paste or type record details in English, Tagalog or Taglish (e.g. &apos;Invoice 1042, Northbay, 25k, due Nov 30&apos; or bill notes). The assistant extracts proposals for your manual review and confirmation.
-              </p>
-
-              <form onSubmit={extractRecordFromText} className="assistant-form">
-                <fieldset disabled={recordPending}>
-                  <TextAreaField
-                    label="Record text (up to 1,000 characters)"
-                    value={recordText}
-                    onChange={(e) => setRecordText(e.target.value)}
-                    placeholder="Invoice 1042, Northbay, 25k, due Nov 30"
-                    maxLength={1000}
-                    rows={4}
-                    required
-                  />
-
-                  <button type="submit" className="section-primary" disabled={recordPending || !recordText.trim()}>
-                    {recordPending ? "Extracting records…" : "Extract records"}
-                    <DashboardIcon name="arrowRight" size={15} />
-                  </button>
-                </fieldset>
-              </form>
-
-              {recordError && (
-                <div role="alert" className="assistant-notice negative">
-                  <p>{recordError}</p>
-                </div>
-              )}
-
-              {recordProposal && (
-                <section className="assistant-review-panel">
-                  <h3>Extracted proposals ({recordProposal.proposals.length})</h3>
-                  {recordProposal.proposals.length === 0 ? (
-                    <p className="empty-state">No records could be identified from the text. Check the details or use manual entry.</p>
-                  ) : (
-                    <div className="assistant-proposals-grid" style={{ display: "grid", gap: "12px", marginTop: "12px" }}>
-                      {recordProposal.proposals.map((item, index) => (
-                        <div key={index} className="assistant-draft-card">
-                          <p>
-                            <strong>{item.kind === "invoice" ? "Invoice" : "Expense / Bill"}</strong>
-                            {item.kind === "invoice" && item.number ? ` · ${item.number}` : ""}
-                            {item.kind === "expense" && item.label ? ` · ${item.label}` : ""}
-                          </p>
-                          <p>
-                            {item.kind === "invoice" ? "Customer: " : "Payee: "}
-                            <strong>{item.party ?? "Unspecified"}</strong>
-                            {item.amountCents !== null ? ` · ${formatPHP(item.amountCents)}` : " · Amount needs check"}
-                            {item.dueDate ? ` · Due ${formatPlanDate(item.dueDate)}` : " · Due date needs check"}
-                          </p>
-                          {item.sourceQuotes.length > 0 && (
-                            <blockquote className="assistant-response">
-                              {item.sourceQuotes.join(" ")}
-                            </blockquote>
-                          )}
-                          {item.issues.length > 0 && (
-                            <ul className="negative" style={{ fontSize: "13px", paddingLeft: "20px", margin: "8px 0" }}>
-                              {item.issues.map((issue, i) => (
-                                <li key={i}>{issue}</li>
-                              ))}
-                            </ul>
-                          )}
-                          <button
-                            type="button"
-                            className="button secondary"
-                            onClick={() => setActiveFormProposal(item)}
-                          >
-                            Open in form to review and save
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {activeFormProposal && (
-                    <div className="panel proposal-review-panel" style={{ marginTop: "16px" }}>
-                      <div className="section-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div>
-                          <h4>Review and save {activeFormProposal.kind === "invoice" ? "invoice" : "expense"}</h4>
-                          <p className="muted">Review the extracted values. Nothing is saved until you confirm.</p>
-                        </div>
-                        <button type="button" className="text-link" onClick={() => setActiveFormProposal(null)}>
-                          Close form
-                        </button>
-                      </div>
-                      {activeFormProposal.kind === "invoice" ? (
-                        <>
-                          <InvoiceForm
-                            workspace={workspace}
-                            initialProposed={{
-                              number: activeFormProposal.number,
-                              customerId: activeFormProposal.customerId,
-                              party: activeFormProposal.party,
-                              amountCents: activeFormProposal.amountCents,
-                              dueDate: activeFormProposal.dueDate,
-                            }}
-                          />
-                          {(!activeFormProposal.customerId || workspace.customers.length === 0) && (
-                            <details className="add-entry-more" open={!activeFormProposal.customerId} style={{ marginTop: "12px" }}>
-                              <summary>
-                                {activeFormProposal.party
-                                  ? `Add customer "${activeFormProposal.party}"`
-                                  : "Customer not listed? Add a customer"}
-                              </summary>
-                              <CustomerForm
-                                workspace={workspace}
-                                initialName={activeFormProposal.party ?? undefined}
-                              />
-                            </details>
-                          )}
-                        </>
-                      ) : (
-                        <ExpenseForm
-                          workspace={workspace}
-                          initialProposed={{
-                            label: activeFormProposal.label,
-                            payee: activeFormProposal.party,
-                            amountCents: activeFormProposal.amountCents,
-                            dueDate: activeFormProposal.dueDate,
-                          }}
-                        />
-                      )}
-                    </div>
-                  )}
-                </section>
-              )}
-            </div>
-          ) : (
             <ThreadPrimitive.Root className="assistant-chat-mode">
-              <AuiIf condition={state => state.thread.messages.length === 0}>
-                <div className="assistant-empty-thread">
-                  <div className="assistant-empty-lead">
-                    <DashboardIcon name="sparkle" size={15} />
-                    <p className="muted">Ask a question or pick a starter.</p>
+              {!tool && (
+                <AuiIf condition={state => state.thread.messages.length === 0}>
+                  <div className="assistant-empty-thread">
+                    <p className="assistant-greeting">Hi! What would you like to know?</p>
+                    <div className="assistant-starters" role="group" aria-label="Suggested questions">
+                      {starters.map(starter => (
+                        <button key={starter} type="button" className="assistant-starter-btn" disabled={isSending}
+                          onClick={() => prepareQuestion(starter)}>
+                          <span className="assistant-starter-text">{starter}</span>
+                          <span className="assistant-starter-arrow" aria-hidden="true"><DashboardIcon name="arrowRight" size={14} /></span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="assistant-section-label" id={headingId + "-tools"}>Or get help with a task</p>
+                    <div className="assistant-tool-chips" role="group" aria-labelledby={headingId + "-tools"}>
+                      {WORKSPACE_TOOLS.map(item => (
+                        <button key={item.id} type="button" className="assistant-tool-chip" disabled={isSending}
+                          onClick={() => selectTool(item.id)}>{item.label}</button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="assistant-starters" role="group" aria-label="Suggested questions">
-                    {starters.map(starter => (
-                      <button key={starter} type="button" className="assistant-starter-btn" disabled={isSending}
-                        onClick={() => prepareQuestion(starter)}>
-                        <span className="assistant-starter-text"><strong>{starter}</strong></span>
-                        <span className="assistant-starter-arrow">→</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </AuiIf>
+                </AuiIf>
+              )}
 
               <div className="assistant-messages" role="log" aria-live="polite" aria-busy={isSending}>
                 <ThreadPrimitive.Messages>
@@ -789,44 +575,52 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
                     if (proposal && proposal.sourceRevision !== workspace.revision) {
                       return (
                         <MessagePrimitive.Root className="assistant-msg assistant">
-                          <p className="muted">Records changed since this answer. Ask again for current facts.</p>
+                          <p className="assistant-msg-text muted">Records changed since this answer. Ask again for current facts.</p>
                         </MessagePrimitive.Root>
                       );
                     }
                     const target = proposal?.draft && resolveAssistantDraftTarget(workspace, proposal);
                     return (
                       <MessagePrimitive.Root className={"assistant-msg " + message.role}>
-                        <div className="assistant-msg-header">
-                          <span className="assistant-avatar-badge">
-                            {message.role === "user" ? "You" : "PondoPath AI"}
-                          </span>
-                        </div>
+                        {message.role === "user" && (() => {
+                          const userIndex = runtime.thread.getState().messages.filter(row => row.role === "user").findIndex(row => row.id === message.id);
+                          const tag = sentTags[userIndex];
+                          return tag ? <span className="assistant-msg-tag">{tag}</span> : null;
+                        })()}
+                        {message.role !== "user" && <span className="assistant-avatar-badge">PondoPath</span>}
                         <p className="assistant-msg-text">{text.text}</p>
                         {!!proposal?.facts.length && (
-                          <dl className="assistant-extracted">
+                          <dl className="assistant-msg-facts">
                             {proposal.facts.map(fact => (
-                              <div key={fact.id}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
+                              <div key={fact.id}><dt>{fact.label}</dt><dd className="num">{fact.value}</dd></div>
                             ))}
                           </dl>
                         )}
                         {!!proposal?.sources.length && (
                           <nav aria-label="Supporting records" className="assistant-msg-sources">
                             {proposal.sources.map(source => (
-                              <Link key={source.id} className="text-link" href={source.href} onClick={close}>
-                                {source.label} →
+                              <Link key={source.id} className="assistant-source" href={source.href} onClick={close}>
+                                {source.label}<DashboardIcon name="arrowRight" size={12} />
                               </Link>
                             ))}
                           </nav>
                         )}
                         {proposal?.draft && (
                           <div className={"assistant-draft-card" + (target ? "" : " stale")}>
-                            <p><strong>{proposal.draft.kind === "reminder" ? "Payment reminder" : "Follow-up task"}</strong></p>
+                            <p className="assistant-draft-kind">{proposal.draft.kind === "reminder" ? "Payment reminder" : "Follow-up task"}{proposal.draft.kind === "followup" && <> · due {formatPlanDate(proposal.draft.date)}</>}</p>
                             <blockquote className="assistant-response">{proposal.draft.text}</blockquote>
-                            {proposal.draft.kind === "followup" && <p>Due {formatPlanDate(proposal.draft.date)}</p>}
                             {target ? (
-                              <button type="button" className="button secondary" onClick={() => setReview({ messageId: message.id, proposal })}>
-                                Review draft
-                              </button>
+                              <div className="assistant-draft-actions">
+                                <button type="button" className="assistant-review-btn" onClick={() => setReview({ messageId: message.id, proposal })}>
+                                  Review draft
+                                </button>
+                                <button type="button" className="assistant-copy-btn" onClick={() => {
+                                  void navigator.clipboard?.writeText(proposal.draft!.text).then(() => {
+                                    setCopiedId(message.id);
+                                    window.setTimeout(() => setCopiedId(current => (current === message.id ? "" : current)), 2000);
+                                  }, () => {});
+                                }}>{copiedId === message.id ? "Copied" : "Copy text"}</button>
+                              </div>
                             ) : <p className="negative">Records changed. Ask for a fresh draft before reviewing.</p>}
                           </div>
                         )}
@@ -837,18 +631,11 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
 
                 {isSending && (
                   <div className="assistant-msg assistant assistant-thinking" aria-label="Thinking">
-                    <div className="assistant-msg-header">
-                      <span className="assistant-avatar-badge">PondoPath AI</span>
-                      <span className="assistant-thinking-text">Thinking…</span>
-                    </div>
-                    <div className="assistant-typing-dots">
-                      <span className="dot" />
-                      <span className="dot" />
-                      <span className="dot" />
-                    </div>
+                    <span className="assistant-avatar-badge">PondoPath</span>
+                    <span className="assistant-typing-dots" aria-hidden="true"><span className="dot" /><span className="dot" /><span className="dot" /></span>
+                    <span className="sr-only">Thinking…</span>
                   </div>
                 )}
-
                 <div ref={messagesEndRef} />
               </div>
 
@@ -871,30 +658,170 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
               {chatError && (
                 <div role="alert" className="assistant-notice negative">
                   <p>{chatError}</p>
-                  <button type="button" className="text-link" onClick={() => router.refresh()}>Refresh records</button>
+                  <div className="assistant-notice-actions">
+                    {lastQuestion && (
+                      <button type="button" className="text-link" onClick={() => {
+                        setComposerText(lastQuestion);
+                        setChatError("");
+                        composerInputRef.current?.focus();
+                      }}>Edit and resend</button>
+                    )}
+                    {/refresh|changed/i.test(chatError) && <button type="button" className="text-link" onClick={() => router.refresh()}>Refresh records</button>}
+                  </div>
                 </div>
               )}
             </ThreadPrimitive.Root>
-          )}
+
+            {(replyPending || replyError || replyProposal) && (
+              <div className="assistant-tool-result">
+                {replyPending && <p className="assistant-tool-status">Reading the reply…</p>}
+                {replyError && (
+                  <div role="alert" className="assistant-notice negative">
+                    <p>{replyError}</p>
+                    <button type="button" className="text-link" onClick={() => router.refresh()}>Refresh records</button>
+                  </div>
+                )}
+                {replyProposal && replyProposal.task === "extract_reply" && (
+                  <section tabIndex={-1} className="assistant-answer" aria-label="Extracted reply proposal">
+                    <p className="assistant-answer-title">What the customer said</p>
+                    <blockquote className="assistant-response">{sourceReplySaved}</blockquote>
+                    <dl className="assistant-msg-facts">
+                      <div><dt>Amount they&rsquo;ll pay</dt><dd className="num">{replyProposal.amountCents === null ? "Needs clarification" : formatPHP(replyProposal.amountCents)}</dd></div>
+                      <div><dt>When</dt><dd>{replyProposal.date ? formatPlanDate(replyProposal.date) : "Needs clarification"}</dd></div>
+                    </dl>
+                    {replyProposal.reason && <p>{replyProposal.reason}</p>}
+                    {replyProposal.needsReview && (
+                      <div className="assistant-notice negative">
+                        <p>Check the original reply first. It needs clarification or payment proof before anything is saved.</p>
+                        <ul>{replyProposal.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>
+                      </div>
+                    )}
+                    <p className="assistant-answer-note">This is a promise, not cash received.</p>
+                    {replyImpact && <CashImpact {...replyImpact} />}
+                    {replyConfirmed && !replyStale && !replyReviewOpen && (
+                      <button type="button" className="assistant-review-btn" onClick={() => setReplyReviewOpen(true)}>
+                        Review receipt-plan fields
+                      </button>
+                    )}
+                    {replyReviewOpen && replyConfirmed && !replyStale && (
+                      <CollectionPanel
+                        key={sourceReplySaved}
+                        workspace={workspace}
+                        invoice={proposalInvoice}
+                        proposed={{ amountCents: replyProposal.amountCents!, date: replyProposal.date!, sourceNote: sourceReplySaved }}
+                      />
+                    )}
+                  </section>
+                )}
+              </div>
+            )}
+
+            {(recordPending || recordError || recordProposal) && (
+              <div className="assistant-tool-result">
+                {recordPending && <p className="assistant-tool-status">Reading the details…</p>}
+                {recordError && <div role="alert" className="assistant-notice negative"><p>{recordError}</p></div>}
+                {recordProposal && (
+                  <section className="assistant-review-panel" aria-label="Records found">
+                    <p className="assistant-answer-title">
+                      {recordProposal.proposals.length ? `Found ${recordProposal.proposals.length} ${recordProposal.proposals.length === 1 ? "record" : "records"}` : "No records found"}
+                    </p>
+                    {recordProposal.proposals.length === 0 ? (
+                      <p className="muted">Check the details, or add the record by hand in Add records.</p>
+                    ) : (
+                      <div className="assistant-proposals-grid">
+                        {recordProposal.proposals.map((item, index) => (
+                          <div key={index} className={"assistant-draft-card" + (activeFormProposal === item ? " is-active" : "")}>
+                            <p className="assistant-draft-kind">
+                              {item.kind === "invoice" ? "Invoice" : "Bill"}
+                              {item.kind === "invoice" && item.number ? ` · ${item.number}` : ""}
+                              {item.kind === "expense" && item.label ? ` · ${item.label}` : ""}
+                            </p>
+                            <p className="assistant-record-line">
+                              <strong>{item.party ?? "No name found"}</strong>
+                              <span className="num">{item.amountCents !== null ? formatPHP(item.amountCents) : "Amount needs check"}</span>
+                              <span>{item.dueDate ? `Due ${formatPlanDate(item.dueDate)}` : "Due date needs check"}</span>
+                            </p>
+                            {item.sourceQuotes.length > 0 && <blockquote className="assistant-response">{item.sourceQuotes.join(" ")}</blockquote>}
+                            {item.issues.length > 0 && <ul className="assistant-issues">{item.issues.map((issue, i) => <li key={i}>{issue}</li>)}</ul>}
+                            {activeFormProposal !== item && (
+                              <button type="button" className="assistant-review-btn" onClick={() => setActiveFormProposal(item)}>
+                                Open in form
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {activeFormProposal && (
+                      <div className="panel proposal-review-panel">
+                        <div className="assistant-draft-header">
+                          <div>
+                            <strong>Check and save this {activeFormProposal.kind === "invoice" ? "invoice" : "bill"}</strong>
+                            <p className="muted">Nothing is saved until you press the button below.</p>
+                          </div>
+                          <button type="button" className="text-link" onClick={() => setActiveFormProposal(null)}>Close form</button>
+                        </div>
+                        {activeFormProposal.kind === "invoice" ? (
+                          <>
+                            <InvoiceForm
+                              workspace={workspace}
+                              initialProposed={{
+                                number: activeFormProposal.number,
+                                customerId: activeFormProposal.customerId,
+                                party: activeFormProposal.party,
+                                amountCents: activeFormProposal.amountCents,
+                                dueDate: activeFormProposal.dueDate,
+                              }}
+                            />
+                            {(!activeFormProposal.customerId || workspace.customers.length === 0) && (
+                              <details className="add-entry-more" open={!activeFormProposal.customerId}>
+                                <summary>{activeFormProposal.party ? `Add customer "${activeFormProposal.party}"` : "Customer not listed? Add a customer"}</summary>
+                                <CustomerForm workspace={workspace} initialName={activeFormProposal.party ?? undefined} />
+                              </details>
+                            )}
+                          </>
+                        ) : (
+                          <ExpenseForm
+                            workspace={workspace}
+                            initialProposed={{
+                              label: activeFormProposal.label,
+                              payee: activeFormProposal.party,
+                              amountCents: activeFormProposal.amountCents,
+                              dueDate: activeFormProposal.dueDate,
+                            }}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Anchored Bottom Composer */}
         <footer className="assistant-composer-wrap">
-          <ComposerPrimitive.Root className="assistant-composer-root" onSubmit={handleSend}>
-            {contextLabel && !draftIntent && (
-              <AssistantContextChip label={contextLabel} disabled={isSending} onClear={clearChat} />
+          <ComposerPrimitive.Root className="assistant-composer-root" onSubmit={submitComposer}>
+            {contextLabel && !tool && (
+              <AssistantContextChip label={contextLabel} disabled={busy} onClear={clearContext} />
             )}
-            {draftIntent && (
-              <div className="assistant-draft-context-bar">
-                <label className="form-field">
-                  <span>Invoice for this draft</span>
-                  <select className="field" value={draftInvoice?.id ?? ""} disabled={isSending} required
-                    onChange={event => setDraftInvoiceId(event.target.value)}>
-                    <option value="">Choose an unpaid invoice</option>
-                    {openInvoices.map(invoice => <option key={invoice.id} value={invoice.id}>{invoice.number}</option>)}
-                  </select>
-                  {draftIntent === "draft_followup" && <small>Include one due date in YYYY-MM-DD format.</small>}
-                </label>
+            {tool && (
+              <div className="assistant-tool-card" role="group" aria-label={toolLabel}>
+                <div className="assistant-tool-card-head">
+                  <strong>{toolLabel}</strong>
+                  <button type="button" className="assistant-tool-close" aria-label={"Stop: " + toolLabel} onClick={closeTool} disabled={busy}>×</button>
+                </div>
+                {tool !== "add_record" && (
+                  <label className="assistant-tool-field">
+                    <span>Invoice</span>
+                    <select ref={tool === "reply" ? replyPicker : undefined} className="field" value={toolInvoice} disabled={busy} required
+                      onChange={event => setToolInvoice(event.target.value)}>
+                      <option value="">Choose an unpaid invoice</option>
+                      {openInvoices.map(invoice => <option key={invoice.id} value={invoice.id}>{invoice.number}</option>)}
+                    </select>
+                  </label>
+                )}
+                <p className="assistant-tool-hint">{toolHint}</p>
               </div>
             )}
             <div className="assistant-composer-card">
@@ -902,12 +829,12 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
                 ref={composerInputRef}
                 className="field assistant-composer-input assistant-composer-textarea"
                 rows={1}
-                aria-label="Your message"
-                placeholder="Ask about cash, invoices, or bills…"
-                maxLength={1000}
-                value={composerText}
-                disabled={isSending}
-                onChange={event => setComposerText(event.target.value)}
+                aria-label={tool === "reply" ? "Customer's reply" : tool === "add_record" ? "Record details" : "Your message"}
+                placeholder={placeholder}
+                maxLength={mode === "reply" ? 4000 : 1000}
+                value={composerValue}
+                disabled={busy}
+                onChange={event => setComposerValue(event.target.value)}
                 onKeyDown={event => {
                   if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                     event.preventDefault();
@@ -924,17 +851,17 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
                     aria-haspopup="menu"
                     aria-expanded={toolsOpen}
                     aria-label="Workspace tools"
-                    disabled={isSending}
+                    disabled={busy}
                     onClick={() => { setFocusedMenuIndex(0); setToolsOpen(!toolsOpen); }}
                   >
-                    + Workspace tools
+                    <DashboardIcon name="plus" size={14} />Tools
                   </button>
                   {toolsOpen && (
                     <div ref={menuRef} className="assistant-tools-menu" role="menu" aria-label="Workspace tools" onKeyDown={handleMenuKeyDown}>
-                      {WORKSPACE_TOOLS.map((tool, index) => (
-                        <button key={tool.id} type="button" role="menuitem" tabIndex={focusedMenuIndex === index ? 0 : -1}
-                          className="assistant-tools-item" onClick={() => selectTool(tool.id)}>
-                          {tool.label}
+                      {WORKSPACE_TOOLS.map((item, index) => (
+                        <button key={item.id} type="button" role="menuitem" tabIndex={focusedMenuIndex === index ? 0 : -1}
+                          className="assistant-tools-item" onClick={() => selectTool(item.id)}>
+                          {item.label}
                         </button>
                       ))}
                     </div>
@@ -942,8 +869,8 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
                 </div>
                 <button
                   type="submit"
-                  className="section-primary assistant-send-btn"
-                  disabled={!composerText.trim() || isSending}
+                  className="assistant-send-btn"
+                  disabled={!composerValue.trim() || busy}
                   aria-label="Send message"
                 >
                   <span className="assistant-send-label">Send</span>
@@ -953,11 +880,20 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
             </div>
           </ComposerPrimitive.Root>
 
-          <p className="muted assistant-disclaimer">
-            Manual entry and reminder templates remain available when AI is unavailable. Each Gemini request uses the business’s daily allowance.
-          </p>
+          <div className="assistant-footnote">
+            <label className="assistant-lang">
+              <span>Reply in</span>
+              <select className="assistant-lang-select" value={language} aria-label="Response language"
+                onChange={(e) => setLanguage(e.target.value as AiRequest["language"])}>
+                <option value="auto">Match my language</option>
+                <option value="english">English</option>
+                <option value="tagalog">Tagalog</option>
+                <option value="taglish">Taglish</option>
+              </select>
+            </label>
+            <p>Messages are processed externally by Gemini. Use fictional data only. Manual entry works without AI.</p>
+          </div>
         </footer>
-      </div>
       </dialog>
     </AssistantRuntimeProvider>
   );

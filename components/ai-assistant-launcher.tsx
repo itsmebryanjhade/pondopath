@@ -4,7 +4,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import type { AssistantContextEntry } from "@/lib/ui/assistant-chat-adapter";
 import { ASSISTANT_OPEN_EVENT } from "./ai-context-button";
-import { DashboardIcon } from "./dashboard-icon";
+import { AssistantIcon } from "./assistant-icon";
 
 const Dialog = lazy(() => import("./ai-assistant").then(module => ({ default: module.AiAssistant })));
 
@@ -45,7 +45,7 @@ function AssistantSession({ workspace }: { workspace: WorkspaceSnapshot }) {
     <>
       <button ref={launcher} type="button" className="assistant-launch" aria-haspopup="dialog" aria-label="Open AI assistant"
         onClick={event => open(event.currentTarget)}>
-        <DashboardIcon name="sparkle" size={18} />
+        <AssistantIcon size={19} />
         AI assistant
       </button>
       {loaded && (

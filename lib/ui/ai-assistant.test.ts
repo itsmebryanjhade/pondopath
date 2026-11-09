@@ -42,9 +42,8 @@ describe("multilingual assistant presentation & Task 4 conversation UI", () => {
     }
     expect(html).not.toContain("OPENROUTER_API_KEY");
     expect(html).not.toContain("GEMINI_API_KEY");
-    expect(html).toContain("Calculated cash facts");
-    expect(html).toContain("Recorded available cash");
-    expect(html).toContain("₱40,000.00");
+    // Cash facts live on Overview and inside answers, not as a fixed box in the dialog.
+    expect(html).not.toContain("Calculated cash facts");
   });
 
   it("renders 3 page-aware starters in empty chat state", () => {
@@ -77,7 +76,9 @@ describe("multilingual assistant presentation & Task 4 conversation UI", () => {
     ]);
 
     const html = renderDialog();
-    expect(html).toContain("+ Workspace tools");
+    expect(html).toContain(">Tools</button>");
+    // The empty chat also offers every tool as a one-tap chip.
+    for (const label of labels) expect(html).toContain('class="assistant-tool-chip">' + label + "</button>");
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain('aria-label="Workspace tools"');
   });
