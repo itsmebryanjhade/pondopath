@@ -891,7 +891,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
                 <option value="taglish">Taglish</option>
               </select>
             </label>
-            <p>Messages are processed externally by Gemini, with OpenAI as a backup. Use fictional data only. Manual entry works without AI.</p>
+            <p>Messages are processed externally by Gemini, with OpenRouter as a backup. Use fictional data only. Manual entry works without AI.</p>
           </div>
         </footer>
       </dialog>

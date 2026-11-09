@@ -16,7 +16,7 @@ beforeAll(async () => {
   vi.stubEnv("APP_URL", "http://localhost:3000");
   vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", fixture.id);
   vi.stubEnv("GEMINI_API_KEY", "mocked-provider-only");
-  vi.stubEnv("OPENAI_API_KEY", undefined);
+  vi.stubEnv("OPENROUTER_API_KEY", undefined);
   const client = createServerClient(process.env.TEST_SUPABASE_URL!, process.env.TEST_SUPABASE_PUBLISHABLE_KEY!, { cookies: { getAll: () => [...state.cookies].map(([name, value]) => ({ name, value })), setAll: values => values.forEach(({ name, value }) => state.cookies.set(name, value)) } });
   expect((await client.auth.signInWithPassword(fixture.accounts.finance)).error).toBeNull();
 });
@@ -27,11 +27,11 @@ const request = (extra = {}) => new Request("http://localhost:3000/api/assistant
 const chatRequest = (extra = {}) => request({ task: "chat", history: [], ...extra });
 const chatAnswer = { kind: "answer", summary: "Use the cash plan and review the unpaid invoice.", factIds: [], recordIds: [], draft: null };
 
-function mockProviderFetch(respond: (provider: "gemini" | "openai") => Response | Promise<Response>) {
+function mockProviderFetch(respond: (provider: "gemini" | "openrouter") => Response | Promise<Response>) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     const target = new URL(url instanceof Request ? url.url : url);
     if (target.href === "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent") return respond("gemini");
-    if (target.href === "https://api.openai.com/v1/chat/completions") return respond("openai");
+    if (target.href === "https://openrouter.ai/api/v1/chat/completions") return respond("openrouter");
     if (target.origin === process.env.TEST_SUPABASE_URL) return nativeFetch(url, init);
     throw new Error("Unexpected fetch in assistant test");
   });
@@ -126,8 +126,10 @@ describe("real authenticated context with only model transport mocked", () => {
     expect(await countAttempts()).toBe(before + 1);
   });
 
-  it("reserves once and holds an OpenAI proposal with incorrect amounts and dates for review", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "mocked-provider-only");
+  it("uses the existing OpenRouter route once and holds incorrect amounts and dates for review", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "mocked-provider-only");
+    vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
+    vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
     const reply = "PHP 20000 on 2026-11-06";
     const output = {
       invoiceId: fixture.invoiceId, amountCents: 1_000_000, date: "2026-11-07",
@@ -137,6 +139,7 @@ describe("real authenticated context with only model transport mocked", () => {
       .mockReturnValueOnce(new Response(null, { status: 429 }))
       .mockReturnValueOnce(Response.json({
         choices: [{ finish_reason: "stop", message: { content: JSON.stringify(output) } }],
+        usage: { cost: 0 },
       }));
     mockProviderFetch(outbound);
     try {
@@ -144,16 +147,18 @@ describe("real authenticated context with only model transport mocked", () => {
       const response = await POST(request({ task: "extract_reply", question: undefined, invoiceId: fixture.invoiceId, reply }));
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({
-        ok: true, provider: "openai",
+        ok: true, provider: "test-provider",
         proposal: { task: "extract_reply", needsReview: true, amountCents: null, date: null },
       });
-      expect(outbound.mock.calls).toEqual([["gemini"], ["openai"]]);
+      expect(outbound.mock.calls).toEqual([["gemini"], ["openrouter"]]);
       expect(await countAttempts()).toBe(before + 1);
       const movements = await admin.from("cash_movements").select("id").eq("business_id", fixture.id);
       expect(movements.error).toBeNull();
       expect(movements.data).toEqual([]);
     } finally {
-      vi.stubEnv("OPENAI_API_KEY", undefined);
+      vi.stubEnv("OPENROUTER_API_KEY", undefined);
+      vi.stubEnv("OPENROUTER_MODEL", undefined);
+      vi.stubEnv("OPENROUTER_PROVIDER", undefined);
     }
   });
 

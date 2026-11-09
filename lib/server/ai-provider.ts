@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 
-export type AiConfig = { kind: "gemini" | "openai"; key: string; model: string; provider: string };
+export type AiConfig = { kind: "gemini" | "openrouter"; key: string; model: string; provider: string };
 
 export function aiConfig(): AiConfig {
   const key = process.env.GEMINI_API_KEY?.trim();
@@ -10,8 +10,11 @@ export function aiConfig(): AiConfig {
 }
 
 export function aiBackupConfig(): AiConfig | null {
-  const key = process.env.OPENAI_API_KEY?.trim();
-  return key ? { kind: "openai", key, model: "gpt-5.4-mini", provider: "openai" } : null;
+  const key = process.env.OPENROUTER_API_KEY?.trim();
+  const model = process.env.OPENROUTER_MODEL?.trim();
+  const provider = process.env.OPENROUTER_PROVIDER?.trim();
+  if (!key || !model || !/^[\w.-]+\/[\w.-]+:free$/.test(model) || !provider || !/^[\w.-]+(?:\/[\w.-]+)*$/.test(provider)) return null;
+  return { kind: "openrouter", key, model, provider };
 }
 
 export class AiProviderRateLimit extends Error {
@@ -29,10 +32,10 @@ const geminiEnvelope = z.object({
   })).min(1),
   usageMetadata: z.object({ promptTokenCount: tokenCount, candidatesTokenCount: tokenCount }).optional(),
 });
-const openAiEnvelope = z.object({
+const openRouterEnvelope = z.object({
   error: z.unknown().optional(),
-  choices: z.array(z.object({ finish_reason: z.literal("stop"), message: z.object({ content: z.string(), refusal: z.string().nullable().optional() }) })).min(1),
-  usage: z.object({ prompt_tokens: tokenCount, completion_tokens: tokenCount }).optional(),
+  choices: z.array(z.object({ finish_reason: z.string().optional(), message: z.object({ content: z.string(), refusal: z.string().nullable().optional() }) })).min(1),
+  usage: z.object({ prompt_tokens: tokenCount, completion_tokens: tokenCount, cost: z.number().finite().nonnegative().optional() }).optional(),
 });
 
 export async function readLimitedJson(request: Request | Response, maximum: number): Promise<unknown> {
@@ -124,8 +127,9 @@ export async function callAiProvider(config: AiConfig, messages: AiMessage[], sc
         responseFormat: { text: { mimeType: "APPLICATION_JSON", schema: providerSchema(schema) } },
       },
     }, signal)
-    : await fetchProviderJson("https://api.openai.com/v1/chat/completions", { Authorization: `Bearer ${config.key}` }, {
-      model: config.model, messages, store: false, reasoning_effort: "none", max_completion_tokens: 1800,
+    : await fetchProviderJson("https://openrouter.ai/api/v1/chat/completions", { Authorization: `Bearer ${config.key}` }, {
+      model: config.model, messages, temperature: 0, max_tokens: 1800,
+      provider: { only: [config.provider], allow_fallbacks: false, require_parameters: true, data_collection: "deny", max_price: { prompt: 0, completion: 0, request: 0 } },
       response_format: { type: "json_schema", json_schema: { name: "cash_plan_assistance", strict: true, schema: providerSchema(schema) } },
     }, signal);
   try {
@@ -138,12 +142,12 @@ export async function callAiProvider(config: AiConfig, messages: AiMessage[], sc
         completionTokens: result.usageMetadata?.candidatesTokenCount ?? null, cost: null,
       } };
     }
-    const result = openAiEnvelope.parse(json);
+    const result = openRouterEnvelope.parse(json);
     const choice = result.choices[0];
-    if (result.error || choice.message.refusal) throw new Error("AI_UNAVAILABLE");
+    if (result.error || choice.message.refusal || (choice.finish_reason && choice.finish_reason !== "stop")) throw new Error("AI_UNAVAILABLE");
     return { value: JSON.parse(choice.message.content) as unknown, usage: {
       promptTokens: result.usage?.prompt_tokens ?? null,
-      completionTokens: result.usage?.completion_tokens ?? null, cost: null,
+      completionTokens: result.usage?.completion_tokens ?? null, cost: result.usage?.cost ?? null,
     } };
   } catch {
     throw new Error("AI_UNAVAILABLE");

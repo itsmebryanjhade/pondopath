@@ -16,11 +16,13 @@ const schema = {
 };
 function configure() {
   vi.stubEnv("GEMINI_API_KEY", "gemini-test-only");
-  vi.stubEnv("OPENAI_API_KEY", "openai-test-only");
+  vi.stubEnv("OPENROUTER_API_KEY", "openrouter-test-only");
+  vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
+  vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
 }
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-describe("Gemini and OpenAI transport", () => {
+describe("Gemini and OpenRouter transport", () => {
   it("uses Gemini once by default and sends a bounded supported schema", async () => {
     configure();
     const fetcher = vi.fn().mockResolvedValue(Response.json({
@@ -52,22 +54,23 @@ describe("Gemini and OpenAI transport", () => {
     });
   });
 
-  it("uses the server-selected OpenAI model with a strict schema and storage disabled", async () => {
+  it("uses the existing OpenRouter model and provider with a strict, zero-cost route", async () => {
     configure();
     const fetcher = vi.fn().mockResolvedValue(Response.json({
-      choices: [{ finish_reason: "stop", message: { content: JSON.stringify(answer) } }],
-      usage: { prompt_tokens: 10, completion_tokens: 4 },
+      choices: [{ finish_reason: "stop", message: { content: JSON.stringify(answer), refusal: null } }],
+      usage: { prompt_tokens: 10, completion_tokens: 4, cost: 0 },
     }));
     vi.stubGlobal("fetch", fetcher);
     expect(await callAiProvider(aiBackupConfig()!, messages, schema)).toEqual({
-      value: answer, usage: { promptTokens: 10, completionTokens: 4, cost: null },
+      value: answer, usage: { promptTokens: 10, completionTokens: 4, cost: 0 },
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
     const [url, options] = fetcher.mock.calls[0];
-    expect(url).toBe("https://api.openai.com/v1/chat/completions");
-    expect(options.headers).toEqual({ "Content-Type": "application/json", Authorization: "Bearer openai-test-only" });
+    expect(url).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(options.headers).toEqual({ "Content-Type": "application/json", Authorization: "Bearer openrouter-test-only" });
     expect(JSON.parse(options.body)).toMatchObject({
-      model: "gpt-5.4-mini", store: false, max_completion_tokens: 1800, reasoning_effort: "none",
+      model: "test/model:free", temperature: 0, max_tokens: 1800,
+      provider: { only: ["test-provider"], allow_fallbacks: false, require_parameters: true, data_collection: "deny", max_price: { prompt: 0, completion: 0, request: 0 } },
       response_format: { type: "json_schema", json_schema: { strict: true, schema: {
         type: "object", properties: { kind: { type: "string", enum: ["answer"] }, records: { type: "array", items: { type: "string" } } },
         required: ["kind", "records"], additionalProperties: false,
@@ -75,19 +78,24 @@ describe("Gemini and OpenAI transport", () => {
     });
   });
 
-  it("requires a Gemini key and keeps OpenAI optional while manual reminders work", () => {
+  it("requires a Gemini key and keeps OpenRouter optional while manual reminders work", () => {
     configure();
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
     vi.stubEnv("GEMINI_API_KEY", "");
     expect(() => aiConfig()).toThrow("AI_UNAVAILABLE");
-    vi.stubEnv("OPENAI_API_KEY", "  ");
+    vi.stubEnv("OPENROUTER_API_KEY", "  ");
     expect(aiBackupConfig()).toBeNull();
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-test-only");
+    for (const model of ["test/paid", "openrouter/free", "", "https://example.test:free"]) {
+      vi.stubEnv("OPENROUTER_MODEL", model);
+      expect(aiBackupConfig()).toBeNull();
+    }
     expect(fetcher).not.toHaveBeenCalled();
     expect(reminderTemplate({ contactName: "Demo contact", invoiceNumber: "TEST-001", outstandingCents: 2_000_000, dueDate: "2026-11-06", referenceDate: "2026-10-29" })).toContain("TEST-001");
   });
 
-  it("skips an OpenAI call if the shared deadline already expired", async () => {
+  it("skips an OpenRouter call if the shared deadline already expired", async () => {
     configure();
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
@@ -96,7 +104,7 @@ describe("Gemini and OpenAI transport", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
-  it.each([["stop", "Refused"], ["length", null]])("rejects an incomplete OpenAI result (%s)", async (finish_reason, refusal) => {
+  it.each([["length", null], ["stop", "Refused"]])("rejects an incomplete OpenRouter result (%s)", async (finish_reason, refusal) => {
     configure();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({
       choices: [{ finish_reason, message: { content: JSON.stringify(answer), refusal } }],
