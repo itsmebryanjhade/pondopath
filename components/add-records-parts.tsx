@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef } from "react";
 import type { RowLabel } from "@/lib/domain/reader";
+import { formatPHP } from "@/lib/domain/money";
 
 type IconName = "upload" | "file" | "table" | "pencil" | "check" | "download" | "alert";
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -89,10 +90,22 @@ export function ChoiceCards({ googleOpen, onConnectGoogle, manualOpen, onManual 
   );
 }
 
+export function WorkbookSheetPicker({ sheets, selected, disabled = false, onToggle, onRead }: {
+  sheets: string[]; selected: string[]; disabled?: boolean; onToggle: (sheet: string, checked: boolean) => void; onRead: () => void;
+}) {
+  return <fieldset className="add-sheet-picker">
+    <legend>Sheets to include</legend>
+    <div>{sheets.map(sheet => <label key={sheet}><input type="checkbox" checked={selected.includes(sheet)} disabled={disabled} aria-label={`Include ${sheet} worksheet`}
+      onChange={event => { event.stopPropagation(); onToggle(sheet, event.currentTarget.checked); }} />{sheet}</label>)}</div>
+    <button type="button" className="add-button secondary" disabled={disabled || selected.length === 0} onClick={onRead}>Preview selected sheets</button>
+  </fieldset>;
+}
+
 export type PreviewRow = { cells: string[]; label?: RowLabel };
+type WorkbookGroups = { sheet: string; readyCount: number; readyCents: number; exceptionCount: number; excludedOpenCount: number; excludedOpenCents: number; exceptions: { row: number; externalId: string; status: string; message: string }[] }[];
 const CHIP: Partial<Record<RowLabel, string>> = { invoice: "Invoice", expense: "Expense", payment: "Payment", choose: "Needs you" };
 
-export function CheckSummary({ summary, held, headers, rows }: { summary: string; held: string; headers: string[]; rows: PreviewRow[] }) {
+export function CheckSummary({ summary, held, headers, rows, groups }: { summary: string; held: string; headers: string[]; rows: PreviewRow[]; groups?: WorkbookGroups }) {
   const columns = headers.slice(0, 4);
   return (
     <div className="add-check">
@@ -107,6 +120,16 @@ export function CheckSummary({ summary, held, headers, rows }: { summary: string
         </table>
       </div>
       {held && <p className="add-note"><Icon name="alert" size={16} />{held}</p>}
+      {groups?.length ? <section className="add-group-summary" aria-label="Workbook totals and exceptions">
+        <h3>Totals by sheet</h3>
+        <ul>{groups.map(group => <li key={group.sheet}>
+          <strong>{group.sheet}</strong>
+          <span>{group.readyCount} ready · {formatPHP(group.readyCents)}</span>
+          <span>{group.exceptionCount} exceptions</span>
+          {group.excludedOpenCount > 0 && <span>{group.excludedOpenCount} open-balance rows held · {formatPHP(group.excludedOpenCents)}</span>}
+          {group.exceptions.map(exception => <small key={`${exception.row}:${exception.externalId}`}>Source row {exception.row} · {exception.externalId || "No ID"}: {exception.message}</small>)}
+        </li>)}</ul>
+      </section> : null}
     </div>
   );
 }

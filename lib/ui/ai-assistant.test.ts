@@ -1,7 +1,7 @@
 import { createElement, createRef, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { AiAssistant, WORKSPACE_TOOLS } from "@/components/ai-assistant";
+import { AiAssistant, DraftReviewPanel, WORKSPACE_TOOLS } from "@/components/ai-assistant";
 import { AiAssistantLauncher } from "@/components/ai-assistant-launcher";
 import { CollectionPanel } from "@/components/collection-panel";
 import { ReminderPanel } from "@/components/reminder-panel";
@@ -144,5 +144,93 @@ describe("multilingual assistant presentation & Task 4 conversation UI", () => {
     expect(html).toContain("Confirm reviewed receipt plan");
     expect(html).toContain('type="checkbox"');
     expect(html).toContain("required");
+  });
+
+  it("opens ReminderPanel for a reminder draft targeting the exact invoice without calling executeWorkspaceAction", () => {
+    const workspace = uiWorkspace();
+    const invoice = workspace.invoices[0];
+    const draft = {
+      kind: "reminder" as const,
+      title: `Payment reminder for ${invoice.number}`,
+      invoiceId: invoice.id,
+      suggestedBody: "Hello, friendly payment reminder for DEMO-001.",
+      sourceRevision: workspace.revision,
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(DraftReviewPanel, { draft, workspace })
+    );
+
+    expect(html).toContain(`Reviewing: Payment reminder for ${invoice.number}`);
+    expect(html).toContain("Hello, friendly payment reminder for DEMO-001.");
+    expect(html).toContain("Save draft");
+    // Explicit save only: zero executeWorkspaceAction calls on render
+    expect(executeWorkspaceAction).not.toHaveBeenCalled();
+  });
+
+  it("opens FollowupForm for a followup task draft with prefilled action and date without executing action", () => {
+    const workspace = uiWorkspace();
+    const invoice = workspace.invoices[0];
+    const draft = {
+      kind: "followup" as const,
+      title: `Plan next action for ${invoice.number}`,
+      invoiceId: invoice.id,
+      suggestedBody: "Call customer manager to follow up",
+      actionDate: "2026-11-12",
+      sourceRevision: workspace.revision,
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(DraftReviewPanel, { draft, workspace })
+    );
+
+    expect(html).toContain("Schedule follow-up task");
+    expect(html).toContain(invoice.number);
+    expect(html).toContain("Call customer manager to follow up");
+    expect(html).toContain('value="2026-11-12"');
+    expect(html).toContain("Schedule follow-up");
+
+    expect(executeWorkspaceAction).not.toHaveBeenCalled();
+  });
+
+  it("hides the review form and alerts when draft revision is stale", () => {
+    const workspace = uiWorkspace();
+    workspace.revision = 5;
+    const invoice = workspace.invoices[0];
+    const draft = {
+      kind: "reminder" as const,
+      title: "Payment reminder",
+      invoiceId: invoice.id,
+      suggestedBody: "Stale reminder draft",
+      sourceRevision: 4, // stale
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(DraftReviewPanel, { draft, workspace })
+    );
+
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("This draft was prepared for revision 4, but the workspace is now at revision 5.");
+    expect(html).not.toContain("Save draft");
+  });
+
+  it("hides the form and displays error when targeted invoice does not exist", () => {
+    const workspace = uiWorkspace();
+    const draft = {
+      kind: "reminder" as const,
+      title: "Unknown invoice reminder",
+      invoiceId: "nonexistent-invoice-id",
+      suggestedBody: "Draft body",
+      sourceRevision: workspace.revision,
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(DraftReviewPanel, { draft, workspace })
+    );
+
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("The invoice targeted by this draft is no longer available in this workspace.");
+    expect(html).not.toContain("Save draft");
+    expect(html).not.toContain("Schedule follow-up");
   });
 });

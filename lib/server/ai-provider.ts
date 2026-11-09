@@ -18,6 +18,15 @@ export function aiConfig(attempt: "primary" | "backup" = "primary"): AiConfig {
   return { kind: "openrouter", key, model, provider };
 }
 
+export function hasAiBackup() {
+  try {
+    aiConfig("backup");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const tokenCount = z.number().int().nonnegative().optional();
 const geminiEnvelope = z.object({
   promptFeedback: z.object({ blockReason: z.string().optional() }).optional(),

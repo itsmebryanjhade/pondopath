@@ -4,11 +4,15 @@ import { formatPlanDate } from "@/lib/display";
 import { CommandForm, Field, TextAreaField, AssigneeField } from "./command-form";
 
 type Props = { workspace: WorkspaceSnapshot; invoice: WorkspaceSnapshot["invoices"][number] };
-function FollowupForm({
+export function FollowupForm({
   workspace,
   invoice,
   task,
-}: Props & { task?: WorkspaceSnapshot["followups"][number] }) {
+  proposed,
+}: Props & {
+  task?: WorkspaceSnapshot["followups"][number];
+  proposed?: { nextAction?: string; date?: string };
+}) {
   return (
     <CommandForm
       revision={workspace.revision}
@@ -28,7 +32,7 @@ function FollowupForm({
         label="Next action"
         name="nextAction"
         maxLength={4000}
-        defaultValue={task?.next_action ?? ""}
+        defaultValue={task?.next_action ?? proposed?.nextAction ?? ""}
         required
       />
       <div className="form-grid">
@@ -36,7 +40,7 @@ function FollowupForm({
           label="Follow-up due date"
           name="date"
           type="date"
-          defaultValue={task?.due_date ?? workspace.forecastInput.referenceDate}
+          defaultValue={task?.due_date ?? proposed?.date ?? workspace.forecastInput.referenceDate}
           required
         />
         <AssigneeField

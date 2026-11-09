@@ -16,13 +16,13 @@ describe("Review Inbox bulk selection", () => {
     const html = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1"), item("2", "needs_match"), item("3", "applied"), item("4", "pending", {} as typeof invoice)], revision: 0 }));
     expect(html.match(/type="checkbox"/g)).toHaveLength(1);
     // The wrapping label names each checkbox with the full row description.
-    expect(html).toMatch(/<label[^>]*><input type="checkbox"[^>]*\/>Invoice Fictional[^<]*Source row ROW-1/);
-    for (const suffix of ["2", "3", "4"]) expect(html).not.toContain("Source row ROW-" + suffix + " ·");
-    expect(html).toContain("Select all clean");
+    expect(html).toMatch(/<label[^>]*><input type="checkbox"[^>]*\/>.*Invoice.*Fictional.*row ROW-1.*<\/label>/);
+    for (const suffix of ["2", "3", "4"]) expect(html).not.toContain("row ROW-" + suffix + "<");
+    expect(html).not.toContain("Select all");
   });
   it("describes each row with its number, amount, due date and file so repeated source IDs can be told apart", () => {
     const html = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1")], revision: 0, sourceLabels: { "20000000-0000-4000-8000-000000000002": "Fictional ledger" } }));
-    for (const text of ["Fictional", "125.00", "due 2026-11-10", "Source row ROW-1", "Fictional ledger"]) expect(html).toContain(text);
+    for (const text of ["Fictional", "125.00", "Due 10 Nov 2026", "row ROW-1", "Fictional ledger"]) expect(html).toContain(text);
   });
   it("leaves out look-alike rows so the same expense is not confirmed twice", () => {
     const internet = { type: "save_expense", payload: { label: "Internet", payee: "Telco", amountCents: 249900, dueDate: "2026-11-18" } };
@@ -33,7 +33,9 @@ describe("Review Inbox bulk selection", () => {
   });
   it("disables confirmation when nothing is selected", () => {
     const html = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1")], revision: 0 }));
-    expect(html).toMatch(/<button[^>]*disabled[^>]*>Confirm selected \(0\)<\/button>/);
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>Confirm selected<\/button>/);
+    const two = renderToStaticMarkup(createElement(IntakeBulkConfirm, { items: [item("1"), item("2", "pending", { ...invoice, payload: { ...invoice.payload, number: "Other" } })], revision: 0 }));
+    expect(two).toContain("Select all 2");
   });
   it("announces confirmed and failed counts with plain failure messages", () => {
     const values = [item("1"), item("2"), item("3"), item("4")];

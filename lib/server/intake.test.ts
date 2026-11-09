@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), actor: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: mocks.rpc }) }));
 vi.mock("@/lib/server/auth", () => ({ requireActor: mocks.actor }));
-import { confirmSelectedIntake, isBulkConfirmable, type IntakeItem } from "./intake";
+import { confirmSelectedIntake, isBulkConfirmable, stageIntakeBatches, type IntakeItem } from "./intake";
 const ids = ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000002", "10000000-0000-4000-8000-000000000003"];
 const items = ids.map(id => ({ id, reviewVersion: 1 }));
 beforeEach(() => { vi.resetAllMocks(); mocks.actor.mockResolvedValue({ userId: ids[0], businessId: ids[1], role: "finance" }); });
@@ -45,5 +45,27 @@ describe("bulk intake confirmation", () => {
     expect(isBulkConfirmable(item)).toBe(true);
     expect(isBulkConfirmable({ ...item, status: "needs_match" })).toBe(false);
     expect(isBulkConfirmable({ ...item, candidate: {} })).toBe(false);
+  });
+});
+
+describe("bounded workbook intake staging", () => {
+  it("stages 300 rows in bounded batches and safely replays all chunks after an interruption", async () => {
+    let calls = 0;
+    mocks.rpc.mockImplementation(async (name: string, args: { p_rows: { externalId: string }[] }) => {
+      expect(name).toBe("stage_intake_batch");
+      calls++;
+      if (calls === 2) return { data: null, error: { message: "temporary failure" } };
+      return { data: args.p_rows.map(row => ({ externalId: row.externalId, itemId: ids[0], status: "pending", replayed: calls > 2 })), error: null };
+    });
+    const rows = Array.from({ length: 300 }, (_, index) => ({
+      externalId: `ROW-${String(index + 1).padStart(3, "0")}`, sourceVersion: "stable-v1",
+      candidate: { type: "save_invoice", payload: { number: `INV-${index + 1}`, customerId: ids[1], amountCents: 1000, dueDate: "2026-11-15" } },
+      evidence: { sheet: index < 150 ? "Invoices" : "Bills", row: index % 150 + 2 },
+    }));
+    await expect(stageIntakeBatches(ids[2], rows)).rejects.toThrow();
+    const retried = await stageIntakeBatches(ids[2], rows);
+    expect(retried).toHaveLength(300);
+    expect(retried.every(row => row.replayed)).toBe(true);
+    expect(mocks.rpc.mock.calls.map(([, args]) => (args as { p_rows: unknown[] }).p_rows.length)).toEqual([100, 100, 100, 100, 100]);
   });
 });

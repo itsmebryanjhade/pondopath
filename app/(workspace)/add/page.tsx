@@ -36,7 +36,7 @@ async function Add({ searchParams }: { searchParams: Promise<AddParams> }) {
   const entry = ENTRY_TYPES.find((value) => value === params.type);
   const notice = params.google === "connected" || params.google === "failed" ? params.google : undefined;
   return <WorkspaceShell workspace={workspace} className="section-page add-records-page" header={<WorkspacePageHeading title="Add your records" description="Bring them in from a file, or type them in." workspace={workspace} actions={<Link className="button secondary" href="/imports">Review Inbox</Link>} />}>
-    <AddRecords customers={workspace.customers} manualOpenAtStart={!!entry} manualSlot={<ManualEntry workspace={workspace} initial={entry ?? "invoice"} />} googleOpenAtStart={!!notice || google.files.length > 0}
+    <AddRecords customers={workspace.customers} revision={workspace.revision} manualOpenAtStart={!!entry} manualSlot={<ManualEntry workspace={workspace} initial={entry ?? "invoice"} />} googleOpenAtStart={!!notice || google.files.length > 0}
       googleSlot={<GoogleConnect owner={owner} configured={googleConfigured} connection={google.connection} files={google.files} customers={workspace.customers} checkedAt={google.checkedAt} notice={notice} />} />
   </WorkspaceShell>;
 }

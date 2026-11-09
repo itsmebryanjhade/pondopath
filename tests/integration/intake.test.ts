@@ -1,7 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { readXlsx } from "../../lib/domain/xlsx";
-import { readCsv, mapCsv, type CsvMapping } from "../../lib/domain/imports";
+import { readXlsx, readXlsxSheets } from "../../lib/domain/xlsx";
+import { readCsv, mapCsv, csvMappingSchema, type CsvMapping } from "../../lib/domain/imports";
+import { applyReader, suggestAutoFields, suggestColumns } from "../../lib/domain/reader";
+import { summarizeWorkbookRows } from "../../lib/domain/add-records";
+import { calculateForecast } from "../../lib/domain/forecast";
+import { fictionalWorkbook300Fixture } from "../fixtures/workbook-onboarding";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { admin, createTestBusiness, disposeTestBusiness, signInAs, type TestBusiness } from "./helpers";
@@ -222,6 +226,91 @@ describe("review intake boundary", () => {
     expect(repeated.data?.[0]).toMatchObject({ itemId, status: "applied", replayed: true });
     expect((await owner.from("invoices").select("id").eq("business_id", business.id).eq("number", "SAMPLE-INV-001")).data).toHaveLength(1);
     expect((await owner.rpc("workspace_snapshot")).data.forecastInput.availableCents).toBe(before.forecastInput.availableCents);
+  });
+
+  it("retries an interrupted 300-row workbook once, protects opening cash, and carries a reviewed row into forecast", async () => {
+    const opening = await owner.rpc("workspace_snapshot");
+    expect(opening.error).toBeNull();
+    const baseline = await owner.rpc("workspace_command", { p_command: {
+      requestId: randomUUID(), expectedRevision: opening.data.revision, type: "set_opening_cash",
+      payload: { amountCents: 6_000_000, date: "2026-10-26" },
+    } });
+    expect(baseline.error).toBeNull();
+    const before = await owner.rpc("workspace_snapshot");
+    expect(before.data.forecastInput.availableCents).toBe(6_000_000);
+
+    const bytes = fictionalWorkbook300Fixture(150, 150, "Test customer");
+    const { file } = await readXlsxSheets(bytes, ["Invoices", "Bills"]);
+    expect(file.rows).toHaveLength(300);
+    const fields = suggestAutoFields(suggestColumns(file.headers, file.rows.slice(0, 20)));
+    const mapping = csvMappingSchema.parse({ ...fields, kind: "auto", customerId: business.customerId, columns: file.headers, excludedIds: [], overrides: {} });
+    const reader = applyReader(file, mapping as Extract<CsvMapping, { kind: "auto" }>);
+    const mapped = mapCsv(reader.file, reader.mixed, {
+      customers: before.data.customers, invoices: before.data.invoices, expenses: before.data.expenses, bindings: [],
+    });
+    const summary = summarizeWorkbookRows(mapped);
+    expect(reader.payments).toEqual([5]);
+    expect(summary).toMatchObject({ readyCount: 296, readyCents: 24_364_000, excludedOpenCount: 1, excludedOpenCents: 3_000_000 });
+    expect(mapped.find(row => row.externalId === "INV-0001")).toMatchObject({ status: "balance_review", sheet: "Invoices", openCents: 3_000_000 });
+    expect(mapped.find(row => row.externalId === "INV-0002")?.status).toBe("settled");
+    expect(mapped.find(row => row.externalId === "INV-0003")?.message).toMatch(/YYYY-MM-DD/);
+
+    const source = await owner.rpc("create_intake_source", { p_kind: "manual_csv", p_label: "300-row workbook retry proof" });
+    expect(source.error).toBeNull();
+    const proposals = mapped.filter(row => row.candidate && ["new", "changed", "needs_match"].includes(row.status)).map(row => ({
+      externalId: row.externalId,
+      sourceVersion: createHash("sha256").update(JSON.stringify(row.candidate)).digest("hex"),
+      candidate: row.candidate,
+      evidence: { filename: "fictional-300.xlsx", sheet: row.sheet, row: row.row, fields: row.fields },
+    }));
+    expect(proposals).toHaveLength(296);
+
+    const movementsBefore = await admin.from("cash_movements").select("id", { count: "exact", head: true }).eq("business_id", business.id);
+    expect(movementsBefore.error).toBeNull();
+    const interrupted = await finance.rpc("stage_intake_batch", { p_source_id: source.data, p_rows: proposals.slice(0, 100) });
+    expect(interrupted.error).toBeNull();
+    expect(interrupted.data).toHaveLength(100);
+    const firstItemIds = interrupted.data.map((row: { itemId: string }) => row.itemId);
+
+    const retried = [];
+    for (let offset = 0; offset < proposals.length; offset += 100) {
+      const batch = await finance.rpc("stage_intake_batch", { p_source_id: source.data, p_rows: proposals.slice(offset, offset + 100) });
+      expect(batch.error).toBeNull();
+      retried.push(...batch.data);
+    }
+    expect(retried).toHaveLength(296);
+    expect(retried.slice(0, 100).map((row: { itemId: string }) => row.itemId)).toEqual(firstItemIds);
+    const staged = await admin.from("intake_items").select("id,external_id,status,source_evidence", { count: "exact" })
+      .eq("business_id", business.id).eq("source_id", source.data);
+    expect(staged.error).toBeNull();
+    expect(staged.count).toBe(296);
+    expect(staged.data?.some(row => ["INV-0001", "INV-0002", "INV-0003", "RCPT-0001"].includes(row.external_id))).toBe(false);
+    expect(staged.data?.find(row => row.external_id === "INV-0005")?.source_evidence).toMatchObject({ sheet: "Invoices", row: 6 });
+    expect((await owner.rpc("workspace_snapshot")).data.forecastInput.availableCents).toBe(6_000_000);
+    const movementsAfterStage = await admin.from("cash_movements").select("id", { count: "exact", head: true }).eq("business_id", business.id);
+    expect(movementsAfterStage.count).toBe(movementsBefore.count);
+
+    const invoiceItem = staged.data!.find(row => row.external_id === "INV-0005")!;
+    const applied = await finance.rpc("apply_intake", { p_item_id: invoiceItem.id, p_review_version: 1, p_expected_revision: before.data.revision });
+    expect(applied.error).toBeNull();
+    const after = await owner.rpc("workspace_snapshot");
+    const imported = after.data.invoices.find((row: { number: string }) => row.number === "INV-0005");
+    expect(imported).toMatchObject({ amount_cents: 100_500, paid_cents: 0, outstanding_cents: 100_500 });
+    const forecast = calculateForecast(after.data.forecastInput);
+    const forecastDay = forecast.days.find((day) => day.date === imported.due_date);
+    expect(forecastDay?.invoiceIds).toContain(imported.id);
+    expect(forecastDay?.expectedInCents).toBeGreaterThanOrEqual(100_500);
+    expect(after.data.forecastInput.availableCents).toBe(6_000_000);
+
+    const repeated = [];
+    for (let offset = 0; offset < proposals.length; offset += 100) {
+      const batch = await finance.rpc("stage_intake_batch", { p_source_id: source.data, p_rows: proposals.slice(offset, offset + 100) });
+      expect(batch.error).toBeNull();
+      repeated.push(...batch.data);
+    }
+    expect(repeated.find((row: { externalId: string }) => row.externalId === "INV-0005")).toMatchObject({ itemId: invoiceItem.id, status: "applied", replayed: true });
+    expect((await admin.from("invoices").select("id", { count: "exact" }).eq("business_id", business.id).eq("number", "INV-0005")).count).toBe(1);
+    expect((await owner.rpc("workspace_snapshot")).data.forecastInput.availableCents).toBe(6_000_000);
   });
 
 

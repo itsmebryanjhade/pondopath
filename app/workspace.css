@@ -615,15 +615,44 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .add-card-icon { display: grid; width: 38px; height: 38px; flex: none; place-items: center; border-radius: 10px; background: #e7f4ec; color: #28734f; }
 .add-check { display: grid; gap: 10px; animation: add-in 360ms cubic-bezier(.2, .8, .2, 1) both; }
 .add-summary { margin: 0; color: #17211b; font-size: 16px; font-weight: 600; }
+.add-sheet-picker { display: grid; gap: 10px; margin: 0; padding: 12px 0; border: 0; border-bottom: 1px solid #e3e7e1; }
+.add-sheet-picker legend { padding: 0; color: #17211b; font-size: 14px; font-weight: 600; }
+.add-sheet-picker > div { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.add-sheet-picker label { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; color: #25352b; font-size: 14px; }
+.add-sheet-picker input { width: 18px; height: 18px; accent-color: #28734f; }
+.add-sheet-picker input:focus-visible { outline: 2px solid #28734f; outline-offset: 3px; }
 .add-table-scroll { overflow-x: auto; border: 1px solid #e3e7e1; border-radius: 12px; background: #fff; }
 .add-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .add-table th { text-transform: none; letter-spacing: 0; padding: 8px 10px; border-bottom: 1px solid #e3e7e1; color: #7e8a82; font-size: 12px; font-weight: 600; text-align: left; }
 .add-table td { padding: 8px 10px; border-bottom: 1px solid #edf0eb; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .add-table tr:last-child td { border-bottom: 0; }
+.add-group-summary { display: grid; gap: 8px; padding-top: 8px; border-top: 1px solid #e3e7e1; }
+.add-group-summary h3 { margin: 0; color: #17211b; font-size: 14px; }
+.add-group-summary ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.add-group-summary li { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); align-items: baseline; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid #edf0eb; font-size: 13px; }
+.add-group-summary li strong { min-width: 0; overflow-wrap: anywhere; }
+.add-group-summary li small { grid-column: 1 / -1; color: #7e4c28; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .add-group-summary li { grid-template-columns: minmax(0, 1fr) auto; } .add-group-summary li span:nth-of-type(n + 2) { grid-column: 1 / -1; } }
 .add-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e9f0f7; color: #3c638c; font-size: 11px; font-weight: 600; }
 .add-chip.expense { background: #f0ecf7; color: #66568f; }
 .add-chip.payment, .add-chip.choose { background: #fceddf; color: #a25522; }
 .add-note { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid #e8d6c4; border-radius: 10px; background: #fff8f1; color: #a25522; font-size: 13px; }
+.workspace-root .bulk-confirm h2 { margin: 0; }
+.workspace-root .bulk-confirm > .intake-panel-body > p { margin: 4px 0 0; }
+.workspace-root .bulk-list { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.workspace-root .bulk-pick { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--edge); border-radius: 10px; background: var(--surface); cursor: pointer; transition: border-color var(--duration-quick, 150ms) ease-out, background-color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .bulk-pick:hover { border-color: var(--data-accent); }
+.workspace-root .bulk-pick.is-picked { border-color: var(--primary); background: var(--green-50); }
+.workspace-root .bulk-pick.is-off { cursor: default; background: #f6f7f4; color: var(--ink-soft); }
+.workspace-root .bulk-pick input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
+.workspace-root .bulk-row { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.workspace-root .bulk-row-main { display: grid; gap: 2px; min-width: 0; }
+.workspace-root .bulk-row-main strong { font-size: 14px; overflow-wrap: anywhere; }
+.workspace-root .bulk-row-main small { color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+.workspace-root .bulk-row-amount { flex: none; font-size: 14px; }
+.workspace-root .bulk-lookalikes { margin-top: 14px; }
+.workspace-root .bulk-lookalikes > p { margin: 0; color: #a25522; font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .workspace-root .bulk-pick { transition: none; } }
 .add-done { display: grid; justify-items: center; gap: 6px; padding: 32px 12px; text-align: center; animation: add-in 360ms cubic-bezier(.2, .8, .2, 1) both; }
 .add-done-check { display: grid; width: 64px; height: 64px; place-items: center; border-radius: 50%; background: #28734f; color: #fff; animation: add-pop 420ms cubic-bezier(.2, .8, .2, 1) 120ms both; }
 .add-done h2 { margin: 8px 0 0; font-size: 22px; }

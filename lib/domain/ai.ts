@@ -10,12 +10,32 @@ const common = {
   expectedRevision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   language: z.enum(["auto", "english", "tagalog", "taglish"]).default("auto"),
 };
+const requiredMappingRoles = ["externalId", "number", "amount", "dueDate", "label", "payee"] as const;
+const tempColumnId = z.string().regex(/^c(?:[0-9]|1[0-9]|2[0-3])$/);
+const maskedCell = z.enum(["", "<text>", "<amount>", "<date>", "<id>", "<choice>"]);
+const mappingRequest = z.strictObject({
+  ...common,
+  task: z.literal("suggest_import_mapping"),
+  attempt: z.enum(["primary", "backup"]).optional(),
+  headers: z.array(z.strictObject({ id: tempColumnId, name: text(80) })).min(1).max(24),
+  samples: z.array(z.array(maskedCell).max(24)).max(3),
+}).superRefine((request, context) => {
+  if (new Set(request.headers.map(header => header.id)).size !== request.headers.length || request.headers.some((header, index) => header.id !== `c${index}`)) {
+    context.addIssue({ code: "custom", path: ["headers"], message: "Use unique temporary column IDs in order." });
+  }
+  if (request.samples.some(row => row.length !== request.headers.length)) {
+    context.addIssue({ code: "custom", path: ["samples"], message: "Each masked sample must match the selected headers." });
+  }
+});
+
 export const aiRequestSchema = z.discriminatedUnion("task", [
   z.strictObject({ ...common, task: z.literal("explain"), invoiceId: z.uuid().optional(), question: text(1000) }),
   z.strictObject({ ...common, task: z.literal("extract_reply"), invoiceId: z.uuid(), reply: text(4000) }),
   z.strictObject({ ...common, task: z.literal("draft_reminder"), invoiceId: z.uuid(), tone: z.enum(["polite", "firm"]).default("polite") }),
   z.strictObject({
-    ...common, task: z.literal("chat"), question: text(1000),
+    ...common,
+    task: z.literal("chat"),
+    question: text(1000),
     history: z.array(z.strictObject({ question: text(1000), answer: text(3000) })).max(3),
     context: z.strictObject({
       page: z.enum(["overview", "forecast", "cash", "invoices", "expenses", "followups"]),
@@ -23,6 +43,7 @@ export const aiRequestSchema = z.discriminatedUnion("task", [
     }).optional(),
     intent: z.enum(["draft_reminder", "draft_followup"]).optional(),
   }),
+  mappingRequest,
 ]);
 type AssistantRequest = z.infer<typeof aiRequestSchema>;
 export type AiRequest = Exclude<AssistantRequest, { task: "chat" }>;
@@ -30,17 +51,43 @@ export type AssistantChatRequest = Extract<AssistantRequest, { task: "chat" }>;
 
 export const aiOutputSchemas = {
   explain: z.strictObject({ summary: text(3000), recordIds: z.array(z.uuid()).max(60) }),
-  extract_reply: z.strictObject({ invoiceId: z.uuid().nullable(), amountCents: z.number().int().min(1).max(MAX_RECORD_CENTS).nullable(), date: z.string().regex(isoDatePattern).nullable(), reason: text(1000).nullable(), sourceQuotes: z.array(text(1000)).max(8), needsReview: z.boolean(), issues: z.array(text(300)).max(8) }),
+  extract_reply: z.strictObject({
+    invoiceId: z.uuid().nullable(),
+    amountCents: z.number().int().min(1).max(MAX_RECORD_CENTS).nullable(),
+    date: z.string().regex(isoDatePattern).nullable(),
+    reason: text(1000).nullable(),
+    sourceQuotes: z.array(text(1000)).max(8),
+    needsReview: z.boolean(),
+    issues: z.array(text(300)).max(8),
+  }),
   draft_reminder: z.strictObject({ body: text(2000) }),
+  suggest_import_mapping: z.strictObject({
+    fields: z.strictObject({
+      externalId: tempColumnId.nullable(),
+      number: tempColumnId.nullable(),
+      amount: tempColumnId.nullable(),
+      dueDate: tempColumnId.nullable(),
+      customer: tempColumnId.nullable(),
+      payee: tempColumnId.nullable(),
+      label: tempColumnId.nullable(),
+      typeColumn: tempColumnId.nullable(),
+      paidAmount: tempColumnId.nullable(),
+      openBalance: tempColumnId.nullable(),
+      status: tempColumnId.nullable(),
+    }),
+    unresolved: z.array(z.enum(requiredMappingRoles)).max(requiredMappingRoles.length),
+  }),
 };
 type Version = { sourceRevision: number };
 export type AiProposal =
   | (z.infer<typeof aiOutputSchemas.explain> & Version & { task: "explain" })
   | (z.infer<typeof aiOutputSchemas.extract_reply> & Version & { task: "extract_reply" })
-  | (z.infer<typeof aiOutputSchemas.draft_reminder> & Version & { task: "draft_reminder"; invoiceId: string; recipient: string });
+  | (z.infer<typeof aiOutputSchemas.draft_reminder> & Version & { task: "draft_reminder"; invoiceId: string; recipient: string })
+  | (z.infer<typeof aiOutputSchemas.suggest_import_mapping> & Version & { task: "suggest_import_mapping" });
 
 export function buildAiContext(workspace: WorkspaceSnapshot, request: AiRequest) {
   if (workspace.revision !== request.expectedRevision) throw new Error("STALE_VERSION");
+  if (request.task === "suggest_import_mapping") return { allowedRecordIds: [] as string[], data: { headers: request.headers, samples: request.samples } };
   const selected = request.invoiceId ? workspace.invoices.find(row => row.id === request.invoiceId) : undefined;
   if (request.invoiceId && !selected) throw new Error("NOT_FOUND");
   const forecast = request.task === "explain" ? calculateForecast(workspace.forecastInput) : undefined;
@@ -127,6 +174,17 @@ function matchesReplyValue<T>(value: T, replyValues: Set<T>, quoteValues: Set<T>
 export function validateAiProposal(request: AiRequest, value: unknown, workspace: WorkspaceSnapshot): AiProposal {
   const context = buildAiContext(workspace, request);
   const sourceRevision = workspace.revision;
+  if (request.task === "suggest_import_mapping") {
+    const result = aiOutputSchemas.suggest_import_mapping.parse(value);
+    const allowed = new Set(request.headers.map(header => header.id));
+    for (const id of Object.values(result.fields)) if (id !== null && !allowed.has(id)) throw new Error("INVALID_AI_OUTPUT");
+    const assigned = new Map<string, string[]>();
+    for (const [role, id] of Object.entries(result.fields)) if (id) assigned.set(id, [...(assigned.get(id) ?? []), role]);
+    if ([...assigned.values()].some(roles => roles.length > 1 && !(roles.length === 2 && roles.includes("externalId") && roles.includes("number")))) throw new Error("INVALID_AI_OUTPUT");
+    const unresolved = requiredMappingRoles.filter(role => result.fields[role] === null);
+    if (unresolved.length !== result.unresolved.length || unresolved.some(role => !result.unresolved.includes(role))) throw new Error("INVALID_AI_OUTPUT");
+    return { ...result, task: request.task, sourceRevision };
+  }
   if (request.task === "explain") {
     const result = aiOutputSchemas.explain.parse(value);
     if (result.recordIds.some(id => !context.allowedRecordIds.includes(id))) throw new Error("INVALID_AI_OUTPUT");

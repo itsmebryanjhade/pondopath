@@ -105,4 +105,22 @@ describe("authorized AI orchestration", () => {
     mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: { ...workspace, business: { ...workspace.business, is_demo: false } } });
     await expect(requestAssistant(chat)).rejects.toThrow("AI_UNAVAILABLE");
   });
+
+  it("routes explicit mapping help through the demo reservation and sends no raw workbook values", async () => {
+    const mapping = {
+      task: "suggest_import_mapping", expectedRevision: 1,
+      headers: [{ id: "c0", name: "Customer" }, { id: "c1", name: "Amount" }, { id: "c2", name: "Due" }],
+      samples: [["<text>", "<amount>", "<date>"]],
+    };
+    const result = { fields: { externalId: "c0", number: "c0", amount: "c1", dueDate: "c2", customer: null, payee: null, label: null, typeColumn: null, paidAmount: null, openBalance: null, status: null }, unresolved: ["label", "payee"] };
+    mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: uiWorkspace() });
+    mocks.provider.mockResolvedValueOnce({ value: result, usage: { cost: null } });
+    expect(await requestAssistant(mapping)).toMatchObject({ proposal: { task: "suggest_import_mapping", fields: result.fields, unresolved: result.unresolved } });
+    expect(mocks.rpc.mock.calls[0][0]).toBe("reserve_ai_request");
+    expect(mocks.provider.mock.calls[0][1][0].content).toContain("SUGGEST_IMPORT_MAPPING");
+    const prompt = JSON.stringify(JSON.parse(mocks.provider.mock.calls[0][1][1].content));
+    expect(prompt).toContain("<amount>");
+    expect(prompt).not.toContain("Mabuhay Cafe");
+    expect(prompt).not.toContain("<workspace-actor-id>");
+  });
 });

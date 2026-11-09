@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ensureFileSourceAction, inspectCsvAction, previewCsvAction, stageCsvAction } from "@/app/(workspace)/imports/actions";
-import { countLabels, fileKind, heldLine, plainImportError, previewCell, previewColumns, sheetToRead, summarizeOutcome, summaryLine } from "@/lib/domain/add-records";
+import { countLabels, fileKind, heldLine, plainImportError, previewCell, previewColumns, summarizeOutcome, summaryLine } from "@/lib/domain/add-records";
 import type { AutoFields } from "@/lib/domain/reader";
 import type { CsvMapping } from "@/lib/domain/imports";
 import { takePendingFile } from "@/lib/ui/pending-file";
 import { PENDING_FILE_EVENT } from "@/lib/ui/pending-file-event";
-import { CheckSummary, ChoiceCards, DoneState, DropArea, StepIndicator } from "./add-records-parts";
+import { CheckSummary, ChoiceCards, DoneState, DropArea, StepIndicator, WorkbookSheetPicker } from "./add-records-parts";
 import { ImportSelector, readSelectorForm, selectorProblems, type SelectorLabel } from "./import-selector";
 import { useToast } from "./toast-host";
 
@@ -48,14 +48,16 @@ export function countSelection(form: FormData, labels: SelectorLabel[]): { invoi
   return total;
 }
 
-type Read = { id: number; sourceId: string; file: File; sheet: string; sheets: string[]; headers: string[]; rows: (string | number | boolean | null)[][]; fields: AutoFields; labels: SelectorLabel[] };
+type WorkbookPreview = { held: { payments: number[]; choose: number[] }; groups: { sheet: string; readyCount: number; readyCents: number; exceptionCount: number; excludedOpenCount: number; excludedOpenCents: number; exceptions: { row: number; externalId: string; status: string; message: string }[] }[]; previewStatuses: string[]; hasSendable: boolean };
+type Read = { id: number; sourceId: string; file: File; sheets: string[]; selectedSheets: string[]; headers: string[]; rows: (string | number | boolean | null)[][]; fields: AutoFields; labels: SelectorLabel[]; preview?: WorkbookPreview };
 type Phase = { step: "file" } | { step: "check"; read: Read } | { step: "done"; fresh: number; already: number; skipped: number };
 
-export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStart = false, manualOpenAtStart = false }: { customers: { id: string; name: string }[]; googleSlot: ReactNode; manualSlot?: ReactNode; googleOpenAtStart?: boolean; manualOpenAtStart?: boolean }) {
+export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStart = false, manualOpenAtStart = false, revision }: { customers: { id: string; name: string }[]; googleSlot: ReactNode; manualSlot?: ReactNode; googleOpenAtStart?: boolean; manualOpenAtStart?: boolean; revision?: number }) {
   const router = useRouter();
   const toast = useToast();
   const [busy, start] = useTransition();
   const busyRef = useRef(false);
+  const [helpPending, setHelpPending] = useState(false);
   const [phase, setPhase] = useState<Phase>({ step: "file" });
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -67,26 +69,67 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
   const readCount = useRef(0);
   const shown = useRef(phase.step);
 
-  const read = useCallback((file: File, sheet = "") => start(async () => {
+  const requestMappingHelp = async () => {
+    if (helpPending || phase.step !== "check" || phase.read.headers.length === 0) return;
+    setHelpPending(true);
+    try {
+      const headers = phase.read.headers.slice(0, 24).map((h, i) => ({ id: `c${i}`, name: h.slice(0, 40) }));
+      const headerNames = new Map(headers.map(h => [h.id, h.name]));
+      const samples = phase.read.rows.slice(0, 3).map(row => row.slice(0, 24).map(v => v === null ? "" : String(v).slice(0, 80)));
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task: "suggest_import_mapping",
+          headers,
+          samples,
+          expectedRevision: revision ?? 1,
+          language: "auto",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && data.proposal?.fields) {
+          const nextFields: AutoFields = { ...phase.read.fields };
+          for (const [key, colId] of Object.entries(data.proposal.fields)) {
+            if (colId && headerNames.has(colId as string)) {
+              nextFields[key as keyof AutoFields] = headerNames.get(colId as string);
+            }
+          }
+          setPhase(value => value.step === "check" ? { step: "check", read: { ...value.read, fields: nextFields, preview: undefined } } : value);
+        }
+      }
+    } catch {
+      // Keep manual mapping
+    } finally {
+      setHelpPending(false);
+    }
+  };
+
+  const read = useCallback((file: File, selectedSheets: string[] = []) => start(async () => {
     setError("");
     const kind = fileKind(file.name);
     if (!kind) { setError("Only Excel (.xlsx) and CSV files can be added."); return; }
     const source = await ensureFileSourceAction();
     if (!source.ok) { setError(describeFailure(source.message)); return; }
-    const inspect = (name: string) => {
+    const inspect = (names: string[]) => {
       const form = new FormData();
       form.set("file", file); form.set("sourceId", source.data);
-      if (name) form.set("sheet", name);
+      names.forEach(name => form.append("sheet", name));
       return inspectCsvAction(form);
     };
-    let result = await inspect(sheet);
-    // An Excel file read without a sheet comes back empty, so read its first sheet next.
-    if (result.ok) { const first = sheetToRead(kind, result.data.sheet, result.data.sheets); if (first) result = await inspect(first); }
+    let result = await inspect(selectedSheets);
+    if (result.ok && kind === "xlsx" && !selectedSheets.length && result.data.sheets.length === 1) result = await inspect(result.data.sheets);
+    if (result.ok && kind === "xlsx" && !selectedSheets.length && result.data.sheets.length > 1) {
+      setLabels([]); setSelection(null);
+      setPhase({ step: "check", read: { id: ++readCount.current, sourceId: source.data, file, sheets: result.data.sheets, selectedSheets: result.data.sheets, headers: [], rows: [], fields: {}, labels: [] } });
+      return;
+    }
     if (!result.ok) { setError(describeFailure(result.message)); return; }
-    const { headers, rows, fields, labels: found, sheets, sheet: chosen } = result.data;
+    const { headers, rows, fields, labels: found, sheets, selectedSheets: loadedSheets } = result.data;
     setLabels(found);
     setSelection(null);
-    setPhase({ step: "check", read: { id: ++readCount.current, sourceId: source.data, file, sheet: chosen ?? "", sheets, headers, rows: rows as Read["rows"], fields, labels: found } });
+    setPhase({ step: "check", read: { id: ++readCount.current, sourceId: source.data, file, sheets, selectedSheets: loadedSheets, headers, rows: rows as Read["rows"], fields, labels: found } });
   }), []);
 
   useEffect(() => {
@@ -114,18 +157,18 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
     const mapping: CsvMapping = readSelectorForm(data, labels);
     const form = new FormData();
     form.set("file", current.file); form.set("sourceId", current.sourceId); form.set("mapping", JSON.stringify(mapping));
-    if (current.sheet) form.set("sheet", current.sheet);
+    current.selectedSheets.forEach(sheet => form.append("sheet", sheet));
     start(async () => {
       setError("");
-      const preview = await previewCsvAction(form);
-      if (!preview.ok) { setError(describeFailure(preview.message)); return; }
-      if (!preview.data.rows.some((row) => row.candidate && !["invalid", "duplicate"].includes(row.status))) {
-        setError("None of these rows can be added. Check the amounts and due dates in your file.");
+      if (!current.preview) {
+        const preview = await previewCsvAction(form);
+        if (!preview.ok) { setError(describeFailure(preview.message)); return; }
+        setPhase({ step: "check", read: { ...current, preview: preview.data } });
         return;
       }
       const staged = await stageCsvAction(form);
       if (!staged.ok) { setError(describeFailure(staged.message)); return; }
-      const outcome = summarizeOutcome(preview.data.rows.map((row) => row.status), staged.data);
+      const outcome = summarizeOutcome(current.preview.previewStatuses, staged.data);
       setPhase({ step: "done", ...outcome });
       if (outcome.fresh) toast.show(`${outcome.fresh} ${outcome.fresh === 1 ? "row" : "rows"} ready to review`, { label: "Review", href: "/imports" });
       router.refresh();
@@ -135,6 +178,8 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
   const counts = countLabels(labels);
   const picked = selection ?? { invoice: counts.invoice, expense: counts.expense };
   const sendable = picked.invoice + picked.expense;
+  const readyCount = phase.step === "check" ? (phase.read.preview?.groups.reduce((total, group) => total + group.readyCount, 0) ?? 0) : 0;
+  const exceptionsCount = phase.step === "check" ? (phase.read.preview?.groups.reduce((total, group) => total + group.exceptionCount, 0) ?? 0) : 0;
   const again = () => { setError(""); setPhase({ step: "file" }); };
   return (
     <div className="add-page">
@@ -154,25 +199,30 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
       {phase.step === "check" && (
         <form key={phase.read.id} className="add-check" noValidate aria-busy={busy}
           onSubmit={(event) => send(event, phase.read)}
-          onChange={(event) => setSelection(countSelection(new FormData(event.currentTarget), labels))}>
+          onChange={(event) => {
+            setSelection(countSelection(new FormData(event.currentTarget), labels));
+            setPhase(value => value.step === "check" && value.read.preview ? { step: "check", read: { ...value.read, preview: undefined } } : value);
+          }}>
           <p className="muted">{phase.read.file.name}</p>
-          {phase.read.sheets.length > 1 && <label className="form-field"><span>Which sheet?</span>
-            <select className="field" value={phase.read.sheet} disabled={busy} onChange={(event) => { event.stopPropagation(); read(phase.read.file, event.target.value); }}>
-              {phase.read.sheets.map((sheet) => <option key={sheet}>{sheet}</option>)}
-            </select></label>}
-          {(() => {
+          {phase.read.sheets.length > 1 && <WorkbookSheetPicker sheets={phase.read.sheets} selected={phase.read.selectedSheets} disabled={busy}
+            onToggle={(sheet, checked) => { setPhase(value => value.step === "check" ? { step: "check", read: { ...value.read, selectedSheets: checked ? [...value.read.selectedSheets, sheet] : value.read.selectedSheets.filter(item => item !== sheet), preview: undefined } } : value); setSelection(null); }}
+            onRead={() => read(phase.read.file, phase.read.selectedSheets)} />}
+          {phase.read.headers.length > 0 && (() => {
             const groups = previewColumns(phase.read.headers, phase.read.fields);
-            return <CheckSummary summary={summaryLine(counts)} held={heldLine(counts)} headers={groups.map((group) => group.title)}
-              rows={phase.read.rows.map((cells, index) => ({ cells: groups.map((group) => previewCell(cells, group.columns)), label: labels[index]?.label }))} />;
+            return <CheckSummary summary={phase.read.preview ? `${readyCount} rows ready to review across ${phase.read.preview.groups.length} sheets.` : summaryLine(counts)}
+              held={[heldLine(counts), exceptionsCount ? `${exceptionsCount} rows need attention; see sheet totals.` : ""].filter(Boolean).join(" ")}
+              headers={groups.map((group) => group.title)} groups={phase.read.preview?.groups}
+              rows={phase.read.rows.slice(0, 5).map((cells, index) => ({ cells: groups.map((group) => previewCell(cells, group.columns)), label: labels[index]?.label }))} />;
           })()}
-          <details ref={adjust} className="add-adjust" open={needsAttention({ fields: phase.read.fields, labels: phase.read.labels, customers: customers.length })}>
+          {phase.read.headers.length > 0 && <details ref={adjust} className="add-adjust" open={needsAttention({ fields: phase.read.fields, labels: phase.read.labels, customers: customers.length })}>
             <summary>Check columns and rows</summary>
             <ImportSelector headers={phase.read.headers} rows={phase.read.rows} labels={phase.read.labels} fields={phase.read.fields} customers={customers}
-              saved={customers.length === 1 ? { customerId: customers[0].id } : undefined} disabled={busy}
-              onLabels={(next) => { setLabels(next); setSelection(null); }} />
-          </details>
+              saved={customers.length === 1 ? { customerId: customers[0].id } : undefined} disabled={busy || helpPending}
+              onLabels={(next) => { setLabels(next); setSelection(null); setPhase(value => value.step === "check" ? { step: "check", read: { ...value.read, preview: undefined } } : value); }}
+              onHelpMatchColumns={requestMappingHelp} />
+          </details>}
           <div className="add-done-actions" style={{ justifyContent: "flex-start" }}>
-            <button className="add-button" disabled={!canSend({ busy, rows: sendable })}>{busy ? "Sending…" : `Send ${sendable} ${sendable === 1 ? "row" : "rows"} to review`}</button>
+            {phase.read.headers.length > 0 && <button className="add-button" disabled={!canSend({ busy, rows: phase.read.preview ? Number(phase.read.preview.hasSendable) : sendable })}>{busy ? "Working…" : phase.read.preview ? `Send ${readyCount} ${readyCount === 1 ? "row" : "rows"} to review` : `Review ${sendable} ${sendable === 1 ? "row" : "rows"}`}</button>}
             <button type="button" className="add-button secondary" disabled={busy} onClick={again}>Choose a different file</button>
           </div>
         </form>

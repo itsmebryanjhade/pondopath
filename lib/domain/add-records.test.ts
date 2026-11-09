@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countLabels, dragHasFiles, fileKind, firstFile, heldLine, plainImportError, previewCell, previewColumns, sheetToRead, summarizeOutcome, summaryLine } from "./add-records";
+import { countLabels, dragHasFiles, fileKind, firstFile, heldLine, plainImportError, previewCell, previewColumns, sheetToRead, summarizeOutcome, summarizeWorkbookRows, summaryLine } from "./add-records";
 
 const counts = (invoice = 0, expense = 0, payment = 0, choose = 0) => ({ invoice, expense, payment, choose });
 const BANNED = /KiB|UTF|row ID|YYYY|source/i;
@@ -73,6 +73,7 @@ describe("Add records helpers", () => {
       { status: "pending", replayed: false }, { status: "needs_match", replayed: false }, { status: "pending", replayed: true }, { status: "error" },
     ])).toEqual({ fresh: 2, already: 1, skipped: 3 });
     expect(summarizeOutcome([], [{ status: "error" }, { status: "error" }])).toEqual({ fresh: 0, already: 0, skipped: 2 });
+    expect(summarizeOutcome(["unchanged", "balance_review", "settled"], [])).toEqual({ fresh: 0, already: 1, skipped: 2 });
   });
   it("previewColumns builds Name, Who, Amount and Due from whichever columns the reader found", () => {
     const headers = ["ID", "Type", "Customer", "Supplier", "Invoice no", "Amount", "Due", "Description"];
@@ -85,5 +86,22 @@ describe("Add records helpers", () => {
     expect(previewCell(["INV-1", "", "Rent"], [1, 2])).toBe("Rent");
     expect(previewCell(["INV-1", "", "Rent"], [0, 2])).toBe("INV-1");
     expect(previewCell(["", null, ""], [0, 1])).toBe("");
+  });
+  it("reports per-sheet ready totals, open-balance exclusions, and row-level exceptions", () => {
+    const summary = summarizeWorkbookRows([
+      { sheet: "Invoices", row: 2, externalId: "INV-1", status: "new", message: "Review before applying.", candidate: { type: "save_invoice", payload: { number: "INV-1", customerId: "00000000-0000-4000-8000-000000000001", amountCents: 5000000, dueDate: "2026-11-15" } } },
+      { sheet: "Invoices", row: 3, externalId: "INV-2", status: "balance_review", message: "Partly paid; review the open balance.", openCents: 3000000 },
+      { sheet: "Invoices", row: 4, externalId: "INV-3", status: "settled", message: "Settled row excluded.", openCents: 0 },
+      { sheet: "Invoices", row: 5, externalId: "INV-4", status: "invalid", message: "Use an unambiguous YYYY-MM-DD due date." },
+      { sheet: "Bills", row: 2, externalId: "BILL-1", status: "new", message: "Review before applying.", candidate: { type: "save_expense", payload: { label: "Stock", payee: "Northwind", amountCents: 85000, dueDate: "2026-11-18" } } },
+    ]);
+    expect(summary).toEqual({
+      readyCount: 2, readyCents: 5085000, exceptionCount: 3, excludedOpenCount: 1, excludedOpenCents: 3000000,
+      groups: [
+        { sheet: "Invoices", readyCount: 1, readyCents: 5000000, exceptionCount: 3, excludedOpenCount: 1, excludedOpenCents: 3000000,
+          exceptions: [{ row: 3, externalId: "INV-2", status: "balance_review", message: "Partly paid; review the open balance." }, { row: 4, externalId: "INV-3", status: "settled", message: "Settled row excluded." }, { row: 5, externalId: "INV-4", status: "invalid", message: "Use an unambiguous YYYY-MM-DD due date." }] },
+        { sheet: "Bills", readyCount: 1, readyCents: 85000, exceptionCount: 0, excludedOpenCount: 0, excludedOpenCents: 0, exceptions: [] },
+      ],
+    });
   });
 });

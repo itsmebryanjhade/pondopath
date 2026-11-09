@@ -35,6 +35,12 @@ describe("column detection", () => {
     for (const header of ["Ref", "ID", "SRC-ID"])
       expect(roles([header, "Amount"], [["SRC-0001", "100"], ["SRC-0002", "200"]])[0]).toEqual([header, "externalId", "high"]);
   });
+  it("recognizes payment, open balance, and settlement status columns without using them as record amounts", () => {
+    expect(roles(["Paid", "Open Balance", "Payment Status"]).map(([, role]) => role)).toEqual(["paidAmount", "openBalance", "status"]);
+    expect(suggestAutoFields(suggest(["ID", "Invoice", "Amount", "Paid", "Open Balance", "Status", "Due"], []))).toMatchObject({
+      externalId: "ID", number: "Invoice", amount: "Amount", paidAmount: "Paid", openBalance: "Open Balance", status: "Status", dueDate: "Due",
+    });
+  });
 });
 
 import { labelRows, applyReader } from "./reader";
@@ -111,9 +117,15 @@ describe("row labels", () => {
     const read = applyReader(file([row("A", "Invoice", "", "", "")]), auto({ columns: headers.filter(h => h !== "Supplier" && h !== "Customer"), customer: undefined, payee: "Description" }));
     expect(read.file.headers).toEqual(["ID", "Type", "Description", "Amount", "Due", "Invoice No", "__pondopath_type"]);
   });
+  it("preserves worksheet names and physical rows through automatic mapping", () => {
+    const source = { ...file([row("SRC-1001", "Invoice", "Mabuhay Cafe", "", "Order")]), rowSheets: ["Invoices"] };
+    const read = applyReader(source, auto());
+    expect(read.file.rowSheets).toEqual(["Invoices"]);
+    expect(mapCsv(read.file, read.mixed, context)[0]).toMatchObject({ sheet: "Invoices", row: 2 });
+  });
 });
 
-import { suggestAutoFields, suggestColumns as suggest } from "./reader";
+import { maskImportSamples, suggestAutoFields, suggestColumns as suggest } from "./reader";
 describe("suggested auto fields", () => {
   it("turns column roles into mapping fields with sensible fallbacks", () => {
     const fields = suggestAutoFields(suggest(["Ref", "Uri", "Kliyente", "Supplier", "Paliwanag", "Halaga", "Due Date"], [["SRC-1", "Benta", "A", "", "x", "100", "2026-11-20"]]));
@@ -121,5 +133,17 @@ describe("suggested auto fields", () => {
   });
   it("falls back to the date column and the customer column when due date or supplier are missing", () => {
     expect(suggestAutoFields(suggest(["ID", "Customer", "Amount", "Date"], []))).toMatchObject({ dueDate: "Date", payee: "Customer", label: "Customer", number: "ID" });
+  });
+  it("masks up to three workbook sample rows without sending their customer, ID, amount, or date values", () => {
+    const masked = maskImportSamples({ headers: ["Customer", "Reference", "Amount", "Due"], rows: [
+      ["Mabuhay Cafe", "INV-1234", "50000", "2026-11-15"], ["Other Buyer", "INV-5678", "25000", "2026-11-18"],
+      ["Third Buyer", "INV-9012", "12500", "2026-11-19"], ["Not sent", "INV-0000", "1", "2026-11-20"],
+    ] });
+    expect(masked).toEqual({
+      headers: [{ id: "c0", name: "Customer" }, { id: "c1", name: "Reference" }, { id: "c2", name: "Amount" }, { id: "c3", name: "Due" }],
+      samples: [["<text>", "<id>", "<amount>", "<date>"], ["<text>", "<id>", "<amount>", "<date>"], ["<text>", "<id>", "<amount>", "<date>"]],
+    });
+    expect(JSON.stringify(masked)).not.toContain("Mabuhay Cafe");
+    expect(JSON.stringify(masked)).not.toContain("INV-1234");
   });
 });

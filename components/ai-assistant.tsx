@@ -21,6 +21,7 @@ import { DashboardIcon } from "./dashboard-icon";
 import { TextAreaField } from "./command-form";
 import { CollectionPanel } from "./collection-panel";
 import { ReminderPanel } from "./reminder-panel";
+import { FollowupForm } from "./followup-panel";
 import { CashImpact } from "./cash-impact";
 import { calculateForecast, compareScenario } from "@/lib/domain/forecast";
 import { formatPHP } from "@/lib/domain/money";
@@ -560,31 +561,19 @@ export function AiAssistant({ workspace, dialog, onClose }: {
               </div>
 
               {activeReview?.draft && (
-                <div className="assistant-active-draft-panel">
-                  <div className="assistant-draft-header">
-                    <strong>{reviewTarget ? "Reviewing invoice " + reviewTarget.invoice.number : "Review draft"}</strong>
-                    <button type="button" className="text-link" onClick={() => setReview(null)}>Hide draft review</button>
-                  </div>
-                  {!reviewTarget ? <p role="alert" className="negative">Records changed. Ask for a fresh draft before reviewing.</p>
-                    : activeReview.draft.kind === "reminder" ? (
-                      <ReminderPanel
-                        key={review?.messageId}
-                        workspace={workspace}
-                        invoice={reviewTarget.invoice}
-                        customer={reviewTarget.customer}
-                        template={activeReview.draft.text}
-                        suggestedBody={activeReview.draft.text}
-                      />
-                    ) : (
-                      <>
-                        <blockquote className="assistant-response">{activeReview.draft.text}</blockquote>
-                        <p>Due {formatPlanDate(activeReview.draft.date)}</p>
-                        <Link className="text-link" href={"/invoices/" + reviewTarget.invoice.id} onClick={close}>
-                          Open invoice to add follow-up
-                        </Link>
-                      </>
-                    )}
-                </div>
+                <DraftReviewPanel
+                  key={review?.messageId}
+                  draft={{
+                    kind: activeReview.draft.kind,
+                    title: reviewTarget ? "Reviewing invoice " + reviewTarget.invoice.number : "Review draft",
+                    invoiceId: activeReview.draft.invoiceId,
+                    suggestedBody: activeReview.draft.text,
+                    actionDate: "date" in activeReview.draft ? activeReview.draft.date : undefined,
+                    sourceRevision: activeReview.sourceRevision,
+                  }}
+                  workspace={workspace}
+                  onHide={() => setReview(null)}
+                />
               )}
 
               {chatError && (
@@ -664,5 +653,90 @@ export function AiAssistant({ workspace, dialog, onClose }: {
         </div>
       </dialog>
     </AssistantRuntimeProvider>
+  );
+}
+
+export function DraftReviewPanel({
+  draft,
+  workspace,
+  onHide,
+}: {
+  draft: {
+    kind: "reminder" | "followup";
+    title?: string;
+    invoiceId: string;
+    suggestedBody?: string;
+    text?: string;
+    date?: string;
+    actionDate?: string;
+    sourceRevision?: number;
+  };
+  workspace: WorkspaceSnapshot;
+  onHide?: () => void;
+}) {
+  const isStale =
+    draft.sourceRevision !== undefined && draft.sourceRevision !== workspace.revision;
+  const targetInvoice = workspace.invoices.find((i) => i.id === draft.invoiceId);
+  const targetCustomer = targetInvoice
+    ? workspace.customers.find((c) => c.id === targetInvoice.customer_id) ??
+      workspace.customers[0]
+    : undefined;
+
+  const title = draft.title ?? (targetInvoice ? `Reviewing invoice ${targetInvoice.number}` : "Review draft");
+  const suggestedBody = draft.suggestedBody ?? draft.text ?? "";
+  const date = draft.actionDate ?? draft.date;
+
+  return (
+    <div className="assistant-active-draft-panel">
+      <div className="assistant-draft-header">
+        <strong>{title.startsWith("Reviewing") ? title : `Reviewing: ${title}`}</strong>
+        {onHide && (
+          <button type="button" className="text-link" onClick={onHide}>
+            Hide draft review
+          </button>
+        )}
+      </div>
+
+      {isStale ? (
+        <div role="alert" className="assistant-notice negative">
+          <p>
+            This draft was prepared for revision {draft.sourceRevision}, but the workspace is now at
+            revision {workspace.revision}. Refresh or ask again to generate an up-to-date draft.
+          </p>
+        </div>
+      ) : !targetInvoice ? (
+        <div role="alert" className="assistant-notice negative">
+          <p>
+            The invoice targeted by this draft is no longer available in this workspace. Refresh
+            records before reviewing.
+          </p>
+        </div>
+      ) : draft.kind === "reminder" && targetCustomer ? (
+        <ReminderPanel
+          workspace={workspace}
+          invoice={targetInvoice}
+          customer={targetCustomer}
+          template={suggestedBody}
+          suggestedBody={suggestedBody}
+        />
+      ) : draft.kind === "followup" ? (
+        <div className="panel followup-review-panel">
+          <h2>Schedule follow-up task</h2>
+          <p className="muted">
+            For invoice <strong>{targetInvoice.number}</strong>. Current outstanding balance:{" "}
+            <strong className="num">{formatPHP(targetInvoice.outstanding_cents)}</strong>. Saving
+            schedules the task; it does not change the invoice balance.
+          </p>
+          <FollowupForm
+            workspace={workspace}
+            invoice={targetInvoice}
+            proposed={{
+              nextAction: suggestedBody,
+              date,
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
   );
 }

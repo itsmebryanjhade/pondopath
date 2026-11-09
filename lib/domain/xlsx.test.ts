@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
-import { readXlsx } from "./xlsx";
+import { fictionalWorkbook300Fixture, fictionalWorkbookFixture } from "@/tests/fixtures/workbook-onboarding";
+import { MAX_WORKBOOK_DATA_ROWS, readXlsx, readXlsxSheets } from "./xlsx";
 import { mapCsv, readCsv, type CsvMapping } from "./imports";
+import { applyReader, suggestAutoFields, suggestColumns } from "./reader";
+import { summarizeWorkbookRows } from "./add-records";
 
 const ns = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
 const rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -24,7 +27,7 @@ const workbook = (sheets?: Record<string, string>, extra?: Record<string, string
 const styles = `<styleSheet ${ns}><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs></styleSheet>`;
 const customerId = "00000000-0000-4000-8000-000000000001";
 const mapping: CsvMapping = { kind: "invoice", externalId: "ID", number: "Invoice", amount: "Amount", dueDate: "Due", customerId };
-const context = { customers: [{ id: customerId }], invoices: [], expenses: [], bindings: [] };
+const context = { customers: [{ id: customerId, name: "Mabuhay Cafe" }], invoices: [], expenses: [], bindings: [] };
 
 // These fixtures encode literal worksheet values; no spreadsheet writer computes expectations.
 describe("XLSX worksheet adapter", () => {
@@ -37,6 +40,80 @@ describe("XLSX worksheet adapter", () => {
     await expect(readXlsx(bytes, "Missing")).rejects.toThrow(/sheet/i);
     await expect(readXlsx(bytes, "Empty")).rejects.toThrow();
     await expect(readXlsx(bytes, "Invalid")).rejects.toThrow();
+  });
+
+  it("reads the fictional invoice and bill sheets in a workbook without mixing their rows or sources", async () => {
+    const bytes = fictionalWorkbookFixture();
+    const invoices = await readXlsx(bytes, "Invoices");
+    const bills = await readXlsx(bytes, "Bills");
+
+    expect(invoices.sheet).toBe("Invoices");
+    expect(invoices.file?.headers).toEqual(["ID", "Invoice", "Amount", "Due"]);
+    expect(invoices.file?.rows).toEqual([
+      ["INV-1001", "INV-1001", "1000", "2026-11-05"],
+      ["INV-1002", "INV-1002", "2500", "2026-11-08"],
+    ]);
+
+    expect(bills.sheet).toBe("Bills");
+    expect(bills.file?.headers).toEqual(["ID", "Vendor", "Amount", "Due"]);
+    expect(bills.file?.rows).toEqual([
+      ["BILL-2001", "Northwind Stockroom", "850", "2026-11-06"],
+      ["BILL-2002", "City Utilities", "420", "2026-11-10"],
+    ]);
+  });
+
+  it("reads 300 rows from selected invoice and bill tabs together with stable sheet and row references", async () => {
+    const result = await readXlsxSheets(fictionalWorkbook300Fixture(), ["Invoices", "Bills"]);
+    expect(MAX_WORKBOOK_DATA_ROWS).toBe(300);
+    expect(result.selectedSheets).toEqual(["Invoices", "Bills"]);
+    expect(result.file.rows).toHaveLength(300);
+    expect(result.file.rowSheets).toHaveLength(300);
+    expect(result.file.rowSheets!.slice(0, 150)).toEqual(Array(150).fill("Invoices"));
+    expect(result.file.rowSheets!.slice(150)).toEqual(Array(150).fill("Bills"));
+    expect(result.file.rowNumbers!.slice(0, 3)).toEqual([2, 3, 4]);
+    expect(result.file.rows[0]).toContain("30000");
+    expect(result.file.rows[1]).toContain("Settled");
+    expect(result.file.rows[2]).toContain("11/15/2026");
+  });
+
+  it("holds a repeated stable source ID found on different selected sheets", async () => {
+    const shared = data(2, "SHARED-1");
+    const { file } = await readXlsxSheets(workbook({ Invoices: sheet(header + shared), Bills: sheet(header + shared) }), ["Invoices", "Bills"]);
+    const rows = mapCsv(file, mapping, context);
+    expect(rows.map(row => [row.sheet, row.row, row.status])).toEqual([
+      ["Invoices", 2, "duplicate"], ["Bills", 2, "duplicate"],
+    ]);
+  });
+
+  it("rejects workbooks over the aggregate data-row bound", async () => {
+    await expect(readXlsxSheets(fictionalWorkbook300Fixture(151, 150), ["Invoices", "Bills"]))
+      .rejects.toThrow(/300.*row/i);
+  });
+
+  it("maps the full 300-row workbook to exact ready totals and held source-linked exceptions", async () => {
+    const { file } = await readXlsxSheets(fictionalWorkbook300Fixture(), ["Invoices", "Bills"]);
+    const fields = suggestAutoFields(suggestColumns(file.headers, file.rows.slice(0, 20)));
+    const mapping = {
+      kind: "auto" as const, externalId: fields.externalId!, amount: fields.amount!, dueDate: fields.dueDate!, number: fields.number!,
+      customerId, label: fields.label!, payee: fields.payee!, columns: file.headers, excludedIds: [], overrides: {}, ...fields,
+    };
+    const read = applyReader(file, mapping);
+    const rows = mapCsv(read.file, read.mixed, context);
+    const summary = summarizeWorkbookRows(rows);
+
+    expect(rows.find(row => row.externalId === "INV-0005")).toMatchObject({ status: "new", message: "Review before applying." });
+    expect(rows).toHaveLength(299);
+    expect(read.payments).toEqual([5]);
+    expect(rows.filter(row => row.status === "new")).toHaveLength(296);
+    expect(rows.find(row => row.externalId === "INV-0001")).toMatchObject({ sheet: "Invoices", row: 2, status: "balance_review", openCents: 3000000 });
+    expect(rows.find(row => row.externalId === "INV-0001")?.candidate).toBeUndefined();
+    expect(rows.find(row => row.externalId === "INV-0002")).toMatchObject({ sheet: "Invoices", row: 3, status: "settled", openCents: 0 });
+    expect(rows.find(row => row.externalId === "INV-0003")).toMatchObject({ sheet: "Invoices", row: 4, status: "invalid" });
+    expect(summary).toMatchObject({ readyCount: 296, readyCents: 24364000, exceptionCount: 3, excludedOpenCount: 1, excludedOpenCents: 3000000 });
+    expect(summary.groups).toEqual([
+      expect.objectContaining({ sheet: "Invoices", readyCount: 146, readyCents: 15731500, exceptionCount: 3, excludedOpenCount: 1, excludedOpenCents: 3000000 }),
+      expect.objectContaining({ sheet: "Bills", readyCount: 150, readyCents: 8632500, exceptionCount: 0 }),
+    ]);
   });
 
   it("preserves text identifiers, unrounded numeric lexemes and physical row provenance", async () => {
@@ -52,7 +129,7 @@ describe("XLSX worksheet adapter", () => {
   it("has the same valid proposal and duplicate outcomes as CSV", async () => {
     const { file } = await readXlsx(workbook({ Invoices: sheet(header + data() + data(3)) }), "Invoices");
     const csv = readCsv(strToU8("ID,Invoice,Amount,Due\n0001,INV-0001,10.25,2026-11-05\n0001,INV-0001,10.25,2026-11-05"));
-    expect(mapCsv(file!, mapping, context)).toEqual(mapCsv(csv, mapping, context));
+    expect(mapCsv(file!, mapping, context).map(row => { const copy = { ...row }; delete copy.sheet; return copy; })).toEqual(mapCsv(csv, mapping, context));
   });
 
   it("converts a date-formatted serial to a UTC date-only literal", async () => {

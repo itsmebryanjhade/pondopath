@@ -9,6 +9,8 @@ import type { Json, Tables } from "@/lib/database.types";
 export type IntakeItem = Tables<"intake_items">;
 export type IntakeSource = Pick<Tables<"intake_sources">, "id" | "label" | "kind">;
 export const intakeBatchSchema = z.array(z.strictObject({ externalId: z.string().trim().min(1).max(200), sourceVersion: z.string().trim().min(1).max(200), candidate: z.unknown(), evidence: z.record(z.string(), z.unknown()) })).min(1).max(100);
+const intakeRowsSchema = z.array(z.strictObject({ externalId: z.string().trim().min(1).max(200), sourceVersion: z.string().trim().min(1).max(200), candidate: z.unknown(), evidence: z.record(z.string(), z.unknown()) })).min(1).max(300);
+export const INTAKE_STAGE_BATCH_SIZE = 100;
 export const batchResultSchema = z.array(z.object({ externalId: z.string().nullable(), itemId: z.uuid().nullable().optional(), status: z.string(), code: z.string().optional(), replayed: z.boolean().optional() }));
 export type IntakeBatchResult = z.infer<typeof batchResultSchema>;
 
@@ -43,6 +45,16 @@ export async function stageIntakeBatch(sourceId: string, input: unknown): Promis
   const result = batchResultSchema.safeParse(data);
   if (!result.success) throw new CommandError("SERVICE_UNAVAILABLE");
   return result.data;
+}
+
+export async function stageIntakeBatches(sourceId: string, input: unknown): Promise<IntakeBatchResult> {
+  const rows = intakeRowsSchema.safeParse(input);
+  if (!rows.success) throw new CommandError("VALIDATION_ERROR");
+  const results: IntakeBatchResult = [];
+  for (let offset = 0; offset < rows.data.length; offset += INTAKE_STAGE_BATCH_SIZE) {
+    results.push(...await stageIntakeBatch(sourceId, rows.data.slice(offset, offset + INTAKE_STAGE_BATCH_SIZE)));
+  }
+  return results;
 }
 
 const reviewSchema = z.strictObject({ id: z.uuid(), reviewVersion: z.number().int().positive(), revision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER), decision: z.enum(["apply", "edit", "reject", "clarify"]), candidate: z.unknown().optional(), note: z.string().trim().max(4000).optional(), confirmed: z.boolean().optional() });
