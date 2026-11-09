@@ -59,8 +59,7 @@ export function AssigneeField({
   return (
     <label className="form-field">
       <span>Assigned to</span>
-      <select name="assigneeId" defaultValue={defaultValue} className="field">
-        <option value="">Unassigned</option>
+      <select className="field" name="assigneeId" defaultValue={defaultValue} required>
         {members.map((member) => (
           <option key={member.user_id} value={member.user_id}>
             {member.display_name}
@@ -305,7 +304,7 @@ export function CommandForm({
   return (
     <form
       ref={form}
-      className="form-grid"
+      className="record-form"
       onChangeCapture={() => {
         draftRevision.current ??= revision;
       }}
