@@ -35,4 +35,12 @@ describe("ported dashboard uses the saved cash model", () => {
     expect(html).toContain("Incomplete plan: 1 unpaid invoice has");
     expect(html).toContain("remainder unplanned");
   });
+  it("renders a contextual AI button on the hero and checks card", () => {
+    const workspace = uiWorkspace();
+    const html = renderToStaticMarkup(CashOverview({ workspace }));
+    expect(html).toContain("Explain this gap");
+    workspace.forecastInput.invoices[0].expectation = null;
+    const withChecks = renderToStaticMarkup(CashOverview({ workspace }));
+    expect(withChecks).toContain("Check forecast risks");
+  });
 });

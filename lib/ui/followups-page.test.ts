@@ -44,6 +44,14 @@ describe("source Follow-ups layout preserves the action ledger", () => {
     workspace.followups = [task(0, "2026-10-28", "completed")];
     expect(await render(workspace)).not.toContain("Help me follow up");
   });
+  it("offers Help me follow up beside the queue header when a task is open", async () => {
+    const workspace = uiWorkspace();
+    workspace.followups = [task(0, "2026-10-28")];
+    const html = await render(workspace);
+    expect(html).toContain("Help me follow up");
+    const queueHead = html.match(/id="followup-queue"[\s\S]*?<ul class="followup-queue-list">/)?.[0];
+    expect(queueHead).toContain("Help me follow up");
+  });
   it("counts task categories but includes each unpaid invoice balance only once", async () => {
     const workspace = uiWorkspace();
     workspace.followups = [task(0, "2026-10-28"), task(1, "2026-10-29"), task(2, "2026-10-30"), task(3, "2026-10-20", "completed")];

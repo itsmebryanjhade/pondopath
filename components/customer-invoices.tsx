@@ -8,6 +8,7 @@ import { WorkspaceShell } from "@/components/workspace-shell";
 import { DashboardIcon } from "./dashboard-icon";
 import { RefreshRecords } from "./refresh-records";
 import { ForecastCheckList } from "./forecast-check-list";
+import { AiContextButton } from "./ai-context-button";
 import { forecastChecks } from "@/lib/ui/forecast-checks";
 import {
   collectionFilters,
@@ -178,6 +179,11 @@ export function CustomerInvoices({ workspace, params }: {
           <p>{invoiceChecks.length ? "These make the forecast less reliable." : "Every unpaid invoice has a current payment date."}</p>
         </div>
         <div className="forecast-checks-body"><ForecastCheckList checks={invoiceChecks} empty="No passed payment dates and no money without a date." /></div>
+        {invoiceChecks.length > 0 && (
+          <div className="checks-card-ai">
+            <AiContextButton entry={{ context: { page: "invoices" }, workspace, starterText: "Which customer invoice should I follow up first?" }}>Which invoice first?</AiContextButton>
+          </div>
+        )}
       </aside>
       </section>
 

@@ -49,12 +49,10 @@ export default async function ForecastPage() {
         <span>Projected end balance</span><strong className={`num${end.closingCents < 0 ? " forecast-below-zero" : ""}`}>{formatPHP(end.closingCents)}</strong>
         <p>{formatPlanDate(end.date)} · includes expected payments that have not been verified as received.</p>
         <p className="forecast-first-shortfall">{forecast.firstShortage ? <>First shortfall · <strong className="num">{formatPHP(forecast.firstShortage.shortfallCents)} on {formatPlanDate(forecast.firstShortage.date)}</strong></> : "No shortfall in the next 30 days"}</p>
-        {forecast.firstShortage && (
-          <AiContextButton tone="inverse" entry={{
-            context: { page: "forecast" }, workspace,
-            starterText: "Explain our first cash shortage",
-          }}>Explain this gap</AiContextButton>
-        )}
+        <AiContextButton tone="inverse" entry={{
+          context: { page: "forecast" }, workspace,
+          starterText: forecast.firstShortage ? "Explain our first cash shortage" : "How much cash will we have in 30 days?",
+        }}>{forecast.firstShortage ? "Explain this gap" : "Explain forecast"}</AiContextButton>
         <JumpLink className="forecast-source-link" target="forecast-checks">{checks.length ? `${checks.length} ${checks.length === 1 ? "thing" : "things"} to check` : "Forecast checks"} <DashboardIcon name="arrowRight" size={15} /></JumpLink>
       </div>
       <CashForecast forecast={forecast} workspace={workspace} overview chartId="forecast-main" origin="forecast" />
@@ -108,6 +106,14 @@ export default async function ForecastPage() {
           <p>{checks.length ? `${checks.length} ${checks.length === 1 ? "thing" : "things"} could make it wrong` : "Nothing here could make it wrong"}</p>
         </div>
         <div className="forecast-checks-body"><ForecastCheckList checks={checks} /></div>
+        {checks.length > 0 && (
+          <div className="checks-card-ai">
+            <AiContextButton entry={{
+              context: { page: "forecast" }, workspace,
+              starterText: "Why is cash dipping in the forecast?",
+            }}>Check forecast risks</AiContextButton>
+          </div>
+        )}
       </aside>
     </section>
   </WorkspaceShell>;

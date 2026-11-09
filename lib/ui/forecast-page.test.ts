@@ -28,6 +28,7 @@ describe("source Forecast layout preserves calculated risk", () => {
     workspace.forecastInput.expenses = [];
     const withoutShortfall = await render(workspace);
     expect(withoutShortfall).toContain("No shortfall in the next 30 days");
+    expect(withoutShortfall).toContain("Explain forecast");
     expect(withoutShortfall).not.toContain("Explain this gap");
   });
   it("shows the early cash gap alongside a positive end balance and every daily source", async () => {

@@ -15,6 +15,7 @@ import { workflowSteps } from "@/lib/ui/overview";
 import { forecastChecks } from "@/lib/ui/forecast-checks";
 import { ForecastCheckList } from "./forecast-check-list";
 import { JumpLink } from "./jump-link";
+import { AiContextButton } from "./ai-context-button";
 
 const STEP_MARK = { done: "Done", attention: "Needs you", current: "Next", waiting: "Later" } as const;
 
@@ -66,6 +67,13 @@ export function CashOverview({ workspace }: { workspace: WorkspaceSnapshot }) {
           <div><span>{shortage ? "Earliest projected shortfall" : "No projected shortage"}</span><strong className="num">{shortage ? `${formatPlanDate(shortage.date, true)} · ${formatPHP(shortage.shortfallCents)} gap` : "Based on entered records"}</strong></div>
           <JumpLink target="forecast-review" label="Review cash forecast details"><DashboardIcon name="arrowRight" /></JumpLink>
         </div>
+        <div className="overview-hero-ai">
+          <AiContextButton tone="inverse" entry={{
+            context: { page: "overview" },
+            workspace,
+            starterText: shortage ? "Explain our first cash shortage" : "How much cash will we have in 30 days?",
+          }}>{shortage ? "Explain this gap" : "Explain outlook"}</AiContextButton>
+        </div>
         {shortage && <Link className="hero-scenario" href="/forecast#forecast-scenario">Try a later payment date<DashboardIcon name="arrowRight" size={14} /></Link>}
         {forecast.incompleteInvoiceIds.length > 0 && <p className="hero-incomplete">Incomplete plan: {forecast.incompleteInvoiceIds.length} unpaid {forecast.incompleteInvoiceIds.length === 1 ? "invoice has" : "invoices have"} unplanned amounts or no usable expected payment. <Link href="/invoices">Review invoices</Link>.</p>}
         {!shortage && <p className="hero-caution">Missing or unconfirmed records can still change the result.</p>}
@@ -96,7 +104,7 @@ export function CashOverview({ workspace }: { workspace: WorkspaceSnapshot }) {
         ? <Link className="cash-sum-overdue" href="/invoices?filter=overdue"><DashboardIcon name="alert" size={15} /><span><strong className="num">{formatPHP(overdueCents)}</strong> overdue on {overdue.length} {overdue.length === 1 ? "invoice" : "invoices"}. Chasing it can close the gap.</span><span className="cash-sum-overdue-cta">Review <DashboardIcon name="arrowRight" size={14} /></span></Link>
         : <p className="cash-sum-clear"><DashboardIcon name="check" size={15} />No overdue invoices.</p>}
     </section>
-    <NextActions workspace={workspace} limit={5} viewAllHref="/followups" origin="overview" />
+    <NextActions workspace={workspace} limit={5} viewAllHref="/followups" origin="overview" showFollowupAssistant />
     <CashActivity key={workspace.revision} rows={rows} invoices={invoiceList(workspace)} />
     <details id="forecast-review" className={`panel disclosure forecast-review ${checks.length ? "has-checks is-caution" : "is-clear"}`}>
       <summary className="forecast-summary">
@@ -109,7 +117,18 @@ export function CashOverview({ workspace }: { workspace: WorkspaceSnapshot }) {
         </span>
         <AppIcon name="chevron-down" />
       </summary>
-      <div id="forecast-assumptions"><ForecastCheckList checks={checks} /></div>
+      <div id="forecast-assumptions">
+        <ForecastCheckList checks={checks} />
+        {checks.length > 0 && (
+          <div className="checks-card-ai">
+            <AiContextButton entry={{
+              context: { page: "overview" },
+              workspace,
+              starterText: "Why is cash dipping in the forecast?",
+            }}>Check forecast risks</AiContextButton>
+          </div>
+        )}
+      </div>
     </details>
   </WorkspaceShell>;
 }

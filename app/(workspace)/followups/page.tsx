@@ -8,6 +8,7 @@ import { WorkspacePageHeading } from "@/components/workspace-page-heading";
 import { checkedSum, formatPHP } from "@/lib/domain/money";
 import { followupDue } from "@/lib/display";
 import { AutomationCheck } from "@/components/automation-check";
+import { AiContextButton } from "@/components/ai-context-button";
 
 const checkTime = (value?: string | null) => value ? new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value)) + " PHT" : "Never";
 
@@ -33,6 +34,7 @@ export default async function FollowupsPage({ searchParams }: { searchParams: Pr
   ];
   const done = workspace.followups.filter((task) => task.state === "completed").length;
   const automation = workspace.automation;
+  const firstOpenInvoice = invoices.find((invoice) => open.some((task) => task.invoice_id === invoice.id && invoice.outstanding_cents > 0));
   return <WorkspaceShell workspace={workspace} className="section-page section-follow-ups followups-page" header={
     <WorkspacePageHeading title="Follow-ups" description="Every collection task, who has it and when it’s due." workspace={workspace}
       actions={<Link className="button" href="/invoices?filter=no_followup"><DashboardIcon name="plus" size={17} />Find invoices without a follow-up</Link>} />
@@ -40,7 +42,17 @@ export default async function FollowupsPage({ searchParams }: { searchParams: Pr
     <NextActions workspace={workspace} origin="followups" showFollowupAssistant />
     <section className="section-lower-grid">
       <section className="records-panel followup-queue" id="followup-queue" aria-labelledby="followup-queue-heading">
-        <div className="records-head"><div><h2 id="followup-queue-heading">All follow-ups</h2><p>Every invoice with a follow-up, most urgent first. Open one to record what happened.</p></div><span>{invoices.length} {invoices.length === 1 ? "invoice" : "invoices"}</span></div>
+        <div className="records-head">
+          <div><h2 id="followup-queue-heading">All follow-ups</h2><p>Every invoice with a follow-up, most urgent first. Open one to record what happened.</p></div>
+          <span>{invoices.length} {invoices.length === 1 ? "invoice" : "invoices"}</span>
+          {firstOpenInvoice && (
+            <AiContextButton entry={{
+              context: { page: "followups", record: { kind: "invoice", id: firstOpenInvoice.id } },
+              workspace, starterText: "Help me follow up on this invoice",
+              intent: "draft_followup",
+            }}>Help me follow up</AiContextButton>
+          )}
+        </div>
         {invoices.length ? <ul className="followup-queue-list">{invoices.slice((page - 1) * 20, page * 20).map((invoice) => {
           const tasks = open.filter((task) => task.invoice_id === invoice.id).sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id.localeCompare(b.id));
           const first = tasks[0];

@@ -166,6 +166,17 @@ describe("source Invoices page connected to collection records", () => {
     expect(html).not.toContain("overdue bill");
   });
 
+  it("offers a contextual AI suggestion beside invoices to fix, and not when none need fixing", () => {
+    const workspace = fixture();
+    workspace.forecastInput.invoices[0].expectation!.remainingCents = 3_000_000;
+    workspace.expectations[0].remaining_cents = 3_000_000;
+    const html = render(workspace);
+    expect(html).toContain("Which invoice first?");
+    expect(html).toMatch(/<button[^>]*aria-haspopup="dialog"[^>]*>/);
+    const clear = fixture();
+    expect(render(clear)).not.toContain("Which invoice first?");
+  });
+
   it("says in one sentence where an invoice's money stands in the forecast", () => {
     const workspace = fixture();
     const invoice = workspace.invoices[0];

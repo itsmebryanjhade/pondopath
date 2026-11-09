@@ -70,7 +70,7 @@ export function NextActions({ workspace, limit, viewAllHref, origin, showFollowu
                   </div>
                   {action === firstFollowup && followupInvoiceId && (
                     <AiContextButton entry={{
-                      context: { page: "followups", record: { kind: "invoice", id: followupInvoiceId } },
+                      context: { page: origin === "overview" ? "overview" : "followups", record: { kind: "invoice", id: followupInvoiceId } },
                       workspace, starterText: "Help me follow up on this invoice",
                       intent: "draft_followup",
                     }}>Help me follow up</AiContextButton>
