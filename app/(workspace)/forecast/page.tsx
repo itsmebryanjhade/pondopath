@@ -10,6 +10,7 @@ import { CashForecast } from "@/components/cash-forecast";
 import { ScenarioPanel } from "@/components/scenario-panel";
 import { JumpLink } from "@/components/jump-link";
 import { ForecastCheckList } from "@/components/forecast-check-list";
+import { AiContextButton } from "@/components/ai-context-button";
 import { forecastChecks } from "@/lib/ui/forecast-checks";
 
 export default async function ForecastPage() {
@@ -34,6 +35,12 @@ export default async function ForecastPage() {
         <span>Projected end balance</span><strong className={`num${end.closingCents < 0 ? " forecast-below-zero" : ""}`}>{formatPHP(end.closingCents)}</strong>
         <p>{formatPlanDate(end.date)} · includes expected payments that have not been verified as received.</p>
         <p className="forecast-first-shortfall">{forecast.firstShortage ? <>First shortfall · <strong className="num">{formatPHP(forecast.firstShortage.shortfallCents)} on {formatPlanDate(forecast.firstShortage.date)}</strong></> : "No shortfall in the next 30 days"}</p>
+        {forecast.firstShortage && (
+          <AiContextButton entry={{
+            context: { page: "forecast" }, workspace,
+            starterText: "Explain our first cash shortage",
+          }}>Explain shortfall with AI</AiContextButton>
+        )}
         <JumpLink className="forecast-source-link" target="forecast-checks">{checks.length ? `${checks.length} ${checks.length === 1 ? "thing" : "things"} to check` : "Forecast checks"} <DashboardIcon name="arrowRight" size={15} /></JumpLink>
       </div>
       <CashForecast forecast={forecast} workspace={workspace} overview chartId="forecast-main" />

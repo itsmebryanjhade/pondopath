@@ -3,6 +3,7 @@
 import {
   useEffect,
   useId,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -28,12 +29,16 @@ import { calculateForecast, compareScenario } from "@/lib/domain/forecast";
 import { formatPHP } from "@/lib/domain/money";
 import { formatPlanDate } from "@/lib/display";
 import {
+  assistantContextMatchesPath,
+  assistantContextProblem,
+  assistantContextWorkspace,
   assistantPage,
   generatePageStarters,
   resolveAssistantDraftTarget,
   sendAssistantChat,
   sendReplyExtraction,
   type AssistantChatScope,
+  type AssistantContextEntry,
 } from "@/lib/ui/assistant-chat-adapter";
 
 const cancelled = { status: { type: "incomplete", reason: "cancelled" } } as const;
@@ -50,10 +55,12 @@ export const WORKSPACE_TOOLS = [
   { id: "add_record", label: "Add a record from text" },
 ] as const;
 
-export function AiAssistant({ workspace, dialog, onClose }: {
+export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initialEntry, prepareEntryRef }: {
   workspace: WorkspaceSnapshot;
   dialog: RefObject<HTMLDialogElement | null>;
   onClose: () => void;
+  initialEntry?: AssistantContextEntry;
+  prepareEntryRef?: RefObject<((entry?: AssistantContextEntry) => void) | null>;
 }) {
   const toolsButton = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -66,13 +73,15 @@ export function AiAssistant({ workspace, dialog, onClose }: {
 
   const [mode, setMode] = useState<"chat" | "reply" | "add_record">("chat");
   const [language, setLanguage] = useState<AiRequest["language"]>("auto");
-  const [composerText, setComposerText] = useState("");
+  const [entry, setEntry] = useState(initialEntry);
+  const workspace = assistantContextWorkspace(entry, layoutWorkspace);
+  const [composerText, setComposerText] = useState(initialEntry?.starterText ?? "");
   const [isSending, setIsSending] = useState(false);
   const [chatError, setChatError] = useState("");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [focusedMenuIndex, setFocusedMenuIndex] = useState(0);
-  const [draftIntent, setDraftIntent] = useState<AssistantChatScope["intent"]>();
-  const [draftInvoiceId, setDraftInvoiceId] = useState("");
+  const [draftIntent, setDraftIntent] = useState(initialEntry?.intent);
+  const [draftInvoiceId, setDraftInvoiceId] = useState(initialEntry?.context.record?.id ?? "");
   const [review, setReview] = useState<{ messageId: string; proposal: AssistantChatProposal } | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const queuedChat = useRef<AssistantChatScope | null>(null);
@@ -128,7 +137,9 @@ export function AiAssistant({ workspace, dialog, onClose }: {
   const runtime = useLocalRuntime(adapter);
   const forecast = useMemo(() => calculateForecast(workspace.forecastInput), [workspace.forecastInput]);
   const starters = generatePageStarters(pathname);
-  const currentInvoice = workspace.invoices.find(row => pathname === "/invoices/" + row.id);
+  const contextualInvoiceId = entry?.context.record?.kind === "invoice" ? entry.context.record.id : undefined;
+  const currentInvoice = workspace.invoices.find(row => contextualInvoiceId ? row.id === contextualInvoiceId : pathname === "/invoices/" + row.id);
+  const contextLabel = entry && (currentInvoice ? "About invoice " + currentInvoice.number : "About this page");
   const openInvoices = workspace.invoices.filter(row => row.outstanding_cents > 0);
   const currentOpenInvoice = openInvoices.find(row => row.id === currentInvoice?.id);
   const draftInvoice = openInvoices.find(row => row.id === draftInvoiceId);
@@ -141,6 +152,10 @@ export function AiAssistant({ workspace, dialog, onClose }: {
   }, [dialog]);
 
   useLayoutEffect(() => () => activeRequest.current?.abort(), [workspace.revision]);
+
+  useEffect(() => {
+    if (entry && dialog.current?.open) composerInputRef.current?.focus();
+  }, [dialog, entry]);
 
   useEffect(() => {
     if (toolsOpen) {
@@ -171,6 +186,7 @@ export function AiAssistant({ workspace, dialog, onClose }: {
   }
 
   function clearChat() {
+    setEntry(undefined);
     activeRequest.current?.abort();
     activeRequest.current = null;
     queuedChat.current = null;
@@ -198,20 +214,44 @@ export function AiAssistant({ workspace, dialog, onClose }: {
     setMode("chat");
   }
 
+  useImperativeHandle(prepareEntryRef, () => nextEntry => {
+    if (!nextEntry && (!entry || assistantContextMatchesPath(entry, pathname))) return;
+    if (nextEntry && entry &&
+        nextEntry.workspace.revision === entry.workspace.revision &&
+        nextEntry.context.page === entry.context.page &&
+        nextEntry.context.record?.kind === entry.context.record?.kind &&
+        nextEntry.context.record?.id === entry.context.record?.id &&
+        nextEntry.intent === entry.intent && nextEntry.starterText === entry.starterText) return;
+
+    // A different card starts its own conversation in the shared dialog.
+    clearChat();
+    if (nextEntry) {
+      setEntry(nextEntry);
+      setComposerText(nextEntry.starterText);
+      setDraftIntent(nextEntry.intent);
+      setDraftInvoiceId(nextEntry.context.record?.id ?? "");
+    }
+  });
+
   function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const text = composerText.trim();
     if (!text || activeRequest.current || runtime.thread.getState().isRunning) return;
+    const contextProblem = entry && assistantContextProblem(entry, pathname, workspace);
+    if (contextProblem) {
+      setChatError(contextProblem);
+      return;
+    }
     if (draftIntent && !draftInvoice) {
       setChatError("Choose an unpaid invoice for this draft.");
       return;
     }
 
     const invoice = draftIntent ? draftInvoice : currentInvoice;
-    const page = assistantPage(pathname) ?? (invoice ? "invoices" : undefined);
+    const page = entry?.context.page ?? assistantPage(pathname) ?? (invoice ? "invoices" : undefined);
     const scope: AssistantChatScope = {
-      expectedRevision: workspace.revision, language, intent: draftIntent,
-      context: page ? { page, record: invoice ? { kind: "invoice", id: invoice.id } : undefined } : undefined,
+      expectedRevision: entry?.workspace.revision ?? workspace.revision, language, intent: draftIntent,
+      context: page ? { page, record: invoice ? { kind: "invoice", id: invoice.id } : entry?.context.record } : undefined,
     };
     activeRequest.current = new AbortController();
     queuedChat.current = scope;
@@ -386,7 +426,9 @@ export function AiAssistant({ workspace, dialog, onClose }: {
           <div>
             <span className="eyebrow">PondoPath · AI assistance</span>
             <h2 id={headingId}>Ask about your cash plan</h2>
-            <p>English, Tagalog or Taglish</p>
+            <p style={contextLabel ? { display: "block", overflowWrap: "anywhere" } : undefined}>
+              {contextLabel ?? "English, Tagalog or Taglish"}
+            </p>
           </div>
           <div className="assistant-header-controls">
             <select

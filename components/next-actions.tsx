@@ -3,8 +3,9 @@ import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { formatPlanDate } from "@/lib/display";
 import { buildNextActions, type NextAction } from "@/lib/ui/next-actions";
 import { DashboardIcon } from "./dashboard-icon";
+import { AiContextButton } from "./ai-context-button";
 
-type Props = { workspace: WorkspaceSnapshot; limit?: number; viewAllHref?: string };
+type Props = { workspace: WorkspaceSnapshot; limit?: number; viewAllHref?: string; showFollowupAssistant?: boolean };
 
 /** Says what the date belongs to, so it never reads like a second, conflicting payment date. */
 function dueLabel(action: NextAction, referenceDate: string) {
@@ -31,9 +32,11 @@ const BUTTON: Record<NextAction["kind"], string> = {
   reminder_review: "Review reminder", intake_review: "Review row",
 };
 
-export function NextActions({ workspace, limit, viewAllHref }: Props) {
+export function NextActions({ workspace, limit, viewAllHref, showFollowupAssistant }: Props) {
   const allActions = buildNextActions(workspace);
   const actions = limit === undefined ? allActions : allActions.slice(0, limit);
+  const firstFollowup = showFollowupAssistant ? actions.find(action => action.id.startsWith("followup:")) : undefined;
+  const followupInvoiceId = firstFollowup && workspace.followups.find(task => `followup:${task.id}` === firstFollowup.id)?.invoice_id;
   const memberById = new Map(workspace.members.map((member) => [member.user_id, member.display_name]));
   const referenceDate = workspace.forecastInput.referenceDate;
 
@@ -65,6 +68,13 @@ export function NextActions({ workspace, limit, viewAllHref }: Props) {
                       : <span className="next-chip">{assignee ? `Assigned to ${assignee}` : "Unassigned"}</span>}
                     {action.ownerReviewRequired && <span className="next-chip">Owner review required</span>}
                   </div>
+                  {action === firstFollowup && followupInvoiceId && (
+                    <AiContextButton entry={{
+                      context: { page: "followups", record: { kind: "invoice", id: followupInvoiceId } },
+                      workspace, starterText: "Help me follow up on this invoice",
+                      intent: "draft_followup",
+                    }}>Prepare follow-up with AI</AiContextButton>
+                  )}
                 </div>
                 <Link className="next-action-button" href={action.href} aria-label={`Review action: ${action.title}. ${action.detail}`}>
                   {BUTTON[action.kind]}<DashboardIcon name="arrowRight" size={15} />

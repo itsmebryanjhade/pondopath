@@ -14,6 +14,7 @@ import { FollowupPanel } from "@/components/followup-panel";
 import { ScenarioPanel } from "@/components/scenario-panel";
 import { RecordHistory } from "@/components/record-history";
 import { ReminderPanel } from "@/components/reminder-panel";
+import { AiContextButton } from "@/components/ai-context-button";
 import { reminderTemplate } from "@/lib/domain/reminders";
 import { z } from "zod";
 
@@ -74,6 +75,10 @@ export default async function InvoiceDetail({ params, searchParams }: InvoiceDet
           <div><dt>Received</dt><dd className="num">{formatPHP(invoice.paid_cents)}</dd></div>
           <div><dt>Invoice total</dt><dd className="num">{formatPHP(invoice.amount_cents)}</dd></div>
         </dl>
+        <AiContextButton entry={{
+          context: { page: "invoices", record: { kind: "invoice", id: invoice.id } },
+          workspace, starterText: "Explain this outstanding balance",
+        }}>Explain balance with AI</AiContextButton>
         {!paid && (
           <details className="invoice-record-payment">
             <summary className="button">Record payment <AppIcon name="chevron-down" /></summary>

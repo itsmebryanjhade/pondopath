@@ -4,6 +4,12 @@ import { assistantChatOutputSchema, type AssistantChatProposal } from "@/lib/dom
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 
 export type AssistantChatScope = Pick<AssistantChatRequest, "expectedRevision" | "language" | "context" | "intent">;
+export type AssistantContextEntry = {
+  context: NonNullable<AssistantChatScope["context"]>;
+  workspace: WorkspaceSnapshot;
+  starterText: string;
+  intent?: AssistantChatScope["intent"];
+};
 type ChatMessage = {
   role: string;
   content: readonly { type: string; text?: string }[];
@@ -121,6 +127,41 @@ export function resolveAssistantDraftTarget(workspace: WorkspaceSnapshot, propos
 const pages = ["overview", "forecast", "cash", "invoices", "expenses", "followups"] as const;
 export function assistantPage(pathname: string) {
   return pages.find(page => pathname === "/" + page || pathname.startsWith("/" + page + "/"));
+}
+
+function sameAssistantActor(left: WorkspaceSnapshot, right: WorkspaceSnapshot) {
+  return left.business.id === right.business.id && left.actor.businessId === right.actor.businessId &&
+    left.actor.userId === right.actor.userId && left.actor.role === right.actor.role;
+}
+
+export function assistantContextWorkspace(entry: AssistantContextEntry | undefined, layout: WorkspaceSnapshot) {
+  const page = entry?.workspace;
+  // The layout can retain an earlier snapshot across client navigation.
+  return page && page.revision > layout.revision && sameAssistantActor(page, layout) ? page : layout;
+}
+
+export function assistantContextMatchesPath(entry: AssistantContextEntry, pathname: string) {
+  const { page, record } = entry.context;
+  return assistantPage(pathname) === page &&
+    (page !== "invoices" || record?.kind !== "invoice" || pathname === "/invoices/" + record.id);
+}
+
+export function assistantContextProblem(entry: AssistantContextEntry, pathname: string, workspace: WorkspaceSnapshot) {
+  if (!sameAssistantActor(entry.workspace, workspace)) return "This question belongs to another workspace.";
+  if (entry.workspace.revision !== workspace.revision) return stale + " Reopen this question from the updated card.";
+  const { page, record } = entry.context;
+  if (assistantPage(pathname) !== page) return "This question belongs to another page. Open it there or start a new chat.";
+
+  if (record?.kind === "invoice") {
+    const invoice = workspace.invoices.find(row => row.id === record.id && row.business_id === workspace.business.id);
+    if (!invoice || !assistantContextMatchesPath(entry, pathname)) {
+      return "The selected invoice is unavailable. Open the question again from the invoice.";
+    }
+    if (page === "followups" && (invoice.outstanding_cents <= 0 ||
+        !workspace.followups.some(task => task.invoice_id === invoice.id && task.business_id === workspace.business.id && task.state === "open"))) {
+      return "This invoice no longer has an open follow-up. Open the question again from Follow-ups.";
+    }
+  }
 }
 
 export function generatePageStarters(pathname: string): string[] {

@@ -27,6 +27,23 @@ async function render(workspace = uiWorkspace(), page?: string) {
 }
 
 describe("source Follow-ups layout preserves the action ledger", () => {
+  it("offers help beside only the first open follow-up in worklist order", async () => {
+    const workspace = uiWorkspace();
+    const second = { ...workspace.invoices[0], id: "00000000-0000-4000-8000-000000000089", number: "DEMO-002" };
+    workspace.invoices.push(second);
+    workspace.followups = [
+      task(0, "2026-10-28", "completed"),
+      task(1, "2026-10-30"),
+      { ...task(2, "2026-10-29"), invoice_id: second.id },
+    ];
+    const html = await render(workspace);
+    const entries = html.match(/<li class="next-actions-item[\s\S]*?<\/li>/g) ?? [];
+    expect(entries.filter(entry => entry.includes("Prepare follow-up with AI"))).toHaveLength(1);
+    expect(entries.find(entry => entry.includes("DEMO-002"))).toContain("Prepare follow-up with AI");
+    expect(entries.find(entry => entry.includes("DEMO-001"))).not.toContain("Prepare follow-up with AI");
+    workspace.followups = [task(0, "2026-10-28", "completed")];
+    expect(await render(workspace)).not.toContain("Prepare follow-up with AI");
+  });
   it("counts task categories but includes each unpaid invoice balance only once", async () => {
     const workspace = uiWorkspace();
     workspace.followups = [task(0, "2026-10-28"), task(1, "2026-10-29"), task(2, "2026-10-30"), task(3, "2026-10-20", "completed")];

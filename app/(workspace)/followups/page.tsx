@@ -41,7 +41,7 @@ export default async function FollowupsPage({ searchParams }: { searchParams: Pr
       <div className="dashboard-heading-actions"><span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span><RefreshRecords /><Link className="section-primary" href="/invoices?filter=no_followup"><DashboardIcon name="plus" size={17} />Find invoices without a follow-up</Link></div>
     </header>
   }>
-    <NextActions workspace={workspace} />
+    <NextActions workspace={workspace} showFollowupAssistant />
     <section className="section-lower-grid">
       <section className="records-panel" id="followup-queue">
         <div className="records-head"><div><h2>Follow-up queue and history</h2><p>Expand an invoice to review its actions, assignment and outcomes</p></div><span>{invoices.length} invoices</span></div>
