@@ -21,14 +21,14 @@ describe("source Forecast layout preserves calculated risk", () => {
   it("offers contextual help alongside the first cash shortfall only when one is projected", async () => {
     const html = await render();
     const action = html.match(/First shortfall[^<]*<strong[^>]*>[^<]+<\/strong><\/p>\s*(<button[^>]+aria-haspopup="dialog"[^>]*>[\s\S]*?<\/button>)/)?.[1];
-    expect(action).toContain("Explain this cash gap");
+    expect(action).toContain("Explain this gap");
     expect(action).toContain('class="ask-ai is-inverse"');
 
     const workspace = uiWorkspace();
     workspace.forecastInput.expenses = [];
     const withoutShortfall = await render(workspace);
     expect(withoutShortfall).toContain("No shortfall in the next 30 days");
-    expect(withoutShortfall).not.toContain("Explain this cash gap");
+    expect(withoutShortfall).not.toContain("Explain this gap");
   });
   it("shows the early cash gap alongside a positive end balance and every daily source", async () => {
     const html = await render();

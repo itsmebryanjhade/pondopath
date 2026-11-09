@@ -53,7 +53,7 @@ export default async function ForecastPage() {
           <AiContextButton tone="inverse" entry={{
             context: { page: "forecast" }, workspace,
             starterText: "Explain our first cash shortage",
-          }}>Explain this cash gap</AiContextButton>
+          }}>Explain this gap</AiContextButton>
         )}
         <JumpLink className="forecast-source-link" target="forecast-checks">{checks.length ? `${checks.length} ${checks.length === 1 ? "thing" : "things"} to check` : "Forecast checks"} <DashboardIcon name="arrowRight" size={15} /></JumpLink>
       </div>

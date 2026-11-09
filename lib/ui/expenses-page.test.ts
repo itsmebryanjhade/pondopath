@@ -17,6 +17,19 @@ async function render(workspace = uiWorkspace(), page?: string) {
 }
 
 describe("source Expenses page with real planned outflows", () => {
+  it("offers a contextual AI suggestion beside overdue bills, and not when none are overdue", async () => {
+    const overdue = uiWorkspace();
+    overdue.expenses[0] = { ...overdue.expenses[0], due_date: "2026-10-28", unpaid_cents: 3_000_000 };
+    overdue.forecastInput.expenses = overdue.expenses.map((expense) => ({ id: expense.id, dueDate: expense.due_date, unpaidCents: expense.unpaid_cents }));
+    const html = await render(overdue);
+    expect(html).toContain("Which bill first?");
+    expect(html).toMatch(/<button[^>]*aria-haspopup="dialog"[^>]*>/);
+    const clear = uiWorkspace();
+    clear.expenses = clear.expenses.map((expense) => ({ ...expense, due_date: "2026-12-30" }));
+    clear.forecastInput.expenses = clear.expenses.map((expense) => ({ id: expense.id, dueDate: expense.due_date, unpaidCents: expense.unpaid_cents }));
+    expect(await render(clear)).not.toContain("Which bill first?");
+  });
+
   it("charts only remaining unpaid amounts, brings overdue bills due now, and excludes later bills", async () => {
     const workspace = uiWorkspace();
     workspace.expenses[0] = { ...workspace.expenses[0], due_date: "2026-10-28", unpaid_cents: 3_000_000, paid_cents: 2_000_000 };

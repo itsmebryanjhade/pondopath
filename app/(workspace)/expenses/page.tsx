@@ -6,6 +6,7 @@ import { formatPlanDate } from "@/lib/display";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { DashboardIcon } from "@/components/dashboard-icon";
 import { RefreshRecords } from "@/components/refresh-records";
+import { AiContextButton } from "@/components/ai-context-button";
 import { ExpenseForm } from "@/components/record-forms";
 import { PaymentForm } from "@/components/payment-form";
 import { CashMovements } from "@/components/cash-movements";
@@ -112,6 +113,11 @@ export default async function Expenses({ searchParams }: ExpensePageProps) {
           <p>{billChecks.length ? "Overdue bills count as due today until you record the payment." : "No overdue bills."}</p>
         </div>
         <div className="forecast-checks-body"><ForecastCheckList checks={billChecks} empty="Every bill is paid or not yet due." /></div>
+        {billChecks.length > 0 && (
+          <div className="checks-card-ai">
+            <AiContextButton entry={{ context: { page: "expenses" }, workspace, starterText: "Which bill should I pay first?" }}>Which bill first?</AiContextButton>
+          </div>
+        )}
       </aside>
       </section>
       <section className="section-feature owed-panel" aria-label="Bills you owe and when they are due">

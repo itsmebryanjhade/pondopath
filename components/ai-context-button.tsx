@@ -18,8 +18,8 @@ export function AiContextButton({ entry, children, tone = "default" }: {
   return (
     <button type="button" className={tone === "inverse" ? "ask-ai is-inverse" : "ask-ai"} aria-haspopup="dialog"
       onClick={event => openAssistant(entry, event.currentTarget)}>
-      <span className="ask-ai-spark" aria-hidden="true"><DashboardIcon name="sparkle" size={15} /></span>
-      {children}
+      <span className="ask-ai-mark" aria-hidden="true"><DashboardIcon name="sparkle" size={14} />AI</span>
+      <span className="ask-ai-label">{children}</span>
       <span className="ask-ai-arrow" aria-hidden="true"><DashboardIcon name="arrowRight" size={14} /></span>
     </button>
   );
