@@ -753,7 +753,7 @@ export function AiAssistant({ workspace: layoutWorkspace, dialog, onClose, initi
                       </div>
                     )}
                     {activeFormProposal && (
-                      <div className="panel proposal-review-panel">
+                      <div className="panel proposal-review-panel" key={recordProposal.proposals.indexOf(activeFormProposal)}>
                         <div className="assistant-draft-header">
                           <div>
                             <strong>Check and save this {activeFormProposal.kind === "invoice" ? "invoice" : "bill"}</strong>

@@ -143,10 +143,11 @@ describe("workbook balance and date exceptions", () => {
     expect(rows[1].message).toMatch(/settled|paid/i);
   });
 
-  it("excludes settled bills without staging expense candidates into the forecast", () => {
+  it("holds partly paid bills and excludes settled bills without staging either", () => {
     const file = csv("ID,Label,Payee,Amount,Paid,Open Balance,Status,Due,Currency\n" +
       "bill-1,Office Rent,Landlord,25000,25000,0,Paid,2026-11-15,PHP\n" +
-      "bill-2,Utilities,Meralco,8000,0,8000,Pending,2026-11-15,PHP");
+      "bill-2,Utilities,Meralco,8000,0,8000,Pending,2026-11-15,PHP\n" +
+      "bill-3,Stock order,Northwind,50000,20000,30000,Partially Paid,2026-11-15,PHP");
     const expenseMapping = {
       kind: "expense" as const,
       externalId: "ID",
@@ -165,6 +166,8 @@ describe("workbook balance and date exceptions", () => {
     expect(rows[0].message).toMatch(/settled bill excluded/i);
     expect(rows[1]).toMatchObject({ status: "new" });
     expect(rows[1].candidate).toBeDefined();
+    expect(rows[2]).toMatchObject({ status: "balance_review", openCents: 3_000_000 });
+    expect(rows[2].candidate).toBeUndefined();
   });
 
   it("keeps ambiguous dates out of proposals and identifies the source row", () => {

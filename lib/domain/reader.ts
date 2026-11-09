@@ -74,7 +74,7 @@ export function suggestColumns(headers: string[], samples: string[][]): ColumnSu
   return result;
 }
 
-export function maskImportSamples(file: CsvFile): { headers: { id: string; name: string }[]; samples: string[][] } {
+export function maskImportSamples(file: { headers: string[]; rows: (string | number | boolean | null)[][] }): { headers: { id: string; name: string }[]; samples: string[][] } {
   const mask = (value: string) => {
     const text = value.trim();
     if (!text) return "";

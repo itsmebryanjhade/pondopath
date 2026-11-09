@@ -33,15 +33,33 @@ export function relabel(headers: string[], rows: (string | number | boolean | nu
 export function ImportSelector({ headers, rows, labels: initial, fields, customers, saved, disabled = false, onLabels, onHelpMatchColumns }: {
   headers: string[]; rows: (string | number | boolean | null)[][]; labels: SelectorLabel[]; fields: AutoFields; customers: Customer[]; saved?: Partial<AutoMapping>; disabled?: boolean;
   onLabels?: (labels: SelectorLabel[]) => void;
-  onHelpMatchColumns?: () => void;
+  onHelpMatchColumns?: () => Promise<AutoFields | undefined>;
 }) {
   const table = useRef<HTMLDivElement>(null);
   const [labels, setLabels] = useState(initial);
-  const roleChanged = (event: React.ChangeEvent<HTMLDivElement>) => {
-    const target = event.target as unknown as HTMLSelectElement;
-    if (!ROLE_FIELDS.some(field => field.name === target.name) || !target.form) return;
-    const next = relabel(headers, rows, new FormData(target.form), initial.map(item => item.row));
+  const updateLabels = (data: FormData) => {
+    const next = relabel(headers, rows, data, initial.map(item => item.row));
     setLabels(next); onLabels?.(next);
+  };
+  const roleChanged = (event: React.ChangeEvent<HTMLElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement) || !target.form || !ROLE_FIELDS.some(field => field.name === target.name)) return;
+    updateLabels(new FormData(target.form));
+  };
+  const applySuggestions = async (form: HTMLFormElement | null) => {
+    if (!form || !onHelpMatchColumns) return;
+    const data = new FormData(form);
+    const suggestions = await onHelpMatchColumns();
+    if (!suggestions || !form.isConnected) return;
+    for (const { name } of ROLE_FIELDS) {
+      const column = suggestions[name];
+      const select = form.elements.namedItem(name);
+      if (column && select instanceof HTMLSelectElement && headers.includes(column)) {
+        select.value = column;
+        data.set(name, column);
+      }
+    }
+    updateLabels(data);
   };
   const pick = (name: keyof AutoFields) => { const value = (saved?.[name] as string | undefined) ?? fields[name]; return value && headers.includes(value) ? value : ""; };
   const columnOn = (header: string) => !saved?.columns || saved.columns.includes(header);
@@ -60,7 +78,7 @@ export function ImportSelector({ headers, rows, labels: initial, fields, custome
     </div>
     {onHelpMatchColumns && (
       <div className="import-help-action" style={{ margin: "8px 0" }}>
-        <button type="button" className="button secondary" disabled={disabled} onClick={onHelpMatchColumns}>
+        <button type="button" className="button secondary" disabled={disabled} onClick={event => void applySuggestions(event.currentTarget.form)}>
           Help match columns
         </button>
       </div>
@@ -70,12 +88,12 @@ export function ImportSelector({ headers, rows, labels: initial, fields, custome
     <div className="intake-table-scroll" ref={table}><table className="intake-table">
       <thead><tr><th scope="col">Include</th>{headers.map(header => <th key={header} scope="col">
         <label><input type="checkbox" name="column" value={header} defaultChecked={columnOn(header)} disabled={disabled} aria-label={`Include column ${header}`} /> {header}</label></th>)}<th scope="col">Label</th></tr></thead>
-      <tbody>{labels.map((item, index) => <tr key={`${item.row}:${item.externalId}:${item.label}`}>
+      <tbody>{labels.map((item, index) => <tr key={`${item.row}:${item.externalId}`}>
         <td><input type="hidden" name="rowId" value={item.externalId} />{item.label === "payment" ? "—" :
           <input type="checkbox" name="row" value={item.externalId} defaultChecked={rowOn(item.externalId)} disabled={disabled} aria-label={`Include row ${item.externalId || item.row}`} />}</td>
         {headers.map((header, column) => <td key={header}>{String(rows[index]?.[column] ?? "")}</td>)}
         <td>{item.label === "payment" ? <strong>Payment — record it in Collections</strong> :
-          <select className="field" name={`label:${item.externalId}`} disabled={disabled} aria-label={`Label for row ${item.externalId || item.row}`}
+          <select key={item.label} className="field" name={`label:${item.externalId}`} disabled={disabled} aria-label={`Label for row ${item.externalId || item.row}`}
             defaultValue={saved?.overrides?.[item.externalId] ?? (item.label === "choose" ? "" : item.label)}>
             {item.label === "choose" && <option value="">Please choose</option>}
             <option value="invoice">Invoice (money in)</option><option value="expense">Expense or bill (money out)</option>

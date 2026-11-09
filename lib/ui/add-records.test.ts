@@ -104,7 +104,7 @@ describe("Add records flow", () => {
     try {
       const markup = renderToStaticMarkup(createElement(ImportSelector, {
         headers: ["Reference", "Amount", "Due"], rows: [["<text>", "<text>", "<text>"]], labels: [], fields: {}, customers: [],
-        onHelpMatchColumns: () => fetch("/api/assistant"),
+        onHelpMatchColumns: async () => { await fetch("/api/assistant"); return undefined; },
       }));
       expect(markup).toContain("Help match columns");
       expect(fetcher).not.toHaveBeenCalled();

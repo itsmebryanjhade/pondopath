@@ -160,9 +160,10 @@ export function mapCsv(file: CsvFile, input: CsvMapping, context: ImportContext)
         (candidate.type === "save_invoice" ? "number" in current && current.number === candidate.payload.number && current.customer_id === candidate.payload.customerId
           : "label" in current && current.label === candidate.payload.label && current.payee === candidate.payload.payee);
       const ambiguous = candidate.type === "save_expense" && !id && context.expenses.some(item => item.label === candidate.payload.label && item.payee === candidate.payload.payee && item.amount_cents === candidate.payload.amountCents && item.due_date === candidate.payload.dueDate);
-      if (candidate.type === "save_invoice" && (partlyPaid || (current && "paid_cents" in current && (current.paid_cents ?? 0) > 0 && !unchanged))) {
+      if (partlyPaid || (current && "paid_cents" in current && (current.paid_cents ?? 0) > 0 && !unchanged)) {
         const currentOpen = current && "outstanding_cents" in current ? current.outstanding_cents : undefined;
-        return { ...result, status: "balance_review", openCents: currentOpen ?? openCents, message: "This invoice has an open balance. Review the original total and paid amount before importing; this row will not record a payment." };
+        const kind = candidate.type === "save_invoice" ? "invoice" : "bill";
+        return { ...result, status: "balance_review", openCents: currentOpen ?? openCents, message: `This ${kind} has an open balance. Review the original total and paid amount before importing. No payment is recorded from this row.` };
       }
       return { ...result, candidate, status: unchanged ? "unchanged" : current ? "changed" : ambiguous ? "needs_match" : "new", message: unchanged ? "Already matches the saved record." : ambiguous ? "A matching bill exists. Choose the saved record in review." : "Review before applying." };
     } catch (error) { return { ...result, message: error instanceof Error ? error.message : "Check the mapped values." }; }

@@ -188,6 +188,22 @@ describe("bounded multilingual AI proposals", () => {
     expect(JSON.stringify(context.data)).not.toContain(workspace.actor.userId);
   });
 
+  it.each([
+    { quoteAmount: "PHP 1200", quoteDate: "2026-11-30", amountCents: 25_000, dueDate: "2026-11-21", verifiedAmount: null, verifiedDate: null },
+    { quoteAmount: "PHP 1200", quoteDate: "Nov 30", amountCents: 120_000, dueDate: "2026-11-30", verifiedAmount: 120_000, verifiedDate: null },
+    { quoteAmount: "PHP 1200 or 2000", quoteDate: "2026-11-30", amountCents: 120_000, dueDate: "2026-11-30", verifiedAmount: null, verifiedDate: "2026-11-30" },
+  ])("leaves unsupported amounts and dates blank for the quoted record", ({ quoteAmount, quoteDate, amountCents, dueDate, verifiedAmount, verifiedDate }) => {
+    const party = workspace.customers[0].name;
+    const quote = `Invoice 1042, ${party}, ${quoteAmount}, due ${quoteDate}`;
+    const text = quote + ". Shipping, Northwind, PHP 250, due 2026-11-21.";
+    const request = aiRequestSchema.parse({ task: "extract_record", text, expectedRevision: 1 }) as Extract<AiRequest, { task: "extract_record" }>;
+    const output = { proposals: [{ kind: "invoice", number: "1042", label: null, party, amountCents, dueDate,
+      sourceQuotes: [quote], issues: [], needsReview: false }] };
+    expect(validateAiProposal(request, output, workspace)).toMatchObject({
+      proposals: [{ amountCents: verifiedAmount, dueDate: verifiedDate, needsReview: true }],
+    });
+  });
+
   it("validates extracted invoice and expense proposals, matching authorized customers and verifying amounts/dates", () => {
     const customer = workspace.customers[0];
     const text = `Invoice 1042, ${customer.name}, 25k, due 2026-11-30. Also Office supplies, National Bookstore, PHP 1500, due 2026-11-20.`;

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import { useRouter } from "next/navigation";
 import { ensureFileSourceAction, inspectCsvAction, previewCsvAction, stageCsvAction } from "@/app/(workspace)/imports/actions";
 import { countLabels, fileKind, heldLine, plainImportError, previewCell, previewColumns, summarizeOutcome, summaryLine } from "@/lib/domain/add-records";
-import type { AutoFields } from "@/lib/domain/reader";
+import { maskImportSamples, type AutoFields } from "@/lib/domain/reader";
+import type { AiProposal } from "@/lib/domain/ai";
 import type { CsvMapping } from "@/lib/domain/imports";
 import { takePendingFile } from "@/lib/ui/pending-file";
 import { PENDING_FILE_EVENT } from "@/lib/ui/pending-file-event";
@@ -70,12 +71,12 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
   const shown = useRef(phase.step);
 
   const requestMappingHelp = async () => {
-    if (helpPending || phase.step !== "check" || phase.read.headers.length === 0) return;
+    if (helpPending || phase.step !== "check" || phase.read.headers.length === 0 || revision === undefined) return;
+    const read = phase.read;
+    const { headers, samples } = maskImportSamples(read);
+    const headerNames = new Map(headers.map(({ id }, index) => [id, read.headers[index]]));
     setHelpPending(true);
     try {
-      const headers = phase.read.headers.slice(0, 24).map((h, i) => ({ id: `c${i}`, name: h.slice(0, 40) }));
-      const headerNames = new Map(headers.map(h => [h.id, h.name]));
-      const samples = phase.read.rows.slice(0, 3).map(row => row.slice(0, 24).map(v => v === null ? "" : String(v).slice(0, 80)));
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,22 +84,22 @@ export function AddRecords({ customers, googleSlot, manualSlot, googleOpenAtStar
           task: "suggest_import_mapping",
           headers,
           samples,
-          expectedRevision: revision ?? 1,
+          expectedRevision: revision,
           language: "auto",
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok && data.proposal?.fields) {
-          const nextFields: AutoFields = { ...phase.read.fields };
-          for (const [key, colId] of Object.entries(data.proposal.fields)) {
-            if (colId && headerNames.has(colId as string)) {
-              nextFields[key as keyof AutoFields] = headerNames.get(colId as string);
-            }
-          }
-          setPhase(value => value.step === "check" ? { step: "check", read: { ...value.read, fields: nextFields, preview: undefined } } : value);
-        }
+      if (!res.ok) return;
+      const { ok, proposal }: { ok: boolean; proposal?: AiProposal } = await res.json();
+      if (!ok || proposal?.task !== "suggest_import_mapping" || proposal.sourceRevision !== revision) return;
+      const suggested: AutoFields = {};
+      for (const [field, id] of Object.entries(proposal.fields)) {
+        const header = id && headerNames.get(id);
+        if (header) suggested[field as keyof AutoFields] = header;
       }
+      setPhase(value => value.step === "check" && value.read.id === read.id
+        ? { step: "check", read: { ...value.read, fields: { ...value.read.fields, ...suggested }, preview: undefined } }
+        : value);
+      return suggested;
     } catch {
       // Keep manual mapping
     } finally {

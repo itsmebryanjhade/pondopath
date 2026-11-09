@@ -133,8 +133,9 @@ function NewInvoiceForm({
   const customerId = initialProposed?.customerId ?? "";
   const numberRef = useRef<HTMLInputElement>(null);
 
-  const defaultDueDate =
-    initialProposed?.dueDate ?? addDays(workspace.forecastInput.referenceDate, 30);
+  const defaultDueDate = initialProposed
+    ? initialProposed.dueDate ?? ""
+    : addDays(workspace.forecastInput.referenceDate, 30);
 
   const handleAddAnother = () => {
     setNumber((prev) => suggestNextInvoiceNumber([prev]));
@@ -337,7 +338,7 @@ export function ExpenseForm({
           label="Original due date"
           name="dueDate"
           referenceDate={workspace.forecastInput.referenceDate}
-          defaultValue={expense?.due_date ?? initialProposed?.dueDate ?? workspace.forecastInput.referenceDate}
+          defaultValue={expense?.due_date ?? (initialProposed ? initialProposed.dueDate ?? "" : workspace.forecastInput.referenceDate)}
           required
         />
       </div>

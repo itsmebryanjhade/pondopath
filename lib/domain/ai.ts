@@ -211,9 +211,12 @@ export function recordTextAmounts(sourceText: string): Set<number> {
       amounts.add(parseMoney(expanded));
     } catch {}
   }
-  for (const amt of phpAmounts(sourceText)) {
+  const marked = phpAmounts(sourceText.replace(shorthandPattern, " "));
+  if (marked.has(null) && (amounts.size || /\bPHP\b|₱/iu.test(sourceText))) return new Set();
+  for (const amt of marked) {
     if (amt !== null) amounts.add(amt);
   }
+  if (amounts.size) return amounts;
   const plainPattern = /(?<![\p{L}\p{N}_./-])(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?![\p{L}\p{N}_/-])/gu;
   for (const match of sourceText.matchAll(plainPattern)) {
     try {
@@ -248,8 +251,6 @@ export function validateAiProposal(request: AiRequest, value: unknown, workspace
   }
   if (request.task === "extract_record") {
     const result = aiOutputSchemas.extract_record.parse(value);
-    const textAmounts = recordTextAmounts(request.text);
-    const textDates = fullIsoDates(request.text);
 
     const proposals = result.proposals.slice(0, 3).map((item) => {
       const issues = [...item.issues];
@@ -258,9 +259,13 @@ export function validateAiProposal(request: AiRequest, value: unknown, workspace
         issues.push("Some quoted snippets were not found in the original text.");
       }
 
+      const quote = validQuotes.join("\n");
+      const quotedAmounts = recordTextAmounts(item.number ? quote.replace(invoiceNumberPattern(item.number, invoiceCue), " ") : quote);
+      const quotedDates = fullIsoDates(quote, item.number ?? undefined);
+
       let amountCents = item.amountCents;
       if (amountCents !== null) {
-        if (!textAmounts.has(amountCents)) {
+        if (quotedAmounts.size !== 1 || !quotedAmounts.has(amountCents)) {
           amountCents = null;
           issues.push("Confirm one exact amount. The amount must match the original text and its quoted wording.");
         }
@@ -272,12 +277,7 @@ export function validateAiProposal(request: AiRequest, value: unknown, workspace
       if (dueDate !== null) {
         try {
           assertLocalDate(dueDate);
-          const hasIsoInText = textDates.has(dueDate);
-          const hasDateInQuotes = validQuotes.some(quote =>
-            fullIsoDates(quote).has(dueDate!) ||
-            /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{1,2}\/\d{1,2})\b/i.test(quote),
-          );
-          if (!hasIsoInText && !hasDateInQuotes) {
+          if (quotedDates.size !== 1 || !quotedDates.has(dueDate)) {
             dueDate = null;
             issues.push("Confirm one exact date in YYYY-MM-DD format. The date must match the original text and its quoted wording.");
           }
