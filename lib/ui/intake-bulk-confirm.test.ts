@@ -18,6 +18,7 @@ describe("Review Inbox bulk selection", () => {
     // The wrapping label names each checkbox with the full row description.
     expect(html).toMatch(/<label[^>]*><input type="checkbox"[^>]*\/>.*Invoice.*Fictional.*row ROW-1.*<\/label>/);
     for (const suffix of ["2", "3", "4"]) expect(html).not.toContain("row ROW-" + suffix + "<");
+    // A select-all button only appears when there is more than one row to pick.
     expect(html).not.toContain("Select all");
   });
   it("describes each row with its number, amount, due date and file so repeated source IDs can be told apart", () => {

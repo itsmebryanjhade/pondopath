@@ -32,7 +32,8 @@ describe("source Expenses page with real planned outflows", () => {
     expect(bill).toContain("Overdue");
     expect(bill).toContain("Left of ₱50,000.00");
     expect(bill).not.toContain("Counted as due today");
-    expect(bill.match(/name="bill-actions"/g)).toHaveLength(2);
+    // Two buttons in a fixed row (Record payment, Edit bill); their forms slide open below.
+    expect(bill.match(/aria-expanded="false"/g)).toHaveLength(2);
     expect(html).toContain("Overdue bills count as due today");
     expect(html).toContain('data-remaining="3000000"');
     expect(html).toContain(`data-expense="${workspace.expenses[0].id}"`);
@@ -51,6 +52,7 @@ describe("source Expenses page with real planned outflows", () => {
     workspace.forecastInput.expenses[0].unpaidCents = 0;
     const html = await render(workspace);
     const bill = html.slice(html.indexOf('id="expense-' + expense.id + '"')).split("</li>")[0];
+    expect(bill).toContain(`id="expense-${expense.id}" tabindex="-1"`);
     expect(bill).toContain(">Paid</span>");
     expect(bill).toContain("₱50,000.00");
     expect(bill).toContain("Edit bill");

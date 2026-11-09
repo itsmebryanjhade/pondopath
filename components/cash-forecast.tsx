@@ -9,11 +9,13 @@ export function CashForecast({
   workspace,
   overview = false,
   chartId = "overview",
+  origin,
 }: {
   forecast: ForecastResult;
   workspace: WorkspaceSnapshot;
   overview?: boolean;
   chartId?: string;
+  origin?: "forecast" | "overview";
 }) {
   const balances = forecast.days.map((day) => day.closingCents);
   const low = Math.min(0, ...balances);
@@ -21,10 +23,12 @@ export function CashForecast({
   const rawStep = (high - low || 100_000) / 4;
   const power = 10 ** Math.floor(Math.log10(rawStep));
   const step = ([1, 2, 5, 10].find((number) => number * power >= rawStep) ?? 10) * power;
-  const min = Math.floor(low / step) * step - step;
-  const max = Math.ceil(high / step) * step + step;
+  // The overview chart keeps half a step of breathing room; the older panel chart keeps a full step.
+  const pad = overview ? step / 2 : step;
+  const min = Math.floor((low - pad) / step) * step;
+  const max = Math.ceil((high + pad) / step) * step;
   const x = (index: number) => overview ? (index * 700) / 29 : 82 + (index * 506) / 29;
-  const y = (value: number) => 20 + ((max - value) / (max - min)) * (overview ? 174 : 150);
+  const y = (value: number) => overview ? 8 + ((max - value) / (max - min)) * 214 : 20 + ((max - value) / (max - min)) * 150;
   const points = forecast.days.map((day, index) => `${x(index)},${y(day.closingCents)}`).join(" ");
   const ticks = Array.from(
     { length: Math.round((max - min) / step) + 1 },
@@ -65,7 +69,7 @@ export function CashForecast({
                   </td>
                   <td>
                     {day.invoiceIds.map((id) => (
-                      <Link className="source-link" href={`/invoices/${id}`} key={id}>
+                      <Link className="source-link" href={`/invoices/${id}${origin ? `?from=${origin}` : ""}`} key={id}>
                         {workspace.invoices.find((row) => row.id === id)?.number}
                       </Link>
                     ))}
@@ -85,35 +89,46 @@ export function CashForecast({
   );
   if (overview) {
     const line = forecast.days.map((day, index) => `${index ? "L" : "M"}${x(index)},${y(day.closingCents)}`).join(" ");
+    const zero = y(0);
     const pointDays = [...new Set([0, 7, 14, 21, 29, shortageIndex].filter((index) => index >= 0))].sort((a, b) => a - b);
+    const money = (value: number) => new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", notation: "compact", maximumFractionDigits: 1 }).format(value / 100);
+    const below = balances.some((value) => value < 0);
     return <section className="forecast overview-forecast" aria-labelledby={`${chartId}-forecast-heading`}>
       <div className="forecast-head">
-        <div><h2 id={`${chartId}-forecast-heading`}>30-day cash forecast</h2><p>{formatPlanDate(forecast.days[0].date, true)}–{formatPlanDate(end.date)} · PHP</p></div>
-        <div className="period-control" aria-label="Forecast window"><span className="active">30d</span></div>
+        <div><h2 id={`${chartId}-forecast-heading`}>Cash balance, day by day</h2><p>{formatPlanDate(forecast.days[0].date, true)} – {formatPlanDate(end.date)} · PHP</p></div>
+        {dailyPlan}
       </div>
       <div className="chart-wrap">
-        <div className="chart-labels" aria-hidden="true">{ticks.map((tick) => <span key={tick} style={{ top: `${(y(tick) / 230) * 100}%` }}>{new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", notation: "compact", maximumFractionDigits: 1 }).format(tick / 100)}</span>)}</div>
-        <svg className="chart" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-labelledby={`${chartId}-chart-title ${chartId}-chart-description`}>
-          <title id={`${chartId}-chart-title`}>Projected closing cash over 30 days</title>
-          <desc id={`${chartId}-chart-description`}>{forecast.firstShortage ? `First projected shortage ${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(forecast.firstShortage.date)}.` : "No shortage projected from entered records."} The daily cash plan below provides every amount and source record.</desc>
-          <defs><linearGradient id={`${chartId}-chart-fill`} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#45a874" stopOpacity=".25" /><stop offset="100%" stopColor="#45a874" stopOpacity=".01" /></linearGradient></defs>
-          <g className="grid-lines">{ticks.map((tick) => <line key={tick} x1="0" x2="700" y1={y(tick)} y2={y(tick)} />)}</g>
-          <line className="chart-zero" x1="0" x2="700" y1={y(0)} y2={y(0)} vectorEffect="non-scaling-stroke" />
-          <path className="area" style={{ fill: `url(#${chartId}-chart-fill)` }} d={`${line} L700,${y(0)} L0,${y(0)} Z`} />
-          <path className="line" d={line} pathLength="1200" />
-          {shortageIndex >= 0 && <line className="risk-line" x1={x(shortageIndex)} x2={x(shortageIndex)} y1="20" y2="220" vectorEffect="non-scaling-stroke" />}
-        </svg>
-        <div className="forecast-points" aria-label="Forecast data points">
-          {pointDays.map((index) => {
-            const label = `${formatPlanDate(forecast.days[index].date)} · ${formatPHP(forecast.days[index].closingCents)}`;
-            return <button key={index} type="button" className={`${index === shortageIndex ? "point-4 " : ""}${index <= 4 ? "point-1" : index >= 25 ? "point-5" : ""}`} style={{ left: `${(index / 29) * 100}%`, top: `${(y(forecast.days[index].closingCents) / 230) * 100}%` }} aria-label={label} data-tooltip={label} />;
-          })}
-          {shortageIndex >= 0 && <div className="risk-tip" style={{ left: `${Math.min(85, Math.max(15, (shortageIndex / 29) * 100))}%`, top: `${Math.min(70, Math.max(15, (y(forecast.days[shortageIndex].closingCents) / 230) * 100 - 25))}%` }}><span>{formatPlanDate(forecast.days[shortageIndex].date, true)}</span><strong>{formatPHP(forecast.days[shortageIndex].closingCents)}</strong></div>}
+        <div className="chart-plot">
+          <div className="chart-labels" aria-hidden="true">{ticks.map((tick) => <span key={tick} className={tick === 0 ? "is-zero" : undefined} style={{ top: `${(y(tick) / 230) * 100}%` }}>{money(tick)}</span>)}</div>
+          <svg className="chart" viewBox="0 0 700 230" preserveAspectRatio="none" role="img" aria-labelledby={`${chartId}-chart-title ${chartId}-chart-description`}>
+            <title id={`${chartId}-chart-title`}>Projected closing cash over 30 days</title>
+            <desc id={`${chartId}-chart-description`}>{forecast.firstShortage ? `First projected shortage ${formatPHP(forecast.firstShortage.shortfallCents)} on ${formatPlanDate(forecast.firstShortage.date)}.` : "No shortage projected from entered records."} Ends at {formatPHP(end.closingCents)} on {formatPlanDate(end.date)}. The daily cash plan provides every amount and source record.</desc>
+            <defs>
+              <linearGradient className="fill-above" id={`${chartId}-chart-fill`} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#45a874" stopOpacity=".28" /><stop offset="100%" stopColor="#45a874" stopOpacity=".04" /></linearGradient>
+              <linearGradient className="fill-below" id={`${chartId}-chart-fill-below`} x1="0" x2="0" y1="1" y2="0"><stop offset="0%" stopColor="#d88645" stopOpacity=".3" /><stop offset="100%" stopColor="#d88645" stopOpacity=".06" /></linearGradient>
+              <clipPath id={`${chartId}-above`}><rect x="0" y="0" width="700" height={zero} /></clipPath>
+              <clipPath id={`${chartId}-below`}><rect x="0" y={zero} width="700" height={230 - zero} /></clipPath>
+            </defs>
+            <g className="grid-lines">{ticks.map((tick) => <line key={tick} x1="0" x2="700" y1={y(tick)} y2={y(tick)} />)}</g>
+            <path className="area" clipPath={`url(#${chartId}-above)`} style={{ fill: `url(#${chartId}-chart-fill)` }} d={`${line} L700,${zero} L0,${zero} Z`} />
+            {below && <path className="area area-below" clipPath={`url(#${chartId}-below)`} style={{ fill: `url(#${chartId}-chart-fill-below)` }} d={`${line} L700,${zero} L0,${zero} Z`} />}
+            <line className="chart-zero" x1="0" x2="700" y1={zero} y2={zero} vectorEffect="non-scaling-stroke" />
+            <path className="line" d={line} pathLength="1200" />
+            {shortageIndex >= 0 && <line className="risk-line" x1={x(shortageIndex)} x2={x(shortageIndex)} y1="0" y2="230" vectorEffect="non-scaling-stroke" />}
+          </svg>
+          <div className="forecast-points" aria-label="Forecast data points">
+            {pointDays.map((index) => {
+              const label = `${formatPlanDate(forecast.days[index].date)} · ${formatPHP(forecast.days[index].closingCents)}`;
+              return <button key={index} type="button" className={`${index === shortageIndex ? "point-4 " : ""}${index <= 4 ? "point-1" : index >= 25 ? "point-5" : ""}`} style={{ left: `${(index / 29) * 100}%`, top: `${(y(forecast.days[index].closingCents) / 230) * 100}%` }} aria-label={label} data-tooltip={label} />;
+            })}
+            {shortageIndex >= 0 && <div className="risk-tip" style={{ left: `${Math.min(85, Math.max(12, (shortageIndex / 29) * 100))}%`, top: `${Math.min(78, Math.max(4, (y(forecast.days[shortageIndex].closingCents) / 230) * 100 - 30))}%` }}><span>First short on {formatPlanDate(forecast.days[shortageIndex].date, true)}</span><strong>{formatPHP(forecast.days[shortageIndex].closingCents)}</strong></div>}
+            <div className={`end-tip${end.closingCents < 0 ? " is-negative" : ""}`} style={{ top: `${Math.min(86, Math.max(2, (y(end.closingCents) / 230) * 100 - 16))}%` }}><span>{formatPlanDate(end.date, true)}</span><strong>{formatPHP(end.closingCents)}</strong></div>
+          </div>
         </div>
         <div className="chart-dates" aria-hidden="true">{[0, 7, 14, 21, 29].map((index) => <span key={index}>{formatPlanDate(forecast.days[index].date, true)}</span>)}</div>
       </div>
-      <div className="chart-legend"><span><i className="legend-line" />Projected balance</span>{shortageIndex >= 0 && <span><i className="legend-dot" />Potential shortfall</span>}<span className="forecast-source">Based on recorded invoices and bills</span></div>
-      {dailyPlan}
+      <div className="chart-legend"><span><i className="legend-line" />Cash balance</span>{below && <span><i className="legend-below" />Below ₱0</span>}<span className="forecast-source">From your recorded invoices and bills</span></div>
     </section>;
   }
   return (

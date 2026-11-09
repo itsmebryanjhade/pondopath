@@ -132,10 +132,12 @@ describe("source Invoices page connected to collection records", () => {
     const workspace = fixture();
     const invoice = workspace.invoices[0];
     const html = renderToStaticMarkup(createElement(CollectionPanel, { workspace, invoice, openPlan: true }));
-    expect(html).toContain('class="disclosure" open=""');
+    expect(html).toMatch(/aria-expanded="true"[^>]*>Set a new date|aria-expanded="true"[^>]*>Update expected payment|aria-expanded="true"[^>]*>Set expected payment/);
     expect(html).toContain("For the forecast. Record payment when the money arrives.");
     expect(html).toContain("Expected payment date");
     expect(html).toContain("Save payment plan");
+    expect(html).toContain("Customer promised");
+    expect(html).not.toContain("Choose a source");
   });
 
   it("identifies a valid payment date outside the current forecast", () => {
@@ -162,6 +164,28 @@ describe("source Invoices page connected to collection records", () => {
     expect(html).toContain(`/invoices/${workspace.invoices[0].id}?plan=edit#collection-plan`);
     expect(html).not.toContain("Collection check");
     expect(html).not.toContain("overdue bill");
+  });
+
+  it("says in one sentence where an invoice's money stands in the forecast", () => {
+    const workspace = fixture();
+    const invoice = workspace.invoices[0];
+    const expectation = workspace.expectations[0];
+    const renderPlan = () => renderToStaticMarkup(createElement(CollectionPanel, { workspace, invoice })).replaceAll("&#x27;", "'");
+    expectation.kind = "commitment";
+    expectation.state = "active";
+    expectation.remaining_cents = invoice.outstanding_cents;
+    expectation.expected_date = "2026-10-20";
+    expect(renderPlan()).toContain("That date has passed, so it isn’t in the forecast.");
+    expect(renderPlan()).toContain("Set a new date");
+    expectation.kind = "assumption";
+    expect(renderPlan()).toContain("You expected payment on 20 Oct. That date has passed");
+    expectation.kind = "commitment";
+    expectation.expected_date = addDays(workspace.forecastInput.referenceDate, 3);
+    expect(renderPlan()).toMatch(/The customer promised to pay ₱50,000.00 on .+\. It’s in the forecast\./);
+    expect(renderPlan()).toContain("Update expected payment");
+    workspace.expectations = [];
+    expect(renderPlan()).toContain("No payment date yet, so this money isn’t in the forecast.");
+    expect(renderPlan()).toContain("Set expected payment");
   });
 });
 

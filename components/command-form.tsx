@@ -9,6 +9,7 @@ import {
   type ReactNode,
   type ComponentProps,
   type TextareaHTMLAttributes,
+  createContext,
 } from "react";
 import { useRouter } from "next/navigation";
 import { executeWorkspaceAction } from "@/app/(workspace)/actions";
@@ -23,15 +24,27 @@ import type { LocalDate } from "@/lib/domain/types";
 
 type Failure = Extract<ActionResult<CommandResult>, { ok: false }>;
 
+/** A control inside a form saved a change of its own (e.g. a new customer): revision `from` became `to`. */
+export type OwnChange = { from: number; to: number };
+/** Lets a control inside a CommandForm report its own save, so the draft isn't treated as stale because of it. */
+export const OwnChangeContext = createContext<(change: OwnChange) => void>(() => {});
+
 export function TextAreaField({
   label,
+  help,
   ...input
-}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }) {
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; help?: string }) {
   const id = useId();
   return (
     <div className="form-field">
       <label htmlFor={id}>{label}</label>
-      <textarea {...input} id={id} className="field" rows={input.rows ?? 3} />
+      <textarea
+        {...input}
+        id={id}
+        aria-describedby={help ? `${id}-help` : undefined}
+        className="field"
+      />
+      {help && <small id={`${id}-help`}>{help}</small>}
     </div>
   );
 }
@@ -40,13 +53,14 @@ export function AssigneeField({
   members,
   defaultValue,
 }: {
-  members: { user_id: string; display_name: string }[];
-  defaultValue: string;
+  members: Array<{ user_id: string; display_name: string }>;
+  defaultValue?: string;
 }) {
   return (
     <label className="form-field">
       <span>Assigned to</span>
-      <select className="field" name="assigneeId" defaultValue={defaultValue} required>
+      <select name="assigneeId" defaultValue={defaultValue} className="field">
+        <option value="">Unassigned</option>
         {members.map((member) => (
           <option key={member.user_id} value={member.user_id}>
             {member.display_name}
@@ -194,7 +208,6 @@ export function CommandForm({
   build: (data: FormData) => { type: WorkspaceCommand["type"]; payload: object };
   children: ReactNode;
   label?: string;
-  /** Called after a confirmed save, for example to close an inline editor. */
   onSaved?: () => void;
   /** An extra control shown beside the save button, such as Cancel. */
   secondary?: ReactNode;
@@ -212,6 +225,10 @@ export function CommandForm({
   const [failedRevision, setFailedRevision] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
   const uncertain = failure?.code === "SERVICE_UNAVAILABLE";
+
+  const ownChange = ({ from, to }: OwnChange) => {
+    if (to === from + 1 && (draftRevision.current ?? revision) === from) draftRevision.current = to;
+  };
   const conflict = failure?.code === "STALE_VERSION";
 
   function submit(addAnother = false) {
@@ -235,33 +252,29 @@ export function CommandForm({
           requestId: crypto.randomUUID(),
           expectedRevision: draftRevision.current ?? revision,
         });
-        if (!parsed.success)
-          throw new RangeError(parsed.error.issues.map((issue) => issue.message).join(" "));
+        if (!parsed.success) {
+          const first = parsed.error.issues[0]?.message || "Check the entered values.";
+          setFailure({
+            ok: false,
+            code: "VALIDATION_ERROR",
+            message: first,
+          });
+          return;
+        }
         command = parsed.data;
         submitted.current = command;
       } catch (error) {
         setFailure({
           ok: false,
           code: "VALIDATION_ERROR",
-          message:
-            error instanceof RangeError ? error.message : "Check your entries and try again.",
+          message: error instanceof Error ? error.message : "Check the entered values.",
         });
         return;
       }
     }
-    const original = command;
     setNotice("");
     startTransition(async () => {
-      let result: ActionResult<CommandResult>;
-      try {
-        result = await executeWorkspaceAction(original);
-      } catch {
-        result = {
-          ok: false,
-          code: "SERVICE_UNAVAILABLE",
-          message: "The save could not be confirmed. Retry the original request before editing.",
-        };
-      }
+      const result = await executeWorkspaceAction(command!);
       if (result.ok) {
         submitted.current = null;
         draftRevision.current = null;
@@ -283,8 +296,7 @@ export function CommandForm({
         setFailure(result);
         if (result.code !== "SERVICE_UNAVAILABLE") submitted.current = null;
         if (result.code === "STALE_VERSION") {
-          setFailedRevision(original.expectedRevision);
-          router.refresh();
+          setFailedRevision(revision);
         }
       }
     });
@@ -293,52 +305,45 @@ export function CommandForm({
   return (
     <form
       ref={form}
-      className="record-form"
+      className="form-grid"
       onChangeCapture={() => {
-        // Dirty inputs survive refresh; their review basis must survive with them.
         draftRevision.current ??= revision;
+      }}
+      onChange={() => {
+        if (conflict && revision !== failedRevision) {
+          draftRevision.current = revision;
+          setFailure(null);
+        }
       }}
       onSubmit={(event) => {
         event.preventDefault();
         submit(false);
       }}
     >
-      <fieldset disabled={pending || uncertain}>{children}</fieldset>
+      <fieldset disabled={pending || uncertain}>
+        <OwnChangeContext.Provider value={ownChange}>
+          {children}
+        </OwnChangeContext.Provider>
+      </fieldset>
       {failure && (
         <div role="alert" className="form-feedback error-feedback">
           <p>{failure.message}</p>
-          {failure.fieldErrors && (
-            <ul>
-              {Object.entries(failure.fieldErrors).map(([key, value]) => (
-                <li key={key}>{value}</li>
-              ))}
-            </ul>
-          )}
-          {uncertain && <p>Your original entries are held until their save is confirmed.</p>}
           {conflict && (
-            <>
-              <p>
-                Latest records are shown around this form. Your entries are preserved; compare them
-                before saving again.
-              </p>
-              <button
-                type="button"
-                className="button secondary"
-                disabled={revision === failedRevision}
-                onClick={() => {
-                  submitted.current = null;
-                  draftRevision.current = revision;
-                  setFailure(null);
-                }}
-              >
-                I reviewed the latest records
-              </button>
-            </>
+            <p>
+              Someone updated records while you were working. Review the latest values before
+              re-saving.
+            </p>
+          )}
+          {uncertain && (
+            <p>
+              We couldn’t confirm that this change was recorded. Use the retry button to safely check
+              without creating a duplicate.
+            </p>
           )}
         </div>
       )}
       {notice && (
-        <p role="status" className="form-feedback">
+        <p role="status" className="form-feedback success-feedback">
           {notice}
         </p>
       )}

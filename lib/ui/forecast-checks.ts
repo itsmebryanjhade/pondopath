@@ -9,10 +9,9 @@ export type ForecastCheck = { key: "past-date" | "no-date" | "overdue-bills"; ti
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** The forecast's assumptions in plain words, each naming the records behind it and where to fix them. */
-export function forecastChecks(workspace: WorkspaceSnapshot, forecast: ForecastResult, origin: "overview" | "forecast" = "overview"): ForecastCheck[] {
+export function forecastChecks(workspace: WorkspaceSnapshot, forecast: ForecastResult, origin: "overview" | "forecast" | "invoices" = "overview"): ForecastCheck[] {
   const checks: ForecastCheck[] = [];
-  // Opens the invoice with its payment-date editor open; from the Overview its back link returns there.
-  const planHref = (id: string) => `/invoices/${id}?${origin === "overview" ? "from=overview&" : ""}plan=edit#collection-plan`;
+  const planHref = (id: string) => `/invoices/${id}?${origin === "invoices" ? "" : `from=${origin}&`}plan=edit#collection-plan`;
   const customer = (id: string) => workspace.customers.find((row) => row.id === id)?.name ?? "Customer unavailable";
 
   const stale = new Set(forecast.staleExpectationIds);

@@ -35,12 +35,19 @@ async function Inbox({ searchParams }: { searchParams: Promise<InboxParams> }) {
   if (googleConfigured && google.connection?.status === "connected") { const businessId = workspace.actor.businessId; after(() => syncBusinessIfDue(businessId)); }
   const sources = new Map(inbox.sources.map(source => [source.id, source.label]));
   const context = { revision: workspace.revision, actor: workspace.actor, customers: workspace.customers, invoices: workspace.invoices, expenses: workspace.expenses, members: workspace.members };
-  return <WorkspaceShell workspace={workspace} className="section-page imports-page" header={<WorkspacePageHeading title="Review Inbox" description="Review imported changes before they reach your invoices, expenses or cash plan." workspace={workspace} actions={<Link className="button" href="/add">Add records</Link>} />}>
-    <nav aria-label="Review Inbox filters" className="intake-buttons"><Link className="button secondary" aria-current={!selected.success && state === "open" ? "page" : undefined} href="/imports">Pending reviews</Link><Link className="button secondary" aria-current={!selected.success && state === "resolved" ? "page" : undefined} href="/imports?state=resolved">Resolved and previous versions</Link><span className="muted">{selected.success ? "Selected proposal" : `${inbox.count} ${state === "open" ? "pending" : "resolved"} items · 20 per page`}</span></nav>
-    {!inbox.items.length && <section className="records-panel"><div className="intake-panel-body"><h2>{state === "open" ? "No proposals waiting for review" : "No resolved proposals on this page"}</h2><p className="muted">New rows from your files show up here. Nothing counts until you confirm it.</p><p><Link className="button" href="/add">Add records</Link></p></div></section>}
+  return <WorkspaceShell workspace={workspace} className="section-page imports-page" header={<WorkspacePageHeading title="Review Inbox" description="Check imported rows before they reach your invoices, bills or forecast." workspace={workspace} actions={<Link className="button" href="/add">Add records</Link>} />}>
+    <nav aria-label="Review Inbox filters" className="inbox-tabs">
+      <Link aria-current={!selected.success && state === "open" ? "page" : undefined} href="/imports">To review{state === "open" && !selected.success && <span className="history-count">{inbox.count}</span>}</Link>
+      <Link aria-current={!selected.success && state === "resolved" ? "page" : undefined} href="/imports?state=resolved">Done{state === "resolved" && !selected.success && <span className="history-count">{inbox.count}</span>}</Link>
+      {selected.success && <span className="inbox-tabs-note">Showing one item · <Link className="text-link" href="/imports">See all</Link></span>}
+      {!selected.success && inbox.count > 20 && <span className="inbox-tabs-note">Showing {(page - 1) * 20 + 1}&ndash;{Math.min(page * 20, inbox.count)} of {inbox.count}</span>}
+    </nav>
+    {!inbox.items.length && <section className="records-panel inbox-empty"><div className="intake-panel-body">{state === "open"
+      ? <><h2>You&rsquo;re all caught up</h2><p className="muted">When you import a file or a Google Sheet, each new or changed row waits here. Nothing reaches your invoices, bills or forecast until you confirm it.</p></>
+      : <><h2>Nothing finished yet</h2><p className="muted">Rows you confirm or reject show up here, so you can see what was added and who checked it.</p></>}</div></section>}
     {state === "open" && inbox.items.some(isBulkConfirmable) && <IntakeBulkConfirm items={inbox.items} revision={workspace.revision} sourceLabels={Object.fromEntries(sources)} />}
     {inbox.items.map(item => <IntakeReview key={`${item.id}:${item.review_version}`} item={item} sourceLabel={sources.get(item.source_id) ?? "Source unavailable"} workspace={context} />)}
-    {!selected.success && <nav className="intake-buttons" aria-label="Review Inbox pages">{page > 1 && <Link className="button secondary" href={`/imports?state=${state}&page=${page - 1}`}>Previous</Link>}{page * 20 < inbox.count && <Link className="button secondary" href={`/imports?state=${state}&page=${page + 1}`}>Next</Link>}</nav>}
+    {!selected.success && (page > 1 || page * 20 < inbox.count) && <nav className="intake-buttons" aria-label="Review Inbox pages">{page > 1 && <Link className="row-action is-quiet" href={`/imports?state=${state}&page=${page - 1}`}>Previous 20</Link>}{page * 20 < inbox.count && <Link className="row-action is-quiet" href={`/imports?state=${state}&page=${page + 1}`}>Next 20</Link>}</nav>}
   </WorkspaceShell>;
 }
 

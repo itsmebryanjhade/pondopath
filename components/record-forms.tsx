@@ -3,8 +3,10 @@
 import { useMemo, useRef, useState } from "react";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { addDays } from "@/lib/domain/dates";
+import { parseMoney } from "@/lib/domain/money";
 import { parseAmountInput, suggestNextInvoiceNumber } from "@/lib/domain/manual-entry";
-import { AmountField, CommandForm, DueDateField, Field } from "./command-form";
+import { AmountField, CommandForm, DueDateField, Field, TextAreaField } from "./command-form";
+import { CustomerSelect as PickCustomer } from "./customer-select";
 
 const value = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
 const decimal = (cents: number) => (cents / 100).toFixed(2);
@@ -82,35 +84,39 @@ export function CustomerForm({
         <Field
           label="Contact person"
           name="contactName"
-          defaultValue={customer?.contact_name}
+          defaultValue={customer?.contact_name ?? ""}
           maxLength={200}
-          required
         />
         <Field
-          label="Email (optional)"
+          label="Email address"
           name="email"
           type="email"
           defaultValue={customer?.email ?? ""}
-          maxLength={254}
+          maxLength={200}
         />
         <Field
-          label="Phone (optional)"
+          label="Phone number"
           name="phone"
-          type="tel"
           defaultValue={customer?.phone ?? ""}
           maxLength={50}
         />
       </div>
+      <p className="muted">
+        Customer details are used for invoice statements and reminders. They are kept within your
+        workspace.
+      </p>
     </CommandForm>
   );
 }
 
-export function InvoiceForm({
+function CustomerSelect({ workspace, defaultValue = "" }: Context & { defaultValue?: string }) {
+  return <PickCustomer customers={workspace.customers} revision={workspace.revision} defaultValue={defaultValue} />;
+}
+
+function NewInvoiceForm({
   workspace,
-  invoice,
   initialProposed,
 }: Context & {
-  invoice?: WorkspaceSnapshot["invoices"][number];
   initialProposed?: {
     number?: string | null;
     customerId?: string | null;
@@ -119,20 +125,18 @@ export function InvoiceForm({
     dueDate?: string | null;
   };
 }) {
-  const isNew = !invoice;
   const initialNext = useMemo(
     () => suggestNextInvoiceNumber(workspace.invoices.map((inv) => inv.number)),
     [workspace.invoices],
   );
-  const [number, setNumber] = useState(invoice?.number ?? initialProposed?.number ?? initialNext);
-  const [customerId, setCustomerId] = useState(invoice?.customer_id ?? initialProposed?.customerId ?? "");
+  const [number, setNumber] = useState(initialProposed?.number ?? initialNext);
+  const customerId = initialProposed?.customerId ?? "";
   const numberRef = useRef<HTMLInputElement>(null);
 
   const defaultDueDate =
-    invoice?.due_date ?? initialProposed?.dueDate ?? addDays(workspace.forecastInput.referenceDate, 30);
+    initialProposed?.dueDate ?? addDays(workspace.forecastInput.referenceDate, 30);
 
   const handleAddAnother = () => {
-    // Generate the next sequential number based on what was just saved
     setNumber((prev) => suggestNextInvoiceNumber([prev]));
     setTimeout(() => {
       if (numberRef.current) {
@@ -145,10 +149,10 @@ export function InvoiceForm({
   return (
     <CommandForm
       revision={workspace.revision}
-      label={invoice ? "Save invoice" : "Add invoice"}
-      allowAddAnother={isNew}
+      label="Add invoice"
+      allowAddAnother={true}
       onAddAnother={handleAddAnother}
-      build={(data) => buildInvoicePayload(data, invoice)}
+      build={(data) => buildInvoicePayload(data)}
     >
       <div className="form-grid">
         <Field
@@ -158,38 +162,14 @@ export function InvoiceForm({
           value={number}
           onChange={(e) => setNumber(e.target.value)}
           maxLength={100}
-          help={isNew ? `Suggested: ${number} (editable)` : undefined}
+          help={`Suggested: ${number} (editable)`}
           required
         />
-        <label className="form-field">
-          <span>Customer</span>
-          <select
-            className="field"
-            name="customerId"
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            required
-          >
-            <option value="" disabled>
-              Select a customer
-            </option>
-            {workspace.customers.map((customer) => (
-              <option value={customer.id} key={customer.id}>
-                {customer.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <CustomerSelect workspace={workspace} defaultValue={customerId} />
         <AmountField
           label="Invoice amount (PHP)"
           name="amount"
-          defaultValue={
-            invoice
-              ? decimal(invoice.amount_cents)
-              : initialProposed?.amountCents
-                ? decimal(initialProposed.amountCents)
-                : ""
-          }
+          defaultValue={initialProposed?.amountCents ? decimal(initialProposed.amountCents) : ""}
           help="Use k or m for shorthand (e.g. 15k, 1.5m). No commas or ₱ sign."
           required
         />
@@ -201,25 +181,95 @@ export function InvoiceForm({
           required
         />
       </div>
-      {invoice && (
+      <p className="muted">
+        A new invoice starts with a labelled due-date assumption. It does not add actual cash or
+        confirm a customer promise.
+      </p>
+    </CommandForm>
+  );
+}
+
+export function InvoiceForm({
+  workspace,
+  invoice,
+  locked,
+  initialProposed,
+}: Context & {
+  invoice?: WorkspaceSnapshot["invoices"][number];
+  locked?: boolean;
+  initialProposed?: {
+    number?: string | null;
+    customerId?: string | null;
+    party?: string | null;
+    amountCents?: number | null;
+    dueDate?: string | null;
+  };
+}) {
+  if (invoice) return <EditInvoiceForm workspace={workspace} invoice={invoice} locked={locked} />;
+  return <NewInvoiceForm workspace={workspace} initialProposed={initialProposed} />;
+}
+
+/**
+ * Edit an invoice. Before any payment, every field can change. After a payment is recorded,
+ * only an owner can change the total or due date, and a reason is required.
+ */
+function EditInvoiceForm({ workspace, invoice, locked }: Context & { invoice: WorkspaceSnapshot["invoices"][number]; locked?: boolean }) {
+  const isOwner = workspace.actor.role === "owner";
+  const customer = workspace.customers.find((row) => row.id === invoice.customer_id);
+  const isLocked = locked === true;
+  if (isLocked && !isOwner) {
+    return (
+      <p className="invoice-edit-note">
+        A payment is recorded on this invoice, so only the owner can change its total or due date.
+      </p>
+    );
+  }
+  return (
+    <CommandForm
+      revision={workspace.revision}
+      label={locked !== undefined ? "Save changes" : "Save invoice"}
+      build={(data) => ({
+        type: "save_invoice",
+        payload: {
+          id: invoice.id,
+          number: value(data, "number"),
+          customerId: value(data, "customerId"),
+          amountCents: parseMoney(value(data, "amount")),
+          dueDate: value(data, "dueDate"),
+          ...(value(data, "reason") ? { reason: value(data, "reason") } : {}),
+        },
+      })}
+    >
+      {isLocked ? (
         <>
-          <p className="muted">
-            After a payment has been posted, the customer and invoice identity stay locked. Only the
-            owner can correct the total or due date, with a reason.
+          <input type="hidden" name="number" value={invoice.number} />
+          <input type="hidden" name="customerId" value={invoice.customer_id} />
+          <p className="invoice-edit-locked">
+            <strong>{invoice.number}</strong> · {customer?.name ?? "Customer"}
+            <span>Locked because a payment is recorded</span>
           </p>
-          <Field
-            label="Correction reason (required for owner corrections after a payment)"
-            name="reason"
-            maxLength={4000}
-          />
         </>
+      ) : (
+        <div className="form-grid">
+          <Field label="Invoice number" name="number" defaultValue={invoice.number} maxLength={100} required />
+          <CustomerSelect workspace={workspace} defaultValue={invoice.customer_id} />
+        </div>
       )}
-      {!invoice && (
-        <p className="muted">
-          A new invoice starts with a labelled due-date assumption. It does not add actual cash or
-          confirm a customer promise.
-        </p>
+      <div className="form-grid">
+        <Field
+          label="Invoice total (PHP)"
+          name="amount"
+          inputMode="decimal"
+          defaultValue={decimal(invoice.amount_cents)}
+          help="The invoice's total before any payments."
+          required
+        />
+        <Field label="Due date" name="dueDate" type="date" defaultValue={invoice.due_date} required />
+      </div>
+      {isLocked && (
+        <TextAreaField label="Reason for this change" name="reason" maxLength={4000} required help="Saved in the invoice history." />
       )}
+      <p className="muted">Changing the total or due date asks you to check the expected payment again.</p>
     </CommandForm>
   );
 }
@@ -292,14 +342,17 @@ export function ExpenseForm({
         />
       </div>
       {expense && (
-        <>
-          <p className="muted">
-            Posted expenses keep their payee and identity. Only the owner can correct the total or
-            due date after a payment.
-          </p>
-          <Field label="Correction reason" name="reason" maxLength={4000} />
-        </>
+        <TextAreaField
+          label="Reason for this change (optional)"
+          name="reason"
+          maxLength={4000}
+          help="Saved in the expense history."
+        />
       )}
+      <p className="muted">
+        Planned expenses and bills are deducted on their due date. They can be marked paid as bank
+        records are reconciled.
+      </p>
     </CommandForm>
   );
 }
@@ -333,15 +386,18 @@ export function OpeningCashForm({
           required
         />
         <Field
-          label="At the start of"
+          label="Date you started counting"
           name="date"
           type="date"
           defaultValue={workspace.business.opening_date}
-          max={workspace.forecastInput.referenceDate}
-          help="Payments from this day on are counted after it."
+          help="Before your first recorded payment."
           required
         />
       </div>
+      <p className="muted">
+        Opening cash sets the starting balance for your forecast. Once a payment is recorded,
+        changing it requires removing or reassigning the payment first.
+      </p>
     </CommandForm>
   );
 }

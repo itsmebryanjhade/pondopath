@@ -1,18 +1,16 @@
 "use client";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
-import { formatPlanDate } from "@/lib/display";
+import { formatPlanDate, followupDue } from "@/lib/display";
 import { CommandForm, Field, TextAreaField, AssigneeField } from "./command-form";
+import { InlineActions } from "./inline-actions";
 
-type Props = { workspace: WorkspaceSnapshot; invoice: WorkspaceSnapshot["invoices"][number] };
+type Props = { workspace: WorkspaceSnapshot; invoice: WorkspaceSnapshot["invoices"][number]; hideHeading?: boolean };
 export function FollowupForm({
   workspace,
   invoice,
   task,
   proposed,
-}: Props & {
-  task?: WorkspaceSnapshot["followups"][number];
-  proposed?: { nextAction?: string; date?: string };
-}) {
+}: Props & { task?: WorkspaceSnapshot["followups"][number]; proposed?: { nextAction?: string; date?: string } }) {
   return (
     <CommandForm
       revision={workspace.revision}
@@ -101,69 +99,55 @@ function CompleteForm({
   );
 }
 
-export function FollowupPanel({ workspace, invoice }: Props) {
+export function FollowupPanel({ workspace, invoice, hideHeading = false }: Props) {
+  const today = workspace.forecastInput.referenceDate;
   const tasks = workspace.followups
     .filter((row) => row.invoice_id === invoice.id)
     .sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id.localeCompare(b.id));
   const open = tasks.filter((row) => row.state === "open"),
     completed = tasks.filter((row) => row.state === "completed");
+  const unpaid = invoice.outstanding_cents > 0;
+  const who = (id: string) => id === workspace.actor.userId ? "You"
+    : workspace.members.find((member) => member.user_id === id)?.display_name ?? "Previous team member";
   return (
-    <section className="panel followup-panel">
-      <h2>Follow-ups · {open.length} open</h2>
+    <section className="panel followup-panel" aria-labelledby={`followups-${invoice.id}`}>
+      <div className={hideHeading ? "sr-only" : "followup-head"}>
+        <h2 id={`followups-${invoice.id}`}>Follow-ups{hideHeading ? ` for ${invoice.number}` : ""}</h2>
+        {open.length > 0 && <span className="next-count">{open.length} open</span>}
+      </div>
       {open.length ? (
-        <ul className="movement-list">
-          {open.map((task) => (
-            <li id={`followup-${task.id}`} key={task.id}>
-              <div className="section-heading">
-                <div>
-                  <h3>{task.next_action}</h3>
-                  <p
-                    className={
-                      task.due_date < workspace.forecastInput.referenceDate ? "negative" : "muted"
-                    }
-                  >
-                    {task.due_date < workspace.forecastInput.referenceDate ? "Overdue · " : "Due "}
-                    <time dateTime={task.due_date}>{formatPlanDate(task.due_date, true)}</time> ·{" "}
-                    {workspace.members.find((member) => member.user_id === task.assignee_id)
-                      ?.display_name ?? "Previous team member"}
-                  </p>
+        <ul className="followup-tasks">
+          {open.map((task) => {
+            const due = followupDue(task.due_date, today);
+            return (
+              <li id={`followup-${task.id}`} key={task.id} className={`followup-task is-${due.tone}`}>
+                <h3>{task.next_action}</h3>
+                <div className="followup-meta">
+                  <span className={`next-chip due-${due.tone === "late" ? "late" : due.tone === "today" ? "soon" : "calm"}`}>{due.text}</span>
+                  <span className={`next-chip${who(task.assignee_id) === "You" ? " is-mine" : ""}`}>{who(task.assignee_id) === "You" ? <><span className="sr-only">Assigned to </span>You</> : `Assigned to ${who(task.assignee_id)}`}</span>
                 </div>
-              </div>
-              {task.automatic_type === "correction_review" && (
-                <p className="muted">Correction review · {task.outcome}</p>
-              )}
-              <div className="two-column">
-                <details className="disclosure">
-                  <summary>Record outcome</summary>
-                  <CompleteForm workspace={workspace} invoice={invoice} task={task} />
-                </details>
-                {invoice.outstanding_cents > 0 && (
-                  <details className="disclosure">
-                    <summary>Edit follow-up</summary>
-                    <FollowupForm workspace={workspace} invoice={invoice} task={task} />
-                  </details>
-                )}
-              </div>
-            </li>
-          ))}
+                {task.automatic_type === "correction_review" && <p className="muted">Correction review · {task.outcome}</p>}
+                {/* One main action (what happened), one quiet one (change it). Each opens its form in place. */}
+                <InlineActions actions={[
+                  { key: "done", label: "Record what happened", tone: "main", content: <CompleteForm workspace={workspace} invoice={invoice} task={task} /> },
+                  ...(unpaid ? [{ key: "change", label: "Change", content: <FollowupForm workspace={workspace} invoice={invoice} task={task} /> }] : []),
+                ]} />
+              </li>
+            );
+          })}
         </ul>
       ) : (
-        <p className="empty-state">
-          No open follow-up.{" "}
-          {invoice.outstanding_cents > 0
-            ? "Schedule the next collection action."
-            : "This invoice is fully received."}
-        </p>
+        <p className="followup-empty">{unpaid ? "Nothing scheduled. Plan the next step to collect this payment." : "No follow-up needed. This invoice is fully received."}</p>
       )}
-      {invoice.outstanding_cents > 0 && (
-        <details className="disclosure">
-          <summary>Add follow-up</summary>
-          <FollowupForm workspace={workspace} invoice={invoice} />
-        </details>
+      {unpaid && (
+        <div className="followup-add">
+          <InlineActions actions={[{ key: "add", label: open.length ? "+ Add another follow-up" : "+ Schedule a follow-up", tone: open.length ? "quiet" : "main",
+            content: <FollowupForm workspace={workspace} invoice={invoice} /> }]} />
+        </div>
       )}
       {completed.length > 0 && (
-        <details className="disclosure">
-          <summary>Completed follow-ups · {completed.length}</summary>
+        <details className="disclosure followup-done">
+          <summary>Done · {completed.length}</summary>
           <ul className="movement-list">
             {completed.map((task) => (
               <li id={`followup-${task.id}`} key={task.id}>
@@ -173,7 +157,7 @@ export function FollowupPanel({ workspace, invoice }: Props) {
                   {task.completion_source === "cash_movement"
                     ? "Resolved by a verified receipt"
                     : "Completed through review"}
-                  {task.next_date ? ` · Next action scheduled ${task.next_date}` : ""}
+                  {task.next_date ? ` · Next step scheduled ${formatPlanDate(task.next_date, true)}` : ""}
                 </p>
               </li>
             ))}

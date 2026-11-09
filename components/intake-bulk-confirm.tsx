@@ -29,6 +29,7 @@ function describe(item: IntakeItem, candidate: IntakeCandidate, sourceLabels: Re
 }
 type Summary = ReturnType<typeof describe>;
 
+/** One row: what it is, how much, when it is due, and where it came from. */
 function Row({ summary }: { summary: Summary }) {
   return <span className="bulk-row">
     <span className="bulk-row-main"><span className="bulk-kind">{summary.kind}</span> <strong>{summary.name}</strong><small>Due {summary.due} · {summary.source}</small></span>

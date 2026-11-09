@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { dismissToast, pushToast, toastIcon, type Toast } from "@/lib/ui/toasts";
 
 const TOAST_MS = 5000;
-type ToastApi = { show: (message: string, action?: Toast["action"], tone?: Toast["tone"]) => void };
+type ToastApi = { show: (message: string, action?: Toast["action"], tone?: Toast["tone"], key?: string) => void };
 const ToastContext = createContext<ToastApi>({ show: () => {} });
 
 export const useToast = () => useContext(ToastContext);
@@ -31,7 +31,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
   const nextId = useRef(1);
   const dismiss = useCallback((id: number) => setToasts((list) => dismissToast(list, id)), []);
   const api = useMemo<ToastApi>(() => ({
-    show: (message, action, tone) => setToasts((list) => pushToast(list, { message, action, tone }, nextId.current++)),
+    show: (message, action, tone, key) => setToasts((list) => pushToast(list, { message, action, tone, key }, nextId.current++)),
   }), []);
   return (
     <ToastContext.Provider value={api}>

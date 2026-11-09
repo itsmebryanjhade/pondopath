@@ -9,11 +9,14 @@ export function PaymentForm({
   kind,
   parentId,
   remainingCents,
+  showRemaining = true,
 }: {
   workspace: WorkspaceSnapshot;
   kind: "receipt" | "expense_payment";
   parentId: string;
   remainingCents: number;
+  /** Hide the "Still owed" line when the page already shows that amount right above the form. */
+  showRemaining?: boolean;
 }) {
   if (remainingCents === 0)
     return <p className="muted">Fully paid. No additional payment can be allocated.</p>;
@@ -39,9 +42,9 @@ export function PaymentForm({
         },
       })}
     >
-      <p>
+      {showRemaining && <p>
         {receipt ? "Still owed" : "Remaining to allocate"}: <strong className="num">{formatPHP(remainingCents)}</strong>
-      </p>
+      </p>}
       <div className="form-grid">
         <Field
           label={receipt ? "Amount received (PHP)" : "Verified payment amount (PHP)"}

@@ -5,7 +5,7 @@ import { buildNextActions, type NextAction } from "@/lib/ui/next-actions";
 import { DashboardIcon } from "./dashboard-icon";
 import { AiContextButton } from "./ai-context-button";
 
-type Props = { workspace: WorkspaceSnapshot; limit?: number; viewAllHref?: string; showFollowupAssistant?: boolean };
+type Props = { workspace: WorkspaceSnapshot; limit?: number; viewAllHref?: string; origin?: "overview" | "followups"; showFollowupAssistant?: boolean };
 
 /** Says what the date belongs to, so it never reads like a second, conflicting payment date. */
 function dueLabel(action: NextAction, referenceDate: string) {
@@ -32,7 +32,7 @@ const BUTTON: Record<NextAction["kind"], string> = {
   reminder_review: "Review reminder", intake_review: "Review row",
 };
 
-export function NextActions({ workspace, limit, viewAllHref, showFollowupAssistant }: Props) {
+export function NextActions({ workspace, limit, viewAllHref, origin, showFollowupAssistant }: Props) {
   const allActions = buildNextActions(workspace);
   const actions = limit === undefined ? allActions : allActions.slice(0, limit);
   const firstFollowup = showFollowupAssistant ? actions.find(action => action.id.startsWith("followup:")) : undefined;
@@ -76,7 +76,7 @@ export function NextActions({ workspace, limit, viewAllHref, showFollowupAssista
                     }}>Help me follow up</AiContextButton>
                   )}
                 </div>
-                <Link className="next-action-button" href={action.href} aria-label={`Review action: ${action.title}. ${action.detail}`}>
+                <Link className="next-action-button" href={origin && action.href.startsWith("/invoices/") ? `${action.href}?from=${origin}` : action.href} aria-label={`Review action: ${action.title}. ${action.detail}`}>
                   {BUTTON[action.kind]}<DashboardIcon name="arrowRight" size={15} />
                 </Link>
               </li>

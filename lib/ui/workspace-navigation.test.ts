@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -178,6 +179,10 @@ describe("persistent workspace navigation", () => {
     expect(html).toMatch(/<button[^>]*aria-expanded="false"[^>]*aria-controls="more-sheet"|<button[^>]*aria-controls="more-sheet"[^>]*aria-expanded="false"/);
     expect(html).not.toContain('id="more-sheet"');
     expect(html).not.toContain("side-count");
+  });
+  it("hides the assistant launcher when the mobile More sheet is present", () => {
+    const styles = readFileSync(new URL("../../app/workspace.css", import.meta.url), "utf8");
+    expect(styles).toMatch(/@media \(max-width: 1050px\) \{\s*\.workspace-root:has\(#more-sheet\) \.assistant-launch \{ display: none; \}/);
   });
   it("More is marked current on pages inside it, and the bar has no other current item", () => {
     navigationState.pathname = "/followups";

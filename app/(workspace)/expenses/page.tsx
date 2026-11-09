@@ -5,11 +5,12 @@ import { calculateForecast } from "@/lib/domain/forecast";
 import { formatPlanDate } from "@/lib/display";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { DashboardIcon } from "@/components/dashboard-icon";
-import { AppIcon } from "@/components/app-icon";
 import { RefreshRecords } from "@/components/refresh-records";
 import { ExpenseForm } from "@/components/record-forms";
 import { PaymentForm } from "@/components/payment-form";
 import { CashMovements } from "@/components/cash-movements";
+import { InlineActions } from "@/components/inline-actions";
+import { FocusHashOnArrival } from "@/components/jump-link";
 import { ForecastCheckList } from "@/components/forecast-check-list";
 import { forecastChecks } from "@/lib/ui/forecast-checks";
 import { addDays } from "@/lib/domain/dates";
@@ -64,7 +65,7 @@ export default async function Expenses({ searchParams }: ExpensePageProps) {
               const paid = expense.unpaid_cents === 0;
               const late = !paid && expense.due_date < today;
               return (
-                <li id={`expense-${expense.id}`} key={expense.id} className={`expense-item${late ? " is-overdue" : ""}${paid ? " is-paid" : ""}`}>
+                <li id={`expense-${expense.id}`} tabIndex={-1} key={expense.id} className={`expense-item${late ? " is-overdue" : ""}${paid ? " is-paid" : ""}`}>
                   <div className="expense-row">
                     <div className="expense-who">
                       <strong>{expense.payee || expense.label}</strong>
@@ -81,22 +82,10 @@ export default async function Expenses({ searchParams }: ExpensePageProps) {
                       {!paid && <span>{expense.unpaid_cents === expense.amount_cents ? "Left to pay" : `Left of ${formatPHP(expense.amount_cents)}`}</span>}
                     </div>
                   </div>
-                  <div className="expense-actions">
-                    {!paid && <details className="expense-action" name="bill-actions">
-                      <summary className="row-action" aria-label={`Record payment for ${expense.label}`}>
-                        Record payment <AppIcon name="chevron-down" />
-                      </summary>
-                      <div className="expense-action-body">
-                        <PaymentForm workspace={workspace} kind="expense_payment" parentId={expense.id} remainingCents={expense.unpaid_cents} />
-                      </div>
-                    </details>}
-                    <details className="expense-action" name="bill-actions">
-                      <summary className="row-action is-quiet" aria-label={`Edit bill: ${expense.label}`}>
-                        Edit bill <AppIcon name="chevron-down" />
-                      </summary>
-                      <div className="expense-action-body"><ExpenseForm workspace={workspace} expense={expense} /></div>
-                    </details>
-                  </div>
+                  <InlineActions actions={[
+                    ...(!paid ? [{ key: "pay", label: "Record payment", ariaLabel: `Record payment for ${expense.label}`, tone: "main" as const, content: <PaymentForm workspace={workspace} kind="expense_payment" parentId={expense.id} remainingCents={expense.unpaid_cents} /> }] : []),
+                    { key: "edit", label: "Edit bill", ariaLabel: `Edit bill: ${expense.label}`, content: <ExpenseForm workspace={workspace} expense={expense} /> },
+                  ]} />
                 </li>
               );
             })}
@@ -104,6 +93,7 @@ export default async function Expenses({ searchParams }: ExpensePageProps) {
         ) : (
           <p className="empty-state">No expenses entered. <Link href="/add?type=expense">Add your first bill</Link>, such as payroll or a supplier bill.</p>
         )}
+        <FocusHashOnArrival key={page} prefix="expense-" />
         {workspace.expenses.length > 50 && (
           <nav className="table-foot" aria-label="Expense pages">
             <span>

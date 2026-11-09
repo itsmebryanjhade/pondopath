@@ -21,3 +21,11 @@ export function expenseLinks(expenses: readonly { id: string; due_date: LocalDat
     return [expense.id, `/expenses${page > 1 ? `?page=${page}` : ""}#expense-${expense.id}`];
   }));
 }
+
+/** When a follow-up is due, in words, with a tone for its chip. */
+export function followupDue(due: LocalDate, today: LocalDate): { text: string; tone: "late" | "today" | "later" } {
+  if (due < today) return { text: `Late since ${formatPlanDate(due, true)}`, tone: "late" };
+  if (due === today) return { text: "Due today", tone: "today" };
+  return { text: `Due ${formatPlanDate(due, true)}`, tone: "later" };
+}
+

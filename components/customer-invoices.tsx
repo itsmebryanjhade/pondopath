@@ -65,7 +65,7 @@ export function CustomerInvoices({ workspace, params }: {
   const overdue = unpaid.filter((invoice) => flags.get(invoice.id)!.overdue);
   const forecast = calculateForecast(workspace.forecastInput);
   // The same plain checks as Overview and Forecast, limited to invoices: passed dates and money with no date.
-  const invoiceChecks = forecastChecks(workspace, forecast, "forecast").filter((check) => check.key !== "overdue-bills");
+  const invoiceChecks = forecastChecks(workspace, forecast, "invoices").filter((check) => check.key !== "overdue-bills");
   const weeks = Array.from({ length: 5 }, (_, index) => {
     const days = forecast.days.slice(index * 7, index * 7 + 7);
     return { start: days[0].date, end: days.at(-1)!.date, cents: checkedSum(days.map((day) => day.expectedInCents)) };

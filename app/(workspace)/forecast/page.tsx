@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getWorkspace } from "@/lib/server/workspace";
 import { calculateForecast } from "@/lib/domain/forecast";
-import { checkedSum, formatPHP } from "@/lib/domain/money";
-import { formatPlanDate } from "@/lib/display";
+import { formatPHP } from "@/lib/domain/money";
+import { expenseLinks, formatPlanDate } from "@/lib/display";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { DashboardIcon } from "@/components/dashboard-icon";
 import { RefreshRecords } from "@/components/refresh-records";
@@ -12,25 +12,39 @@ import { JumpLink } from "@/components/jump-link";
 import { ForecastCheckList } from "@/components/forecast-check-list";
 import { AiContextButton } from "@/components/ai-context-button";
 import { forecastChecks } from "@/lib/ui/forecast-checks";
+import { forecastWeeks } from "@/lib/ui/forecast-weeks";
 
 export default async function ForecastPage() {
   const workspace = await getWorkspace();
   const forecast = calculateForecast(workspace.forecastInput);
   const end = forecast.days[29];
-  const lowest = forecast.days.reduce((minimum, day) => day.closingCents < minimum.closingCents ? day : minimum);
   const checks = forecastChecks(workspace, forecast, "forecast");
-  const metrics = [
-    { label: "Expected receipts", value: checkedSum(forecast.days.map((day) => day.expectedInCents)), note: "Next 30 days · not received cash", tone: "green" },
-    { label: "Planned expenses", value: checkedSum(forecast.days.map((day) => day.plannedOutCents)), note: "Next 30 days · includes overdue due-now bills", tone: "blue" },
-    { label: "Lowest projected balance", value: lowest.closingCents, note: formatPlanDate(lowest.date), tone: "orange" },
-  ];
+  const weeks = forecastWeeks(forecast.days, workspace.forecastInput);
+  const expenseHrefs = expenseLinks(workspace.expenses);
+  const today = workspace.forecastInput.referenceDate;
+  // Who or what each counted record is, where it opens, and a short second line.
+  const describe = (item: ReturnType<typeof forecastWeeks>[number]["items"][number]) => {
+    if (item.kind === "in") {
+      const invoice = workspace.invoices.find((row) => row.id === item.id);
+      const customer = workspace.customers.find((row) => row.id === invoice?.customer_id)?.name;
+      return { name: invoice?.number ?? "Invoice", detail: customer ? `${customer} · expected` : "Expected payment", href: `/invoices/${item.id}?from=forecast` };
+    }
+    const bill = workspace.expenses.find((row) => row.id === item.id);
+    const late = !!bill && bill.due_date < today;
+    return { name: bill?.label ?? "Bill", detail: [bill?.payee, late ? `overdue since ${formatPlanDate(bill!.due_date, true)}` : "due"].filter(Boolean).join(" · "), href: expenseHrefs.get(item.id) ?? "/expenses" };
+  };
+  // "8–14 Nov", or "29 Nov–5 Dec" when the span crosses a month.
+  const span = (first: string, last: string) => first.slice(0, 7) === last.slice(0, 7)
+    ? `${formatPlanDate(first, true).split(" ")[0]}–${formatPlanDate(last, true)}`
+    : `${formatPlanDate(first, true)}–${formatPlanDate(last, true)}`;
+
   return <WorkspaceShell workspace={workspace} className="section-page section-forecast forecast-page overview-page" header={
     <header className="section-heading">
       <div><p className="eyebrow">Planning · {workspace.business.is_demo ? "Fictional demo" : workspace.business.name}</p><h1>Cash forecast</h1><p>See the next 30 days, what causes a shortfall, and what happens if a customer pays later.</p></div>
-      <div className="dashboard-heading-actions"><span className="dashboard-date"><DashboardIcon name="calendar" size={17} />{formatPlanDate(workspace.forecastInput.referenceDate)} · PHT</span><RefreshRecords /></div>
+      <RefreshRecords />
     </header>
   }>
-    <section className="section-feature" aria-label="30-day balance projection">
+    <section className="section-feature forecast-feature" aria-label="Forecast highlights">
       <div className="section-feature-copy">
         <span>Projected end balance</span><strong className={`num${end.closingCents < 0 ? " forecast-below-zero" : ""}`}>{formatPHP(end.closingCents)}</strong>
         <p>{formatPlanDate(end.date)} · includes expected payments that have not been verified as received.</p>
@@ -43,10 +57,41 @@ export default async function ForecastPage() {
         )}
         <JumpLink className="forecast-source-link" target="forecast-checks">{checks.length ? `${checks.length} ${checks.length === 1 ? "thing" : "things"} to check` : "Forecast checks"} <DashboardIcon name="arrowRight" size={15} /></JumpLink>
       </div>
-      <CashForecast forecast={forecast} workspace={workspace} overview chartId="forecast-main" />
+      <CashForecast forecast={forecast} workspace={workspace} overview chartId="forecast-main" origin="forecast" />
     </section>
-    <section className="section-metrics" aria-label="Forecast summary">
-      {metrics.map(({ label, value, note, tone }) => <article className="section-metric" key={label}><span className={`metric-mark ${tone}`} aria-hidden="true" /><p>{label}</p><strong className={`num${value < 0 ? " negative" : ""}`}>{formatPHP(value)}</strong><small>{note}</small></article>)}
+    <section className="forecast-weeks records-panel" aria-labelledby="forecast-weeks-heading">
+      <div className="records-head"><div><h2 id="forecast-weeks-heading">Cash by week</h2><p>The invoices and bills behind each week. Money in is expected, not received yet.</p></div></div>
+      <ol className="forecast-week-list" role="list">
+        {weeks.map((week) => {
+          const when = span(week.firstDate, week.lastDate);
+          if (week.quiet) return <li key={week.firstDate} className="forecast-week-row is-quiet">
+            <h3>{when}</h3><p>Nothing comes in or goes out.</p>
+          </li>;
+          const shown = week.items.slice(0, 6);
+          return <li key={week.firstDate} className="forecast-week-row">
+            <div className="forecast-week-when">
+              <h3>{when}</h3>
+              <p>
+                {week.inCents > 0 && <span className="is-in num">+{formatPHP(week.inCents)} in</span>}
+                {week.outCents > 0 && <span className="is-out num">−{formatPHP(week.outCents)} out</span>}
+              </p>
+            </div>
+            <ul className="forecast-week-items">
+              {shown.map((item) => {
+                const record = describe(item);
+                return <li key={`${item.kind}-${item.id}-${item.date}`} className={`is-${item.kind}`}>
+                  <Link href={record.href}>
+                    <time dateTime={item.date}>{formatPlanDate(item.date, true)}</time>
+                    <span className="forecast-week-item-name"><strong>{record.name}</strong><small>{record.detail}</small></span>
+                    <strong className="num">{item.kind === "in" ? "+" : "−"}{formatPHP(item.cents)}</strong>
+                  </Link>
+                </li>;
+              })}
+              {week.items.length > shown.length && <li className="forecast-week-more">+{week.items.length - shown.length} more in the daily cash plan</li>}
+            </ul>
+          </li>;
+        })}
+      </ol>
     </section>
     <section className="section-lower-grid forecast-bento">
       <section className="records-panel" id="forecast-scenario" aria-labelledby="scenario-planning-heading">

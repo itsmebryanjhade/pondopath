@@ -53,12 +53,12 @@ describe("source Follow-ups layout preserves the action ledger", () => {
     expect(html).toContain("Next actions");
     expect(html).toContain('id="followup-queue"');
     expect(html).toContain('aria-label="Review action: Review collection 0. DEMO-001 · Demo customer"');
-    expect(html).toMatch(/Amount tied to open follow-ups<\/span><strong[^>]*>₱50,000.00/);
+    expect(html).toMatch(/Waiting on follow-ups<\/span><strong[^>]*>₱50,000.00/);
     expect([...html.matchAll(/data-count="(\d+)"/g)].map((match) => Number(match[1]))).toEqual([1, 1, 1]);
-    expect(html).toContain("Automatic follow-up checks are not current");
-    expect(html).toContain(`href="/invoices/${workspace.invoices[0].id}"`);
+    expect(html).toContain("Automatic checks are paused");
+    expect(html).toContain(`href="/invoices/${workspace.invoices[0].id}?from=followups"`);
     expect(html).toContain(`data-followup-invoice="${workspace.invoices[0].id}"`);
-    expect(html).toContain("Completed actions");
+    expect(html).toMatch(/Done<\/span><strong[^>]*>1</);
   });
   it("retains stable 20-invoice pagination and global counts outside the current page", async () => {
     const workspace = uiWorkspace();
@@ -71,6 +71,16 @@ describe("source Follow-ups layout preserves the action ledger", () => {
     expect(html).toContain('href="/followups?page=1"');
     expect(html).toContain('data-count="21"');
     expect(html).toContain("₱1,050,000.00");
+  });
+  it("leads each queue row with the next task, when it is due and the invoice it belongs to", async () => {
+    const workspace = uiWorkspace();
+    workspace.followups = [task(0, "2026-10-28"), task(1, "2026-11-30")];
+    const html = await render(workspace);
+    expect(html).toContain("All follow-ups");
+    expect(html).toContain("1 invoice<");
+    expect(html).toMatch(/Late since 28 Oct<\/span><span class="next-chip">\+1 more/);
+    expect(html).toMatch(/<strong>Review collection 0<\/strong><small>DEMO-001 · Demo customer · /);
+    expect(html).not.toContain("followup-list-scroll");
   });
   it("keeps the real empty state and zero analytics without sample tasks", async () => {
     const html = await render();
@@ -86,7 +96,7 @@ describe("source Follow-ups layout preserves the action ledger", () => {
     const html = await render(workspace);
     expect(html).toContain("Check now");
     expect(html).toContain("failed: HTTP_ERROR");
-    expect(html).toContain("Scheduled success: Never");
-    expect(html).toContain("Scheduled status is tracked separately");
+    expect(html).toContain("Last automatic check: Never");
+    expect(html).toContain("You checked by hand at");
   });
 });

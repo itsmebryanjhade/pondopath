@@ -31,11 +31,14 @@ export function CashOverview({ workspace }: { workspace: WorkspaceSnapshot }) {
   const checks = forecastChecks(workspace, forecast);
   const member = workspace.members.find((row) => row.user_id === workspace.actor.userId);
   const firstName = member?.display_name?.trim().split(/\s+/)[0];
-  const metrics = [
-    { label: "Available cash", amount: workspace.forecastInput.availableCents, note: "Recorded cash, including actual movements", icon: "wallet", tone: "green", href: "/cash" },
-    { label: "Expected receipts", amount: checkedSum(forecast.days.map((day) => day.expectedInCents)), note: "Next 30 days · not received cash", icon: "arrowIn", tone: "blue", href: "/invoices" },
-    { label: "Upcoming expenses", amount: checkedSum(forecast.days.map((day) => day.plannedOutCents)), note: "Next 30 days, including overdue due-now bills", icon: "arrowOut", tone: "purple", href: "/expenses" },
-    { label: "Overdue invoices", amount: checkedSum(overdue.map((invoice) => invoice.outstanding_cents)), note: `${overdue.length} unpaid ${overdue.length === 1 ? "invoice needs" : "invoices need"} review`, icon: "alert", tone: "orange", href: "/invoices?filter=overdue" },
+  // The 30-day number, taken apart: cash now + coming in − going out = closing balance (the same sums the forecast uses).
+  const coming = checkedSum(forecast.days.map((day) => day.expectedInCents));
+  const going = checkedSum(forecast.days.map((day) => day.plannedOutCents));
+  const overdueCents = checkedSum(overdue.map((invoice) => invoice.outstanding_cents));
+  const parts = [
+    { key: "now", label: "Cash now", amount: workspace.forecastInput.availableCents, note: "Recorded in your accounts", href: "/cash", icon: "wallet" },
+    { key: "in", label: "Coming in", amount: coming, note: "Expected, not received yet", href: "/invoices", icon: "arrowIn", sign: "+" },
+    { key: "out", label: "Going out", amount: going, note: "Bills due, including overdue", href: "/expenses", icon: "arrowOut", sign: "−" },
   ] as const;
   return <WorkspaceShell workspace={workspace} className="overview-page" header={
     <header className="dashboard-heading page-heading">
@@ -56,8 +59,8 @@ export function CashOverview({ workspace }: { workspace: WorkspaceSnapshot }) {
       <section className="hero-summary" aria-labelledby="outlook-heading">
         <div className="ai-label"><DashboardIcon name="sparkle" size={15} />Cash-flow outlook</div>
         <p id="outlook-heading" className="hero-kicker">Projected cash in 30 days</p>
-        <div className={`hero-value num${end.closingCents < 0 ? " below-zero" : ""}`}>{formatPHP(end.closingCents)}<span>30-day projection</span></div>
-        <p className="hero-copy">This projection includes expected payments that have not been verified as received.</p>
+        <div className={`hero-value num${end.closingCents < 0 ? " below-zero" : ""}`}>{formatPHP(end.closingCents)}</div>
+        <p className="hero-copy">On {formatPlanDate(end.date)}. Includes expected payments that have not been verified as received.</p>
         <div className={`shortfall${shortage ? "" : " is-clear"}`}>
           <span className="shortfall-icon"><DashboardIcon name={shortage ? "alert" : "calendar"} size={17} /></span>
           <div><span>{shortage ? "Earliest projected shortfall" : "No projected shortage"}</span><strong className="num">{shortage ? `${formatPlanDate(shortage.date, true)} · ${formatPHP(shortage.shortfallCents)} gap` : "Based on entered records"}</strong></div>
@@ -67,14 +70,33 @@ export function CashOverview({ workspace }: { workspace: WorkspaceSnapshot }) {
         {forecast.incompleteInvoiceIds.length > 0 && <p className="hero-incomplete">Incomplete plan: {forecast.incompleteInvoiceIds.length} unpaid {forecast.incompleteInvoiceIds.length === 1 ? "invoice has" : "invoices have"} unplanned amounts or no usable expected payment. <Link href="/invoices">Review invoices</Link>.</p>}
         {!shortage && <p className="hero-caution">Missing or unconfirmed records can still change the result.</p>}
       </section>
-      <CashForecast forecast={forecast} workspace={workspace} overview />
+      <CashForecast forecast={forecast} workspace={workspace} overview origin="overview" />
     </div>
-    <section className="summary-grid" aria-label="Cash summary">{metrics.map((metric) => <article className="summary-card" key={metric.label}>
-      <div aria-hidden="true" className={`card-icon ${metric.tone}`}><DashboardIcon name={metric.icon} size={20} /></div>
-      <div className="card-title"><span>{metric.label}</span><Link href={metric.href} aria-label={`Review ${metric.label.toLowerCase()}`}><DashboardIcon name="arrowRight" size={16} /></Link></div>
-      <strong className="num">{formatPHP(metric.amount)}</strong><p className={metric.tone === "orange" ? "warning" : undefined}>{metric.note}</p>
-    </article>)}</section>
-    <NextActions workspace={workspace} limit={5} viewAllHref="/followups" />
+    <section className="cash-sum" aria-labelledby="cash-sum-heading">
+      <h2 id="cash-sum-heading" className="sr-only">How the next 30 days add up</h2>
+      <ol className="cash-sum-row">
+        {parts.map((part) => <li key={part.key} className={`cash-sum-part is-${part.key}`}>
+          {"sign" in part && <span className="cash-sum-op" aria-hidden="true">{part.sign}</span>}
+          <Link href={part.href}>
+            <span className="cash-sum-label"><DashboardIcon name={part.icon} size={15} />{part.label}</span>
+            <strong className="num">{"sign" in part && <span className="sr-only">{part.key === "in" ? "plus " : "minus "}</span>}{formatPHP(part.amount)}</strong>
+            <small>{part.note}</small>
+          </Link>
+        </li>)}
+        <li className={`cash-sum-part is-result${end.closingCents < 0 ? " is-negative" : ""}`}>
+          <span className="cash-sum-op" aria-hidden="true">=</span>
+          <JumpLink target="cash-forecast">
+            <span className="cash-sum-label">In 30 days</span>
+            <strong className="num"><span className="sr-only">equals </span>{formatPHP(end.closingCents)}</strong>
+            <small>{end.closingCents < 0 ? "Short. Plan for this gap." : "Projected balance"}</small>
+          </JumpLink>
+        </li>
+      </ol>
+      {overdue.length > 0
+        ? <Link className="cash-sum-overdue" href="/invoices?filter=overdue"><DashboardIcon name="alert" size={15} /><span><strong className="num">{formatPHP(overdueCents)}</strong> overdue on {overdue.length} {overdue.length === 1 ? "invoice" : "invoices"}. Chasing it can close the gap.</span><span className="cash-sum-overdue-cta">Review <DashboardIcon name="arrowRight" size={14} /></span></Link>
+        : <p className="cash-sum-clear"><DashboardIcon name="check" size={15} />No overdue invoices.</p>}
+    </section>
+    <NextActions workspace={workspace} limit={5} viewAllHref="/followups" origin="overview" />
     <CashActivity key={workspace.revision} rows={rows} invoices={invoiceList(workspace)} />
     <details id="forecast-review" className={`panel disclosure forecast-review ${checks.length ? "has-checks is-caution" : "is-clear"}`}>
       <summary className="forecast-summary">

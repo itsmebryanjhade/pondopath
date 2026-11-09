@@ -7,6 +7,7 @@ import { addDays, assertLocalDate } from "@/lib/domain/dates";
 import { formatPlanDate } from "@/lib/display";
 import { CommandForm, Field, TextAreaField, AssigneeField } from "./command-form";
 import { CashImpact } from "./cash-impact";
+import { InlineActions } from "./inline-actions";
 import { AppIcon } from "./app-icon";
 
 type Props = { workspace: WorkspaceSnapshot; invoice: WorkspaceSnapshot["invoices"][number]; proposed?: { amountCents: number; date: string; sourceNote: string }; openPlan?: boolean };
@@ -46,9 +47,7 @@ function ExpectationFields({ workspace, invoice, proposed }: Props) {
   }
   return (
     <div className="expectation-fields" onInput={updatePreview}>
-      <p className="muted">
-        Keep the full customer message. Choose one amount and date for the forecast.
-      </p>
+      <h3 className="form-section-title">Payment</h3>
       <div className="form-grid">
         <Field
           label="Expected amount (PHP)"
@@ -73,29 +72,25 @@ function ExpectationFields({ workspace, invoice, proposed }: Props) {
           required
         />
       </div>
-      <label className="form-field">
-        <span>Source of this plan</span>
-        <select name="kind" className="field" defaultValue="" required>
-          <option value="" disabled>
-            Choose a source
-          </option>
-          <option value="commitment">Customer-confirmed promise</option>
-          <option value="assumption">Business planning assumption</option>
-        </select>
-      </label>
+      <fieldset className="choice-field">
+        <legend>How sure are you?</legend>
+        <div className="choice-row">
+          <label className="choice"><input type="radio" name="kind" value="commitment" required /><span>Customer promised</span></label>
+          <label className="choice"><input type="radio" name="kind" value="assumption" required /><span>My estimate</span></label>
+        </div>
+      </fieldset>
       <TextAreaField
-        label="Customer message or planning note"
+        label="Note: what they said, or why this date"
         name="sourceNote"
         maxLength={4000}
+        rows={2}
         defaultValue={proposed?.sourceNote ?? current?.source_note ?? ""}
         required
       />
-      <p className="muted">
-        Past dates stay in history for review and are left out of the forecast.
-      </p>
+      <h3 className="form-section-title">Next follow-up</h3>
       <div className="form-grid">
         <Field
-          label="Next follow-up date"
+          label="Follow-up date"
           name="nextFollowupDate"
           type="date"
           min={workspace.forecastInput.referenceDate}
@@ -111,20 +106,17 @@ function ExpectationFields({ workspace, invoice, proposed }: Props) {
           defaultValue={next?.assignee_id ?? workspace.actor.userId}
         />
       </div>
-      <p className="muted">
-        This saves the next follow-up for the assigned person.
-      </p>
       {comparison ? (
         <CashImpact {...comparison} />
       ) : (
-        <p className="muted">
-          {previewError || "Enter an amount and date to preview the cash impact."}
+        <p className="impact-empty">
+          {previewError || "Enter an amount and date to see the cash impact."}
         </p>
       )}
       <label className="check-field">
         <input type="checkbox" required />
         <span>
-          I reviewed the amount, date, source and cash impact for this plan.
+          I checked the amount, date and cash impact.
         </span>
       </label>
     </div>
@@ -148,54 +140,56 @@ export function CollectionPanel({ workspace, invoice, proposed, openPlan = false
       <h2 id={headingId}>Expected payment</h2>
       {unpaid && <p className="muted">For the forecast. Record payment when the money arrives.</p>}
       {proposed && <p className="muted">Original due {formatPlanDate(invoice.due_date)} · Received {formatPHP(invoice.paid_cents)}</p>}
-      {current ? (
-        <>
-          <div className="invoice-expected-summary">
-            <strong className="expectation-amount num">{formatPHP(current.remaining_cents)}</strong>
-            <span className="muted">
-              <time dateTime={current.expected_date}>{formatPlanDate(current.expected_date)}</time> ·{" "}
-              {current.kind === "commitment" ? "Customer promise" : "Planning estimate"}
-            </span>
-            {review ? <p className="negative">Needs review · Excluded from the forecast</p>
-              : outsideForecast && <p className="muted">Outside the 30-day forecast</p>}
-          </div>
-          <details className="disclosure" open={!!proposed}>
-            <summary>Source and confirmation</summary>
+      {(() => {
+        // One plain sentence for where this invoice's money stands in the forecast, then the details.
+        if (!unpaid) return <p className="expected-status is-done">Paid in full.</p>;
+        if (!current) return <p className="expected-status is-warn">No payment date yet, so this money isn&rsquo;t in the forecast.</p>;
+        const date = formatPlanDate(current.expected_date, true);
+        const sentence = review
+          ? `${current.kind === "commitment" ? "The customer promised to pay on" : "You expected payment on"} ${date}. That date has passed, so it isn’t in the forecast.`
+          : outsideForecast
+            ? `Expected ${date}. Outside the 30-day forecast, so it isn’t counted yet.`
+            : `${current.kind === "commitment" ? "The customer promised to pay" : "Expected"} ${formatPHP(current.remaining_cents)} on ${date}. It’s in the forecast.`;
+        return <>
+          <p className={`expected-status ${review ? "is-warn" : outsideForecast ? "is-later" : "is-ok"}`}>{sentence}</p>
+          {unplanned > 0 && !review && <p className="expected-status is-warn"><strong className="num">{formatPHP(unplanned)}</strong> still needs a payment date.</p>}
+          <details className="disclosure expected-source" open={!!proposed}>
+            <summary>Where this date came from <AppIcon name="chevron-down" /></summary>
+            <p className="muted">{formatPHP(current.remaining_cents)} · {current.kind === "commitment" ? "Customer promise" : "Planning estimate"} · confirmed{" "}
+              {new Date(current.confirmed_at).toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" })}</p>
             <blockquote>{current.source_note}</blockquote>
-            <p className="muted">
-              Confirmed{" "}
-              {new Date(current.confirmed_at).toLocaleString("en-PH", {
-                timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short",
-              })}
-            </p>
           </details>
-        </>
-      ) : (
-        <p className="empty-state">{unpaid ? "No payment date set." : "Paid in full."}</p>
-      )}
-      {unplanned > 0 && <p className="muted invoice-unplanned"><strong className="num">{formatPHP(unplanned)}</strong> needs a payment date.</p>}
+        </>;
+      })()}
       {unpaid && (
-        <details className="disclosure" open={!!proposed || openPlan}>
-          <summary className="row-action">{current ? "Update expected payment" : "Set expected payment"} <AppIcon name="chevron-down" /></summary>
-          <CommandForm
-            revision={workspace.revision}
-            label={proposed ? "Confirm reviewed receipt plan" : "Save payment plan"}
-            build={(data) => ({
-              type: "confirm_expectation",
-              payload: {
-                invoiceId: invoice.id,
-                amountCents: parseMoney(String(data.get("amount"))),
-                date: String(data.get("date")),
-                kind: String(data.get("kind")),
-                sourceNote: String(data.get("sourceNote")),
-                nextFollowupDate: String(data.get("nextFollowupDate")),
-                assigneeId: String(data.get("assigneeId")),
-              },
-            })}
-          >
-            <ExpectationFields workspace={workspace} invoice={invoice} proposed={proposed} />
-          </CommandForm>
-        </details>
+        <InlineActions
+          defaultActive={proposed || openPlan ? "plan" : null}
+          actions={[{
+            key: "plan",
+            label: review ? "Set a new date" : current ? "Update expected payment" : "Set expected payment",
+            tone: review || !current ? "main" : "quiet",
+            content: (
+              <CommandForm
+                revision={workspace.revision}
+                label={proposed ? "Confirm reviewed receipt plan" : "Save payment plan"}
+                build={(data) => ({
+                  type: "confirm_expectation",
+                  payload: {
+                    invoiceId: invoice.id,
+                    amountCents: parseMoney(String(data.get("amount"))),
+                    date: String(data.get("date")),
+                    kind: String(data.get("kind")),
+                    sourceNote: String(data.get("sourceNote")),
+                    nextFollowupDate: String(data.get("nextFollowupDate")),
+                    assigneeId: String(data.get("assigneeId")),
+                  },
+                })}
+              >
+                <ExpectationFields workspace={workspace} invoice={invoice} proposed={proposed} />
+              </CommandForm>
+            ),
+          }]}
+        />
       )}
     </section>
   );

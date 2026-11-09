@@ -1,142 +1,87 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/app/(workspace)/actions", () => ({ executeWorkspaceAction: vi.fn(), getApprovedReminderText: vi.fn() }));
 import { ReminderPanel } from "@/components/reminder-panel";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/app/(workspace)/actions", () => ({
-  executeWorkspaceAction: vi.fn(),
-  getApprovedReminderText: vi.fn(),
-}));
+type Workspace = ReturnType<typeof uiWorkspace>;
+function reminder(workspace: Workspace, state: string, extra: Record<string, unknown> = {}) {
+  return {
+    id: "rem-1", business_id: workspace.business.id, invoice_id: workspace.invoices[0].id, recipient: "Demo contact",
+    body: "Hello, ₱50,000.00 is still owed.", state, version: 2, approval_basis: null, approved_version: null,
+    approved_body: null, approved_recipient: null, rejection_reason: null, reviewed_by: null, reviewed_at: null,
+    reported_by: null, reported_channel: null, reported_sent_at: null,
+    created_at: "2026-10-29T00:00:00Z", updated_at: "2026-10-29T00:00:00Z", ...extra,
+  } as unknown as Workspace["reminders"][number];
+}
+function render(workspace: Workspace) {
+  return renderToStaticMarkup(createElement(ReminderPanel, {
+    workspace, invoice: workspace.invoices[0], customer: workspace.customers[0], template: "Template text", collapsible: true,
+  }));
+}
+const mainButtons = (html: string) => (html.match(/class="(?:button"|row-action is-main")/g) ?? []).length;
 
-describe("ReminderPanel with suggestedBody & finance-to-owner approval", () => {
-  it("prefills suggestedBody from AI proposal and opens the edit disclosure", () => {
+describe("Payment reminder", () => {
+  it("starts with the message form and one save button when nothing is written yet", () => {
     const workspace = uiWorkspace();
-    const invoice = workspace.invoices[0];
-    const customer = workspace.customers[0];
-    const suggested = "Hello, gentle reminder regarding DEMO-001.";
-
-    const html = renderToStaticMarkup(
-      createElement(ReminderPanel, {
-        workspace,
-        invoice,
-        customer,
-        template: "Default template",
-        suggestedBody: suggested,
-      })
-    );
-
-    expect(html).toContain("Payment reminder");
-    expect(html).toContain("Hello, gentle reminder regarding DEMO-001.");
+    const html = render(workspace);
+    expect(html).toContain('aria-current="step"');
+    expect(html).toContain("Write the message below.");
+    expect(html).toContain("Template text");
     expect(html).toContain("Save draft");
-    expect(html).toContain('open=""');
+    expect(mainButtons(html)).toBe(1);
   });
 
-  it("restricts owner approval buttons from finance teammates, allowing submit for review", () => {
+  it("asks the owner to approve or request changes, with the message shown, and only one main button", () => {
     const workspace = uiWorkspace();
-    workspace.actor.role = "finance";
-    const invoice = workspace.invoices[0];
-    const customer = workspace.customers[0];
-
-    // Seed a reminder awaiting review
-    workspace.reminders = [
-      {
-        id: "rem-1",
-        business_id: workspace.business.id,
-        invoice_id: invoice.id,
-        recipient: "accounting@demo.com",
-        body: "Draft reminder awaiting review",
-        state: "awaiting_review",
-        version: 1,
-        approval_basis: { digest: "mock-digest-123" },
-        approved_version: null,
-        approved_body: null,
-        approved_recipient: null,
-        rejection_reason: null,
-        reviewed_at: null,
-        reviewed_by: null,
-        reported_by: null,
-        reported_channel: null,
-        reported_sent_at: null,
-        created_at: "2026-10-29T00:00:00Z",
-        updated_at: "2026-10-29T00:00:00Z",
-      },
-    ];
-
-    const html = renderToStaticMarkup(
-      createElement(ReminderPanel, {
-        workspace,
-        invoice,
-        customer,
-        template: "Default",
-      })
-    );
-
-    expect(html).toContain("Resubmit for owner review");
-    // Finance cannot approve or reject
-    expect(html).not.toContain("Approve this version");
-    expect(html).not.toContain("Request changes");
+    workspace.reminders = [reminder(workspace, "awaiting_review", { approval_basis: { digest: "a".repeat(64) } })];
+    const html = render(workspace);
+    expect(html).toContain("Waiting for approval");
+    expect(html).toContain("Read the message, then approve it or ask for changes.");
+    expect(html).toContain("Hello, ₱50,000.00 is still owed.");
+    expect(html).toContain("Approve message");
+    expect(html).toMatch(/aria-expanded="false"[^>]*>Ask for changes/);
+    expect(html).toMatch(/aria-expanded="false"[^>]*>Edit message/);
+    expect(html).not.toContain("Resubmit for owner review");
   });
 
-  it("shows approval and change request controls to owner when reminder is awaiting review", () => {
+  it("tells a teammate they are waiting for the owner, without approve controls", () => {
     const workspace = uiWorkspace();
-    workspace.actor.role = "owner";
-    const invoice = workspace.invoices[0];
-    const customer = workspace.customers[0];
-
-    workspace.reminders = [
-      {
-        id: "rem-1",
-        business_id: workspace.business.id,
-        invoice_id: invoice.id,
-        recipient: "accounting@demo.com",
-        body: "Draft reminder awaiting review",
-        state: "awaiting_review",
-        version: 1,
-        approval_basis: { digest: "mock-digest-123" },
-        approved_version: null,
-        approved_body: null,
-        approved_recipient: null,
-        rejection_reason: null,
-        reviewed_at: null,
-        reviewed_by: null,
-        reported_by: null,
-        reported_channel: null,
-        reported_sent_at: null,
-        created_at: "2026-10-29T00:00:00Z",
-        updated_at: "2026-10-29T00:00:00Z",
-      },
-    ];
-
-    const html = renderToStaticMarkup(
-      createElement(ReminderPanel, {
-        workspace,
-        invoice,
-        customer,
-        template: "Default",
-      })
-    );
-
-    expect(html).toContain("Approve this version");
-    expect(html).toContain("Request changes");
+    workspace.actor.role = "finance" as typeof workspace.actor.role;
+    workspace.reminders = [reminder(workspace, "awaiting_review", { approval_basis: { digest: "a".repeat(64) } })];
+    const html = render(workspace);
+    expect(html).toContain("Waiting for the owner to approve this message.");
+    expect(html).not.toContain("Approve message");
+    expect(html).toContain("Send again for approval");
   });
 
-  it("displays fully paid empty state when invoice outstanding balance is zero", () => {
+  it("shows the owner's note and one way forward after changes are requested", () => {
     const workspace = uiWorkspace();
-    const invoice = { ...workspace.invoices[0], outstanding_cents: 0 };
-    const customer = workspace.customers[0];
+    workspace.reminders = [reminder(workspace, "rejected", { rejection_reason: "Use a softer tone" })];
+    const html = render(workspace);
+    expect(html).toContain("Changes requested");
+    expect(html).toContain("Use a softer tone");
+    expect(html).toContain("Ask owner to approve");
+  });
 
-    const html = renderToStaticMarkup(
-      createElement(ReminderPanel, {
-        workspace,
-        invoice,
-        customer,
-        template: "Default",
-      })
-    );
+  it("once approved, offers copy as the main step and marking as sent behind it", () => {
+    const workspace = uiWorkspace();
+    workspace.reminders = [reminder(workspace, "approved", { approval_basis: { digest: "a".repeat(64) }, approved_version: 2, approved_recipient: "Demo contact" })];
+    const html = render(workspace);
+    expect(html).toContain("Ready to copy");
+    expect(html).toMatch(/class="row-action is-main"[^>]*>Copy message/);
+    expect(html).toMatch(/aria-expanded="false"[^>]*>Mark as sent/);
+    expect(html).toContain("PondoPath never sends messages for you.");
+  });
 
-    expect(html).toContain("No reminder can be prepared because the invoice is fully paid.");
-    expect(html).not.toContain("Save draft");
+  it("pre-fills suggestedBody from AI assistant when provided", () => {
+    const workspace = uiWorkspace();
+    const html = renderToStaticMarkup(createElement(ReminderPanel, {
+      workspace, invoice: workspace.invoices[0], customer: workspace.customers[0],
+      template: "Template text", suggestedBody: "AI proposed reminder text", collapsible: true,
+    }));
+    expect(html).toContain("AI proposed reminder text");
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 /**
  * An in-page link that works on every click. A Next.js link to the hash you're already on does nothing,
@@ -23,4 +23,23 @@ export function JumpLink({ target, className, children, label }: { target: strin
       history.replaceState(null, "", `#${target}`);
     }}>{children}</a>
   );
+}
+
+export function focusHashTarget(id: string) {
+  // The router can keep a hidden copy of the previous page mounted.
+  const target = Array.from(document.querySelectorAll<HTMLElement>(`#${CSS.escape(id)}`))
+    .find((element) => element.getClientRects().length > 0);
+  if (!target) return false;
+  target.scrollIntoView({ behavior: "instant", block: "start" });
+  target.focus({ preventScroll: true });
+  return true;
+}
+
+export function FocusHashOnArrival({ prefix }: { prefix: string }) {
+  useEffect(() => {
+    // The loading view can consume the scroll before the record mounts.
+    const id = window.location.hash.slice(1);
+    if (id.startsWith(prefix)) focusHashTarget(id);
+  }, [prefix]);
+  return null;
 }

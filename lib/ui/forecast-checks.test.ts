@@ -35,6 +35,6 @@ describe("forecast checks in plain words", () => {
     planned.expectation!.remainingCents = 3_000_000;
     const check = forecastChecks(workspace, calculateForecast(workspace.forecastInput), "forecast").find((item) => item.key === "no-date");
     expect(check?.title).toBe("Incomplete plan: 1 unpaid invoice has money with no expected date");
-    expect(check?.records[0]).toMatchObject({ detail: "Demo customer · ₱20,000.00 with no expected date", href: `/invoices/${planned.id}?plan=edit#collection-plan` });
+    expect(check?.records[0]).toMatchObject({ detail: "Demo customer · ₱20,000.00 with no expected date", href: `/invoices/${planned.id}?from=forecast&plan=edit#collection-plan` });
   });
 });

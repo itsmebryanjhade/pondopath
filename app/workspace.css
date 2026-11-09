@@ -14,7 +14,6 @@ body:has(.workspace-root) .first-paint-splash { display: none; }
 @keyframes splash-logo { 50% { transform: translateY(-6px) scale(1.025); } }
 @keyframes splash-halo { 50% { opacity: .8; transform: scale(1.08); } }
 @media (prefers-reduced-motion: reduce) { .workspace-splash-mark::before, .workspace-splash-mark img { animation: none; } .workspace-splash-slow, .workspace-root .workspace-slow-splash { animation-duration: 1ms; } }
-/* AI assistant: one question box, the answer, and the next step. PondoPath colours only; nothing moves on hover. */
 .workspace-root .assistant-launch { position: fixed; right: 24px; bottom: 24px; z-index: 55; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0; border-radius: 14px; background: var(--primary); color: #fff; font-weight: 700; box-shadow: 0 6px 20px #173e2d26; cursor: pointer; transition: background-color var(--duration-quick, 150ms) ease-out; }
 .workspace-root .assistant-launch:hover { background: var(--green-800, #1f4d37); }
 .workspace-root .assistant-launch .assistant-icon-spark { transform-origin: 12px 10.2px; transition: transform 400ms var(--ease-smooth-out, cubic-bezier(.22, 1, .36, 1)); }
@@ -260,7 +259,8 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .button { border-radius: 12px; }
 .text-link { display: inline-flex; align-items: center; gap: 6px; color: #28734f; font-size: 12px; font-weight: 600; min-height: 44px; }
 .workspace-root .field { border-radius: 10px; border-color: #c8d2c9; }
-.workspace-root :focus-visible { outline: 2px solid #28734f; outline-offset: 3px; }
+.workspace-root :focus-visible,
+.workspace-root :is([id^="movement-"], [id^="expense-"])[tabindex="-1"]:focus { outline: 2px solid #28734f; outline-offset: 3px; }
 .workspace-root details, .workspace-root [id] { scroll-margin-top: 78px; }
 /* At 1050px and below the sticky top bar adds the tab row (124px tall), so in-page targets must clear it. */
 @media (max-width: 1050px) { .workspace-root details, .workspace-root [id], .workspace-root .intake-item { scroll-margin-top: 140px; } }
@@ -487,7 +487,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .forecast-page .section-feature-copy .forecast-source-link { color: #e6f5eb; border-color: #ffffff24; background: #ffffff0f; }
 .workspace-root .forecast-page .overview-forecast { min-width: 0; border-radius: 0; }
 .workspace-root .forecast-page .overview-forecast .chart .line { stroke: var(--section-accent); }
-.workspace-root .forecast-page .overview-forecast stop { stop-color: var(--section-accent); }
+.workspace-root .forecast-page .overview-forecast .fill-above stop { stop-color: var(--section-accent); }
 .workspace-root .forecast-page .forecast-points button:not(.point-4) { background: var(--section-accent); }
 .workspace-root .forecast-page .legend-line { background: var(--section-accent); }
 .workspace-root .forecast-page .section-lower-grid > * { min-width: 0; }
@@ -706,44 +706,15 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .add-card-icon { display: grid; width: 38px; height: 38px; flex: none; place-items: center; border-radius: 10px; background: #e7f4ec; color: #28734f; }
 .add-check { display: grid; gap: 10px; animation: add-in 360ms cubic-bezier(.2, .8, .2, 1) both; }
 .add-summary { margin: 0; color: #17211b; font-size: 16px; font-weight: 600; }
-.add-sheet-picker { display: grid; gap: 10px; margin: 0; padding: 12px 0; border: 0; border-bottom: 1px solid #e3e7e1; }
-.add-sheet-picker legend { padding: 0; color: #17211b; font-size: 14px; font-weight: 600; }
-.add-sheet-picker > div { display: flex; flex-wrap: wrap; gap: 8px 18px; }
-.add-sheet-picker label { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; color: #25352b; font-size: 14px; }
-.add-sheet-picker input { width: 18px; height: 18px; accent-color: #28734f; }
-.add-sheet-picker input:focus-visible { outline: 2px solid #28734f; outline-offset: 3px; }
 .add-table-scroll { overflow-x: auto; border: 1px solid #e3e7e1; border-radius: 12px; background: #fff; }
 .add-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .add-table th { text-transform: none; letter-spacing: 0; padding: 8px 10px; border-bottom: 1px solid #e3e7e1; color: #7e8a82; font-size: 12px; font-weight: 600; text-align: left; }
 .add-table td { padding: 8px 10px; border-bottom: 1px solid #edf0eb; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .add-table tr:last-child td { border-bottom: 0; }
-.add-group-summary { display: grid; gap: 8px; padding-top: 8px; border-top: 1px solid #e3e7e1; }
-.add-group-summary h3 { margin: 0; color: #17211b; font-size: 14px; }
-.add-group-summary ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.add-group-summary li { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); align-items: baseline; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid #edf0eb; font-size: 13px; }
-.add-group-summary li strong { min-width: 0; overflow-wrap: anywhere; }
-.add-group-summary li small { grid-column: 1 / -1; color: #7e4c28; overflow-wrap: anywhere; }
-@media (max-width: 640px) { .add-group-summary li { grid-template-columns: minmax(0, 1fr) auto; } .add-group-summary li span:nth-of-type(n + 2) { grid-column: 1 / -1; } }
 .add-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e9f0f7; color: #3c638c; font-size: 11px; font-weight: 600; }
 .add-chip.expense { background: #f0ecf7; color: #66568f; }
 .add-chip.payment, .add-chip.choose { background: #fceddf; color: #a25522; }
 .add-note { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid #e8d6c4; border-radius: 10px; background: #fff8f1; color: #a25522; font-size: 13px; }
-.workspace-root .bulk-confirm h2 { margin: 0; }
-.workspace-root .bulk-confirm > .intake-panel-body > p { margin: 4px 0 0; }
-.workspace-root .bulk-list { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
-.workspace-root .bulk-pick { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--edge); border-radius: 10px; background: var(--surface); cursor: pointer; transition: border-color var(--duration-quick, 150ms) ease-out, background-color var(--duration-quick, 150ms) ease-out; }
-.workspace-root .bulk-pick:hover { border-color: var(--data-accent); }
-.workspace-root .bulk-pick.is-picked { border-color: var(--primary); background: var(--green-50); }
-.workspace-root .bulk-pick.is-off { cursor: default; background: #f6f7f4; color: var(--ink-soft); }
-.workspace-root .bulk-pick input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
-.workspace-root .bulk-row { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
-.workspace-root .bulk-row-main { display: grid; gap: 2px; min-width: 0; }
-.workspace-root .bulk-row-main strong { font-size: 14px; overflow-wrap: anywhere; }
-.workspace-root .bulk-row-main small { color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
-.workspace-root .bulk-row-amount { flex: none; font-size: 14px; }
-.workspace-root .bulk-lookalikes { margin-top: 14px; }
-.workspace-root .bulk-lookalikes > p { margin: 0; color: #a25522; font-size: 13px; }
-@media (prefers-reduced-motion: reduce) { .workspace-root .bulk-pick { transition: none; } }
 .add-done { display: grid; justify-items: center; gap: 6px; padding: 32px 12px; text-align: center; animation: add-in 360ms cubic-bezier(.2, .8, .2, 1) both; }
 .add-done-check { display: grid; width: 64px; height: 64px; place-items: center; border-radius: 50%; background: #28734f; color: #fff; animation: add-pop 420ms cubic-bezier(.2, .8, .2, 1) 120ms both; }
 .add-done h2 { margin: 8px 0 0; font-size: 22px; }
@@ -818,6 +789,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 /* Phone and tablet bottom bar: Overview, Forecast, Add, Review, More. Desktop keeps the sidebar. */
 .workspace-root .mobile-bar, .workspace-root .mobile-sheet, .workspace-root .mobile-backdrop { display: none; }
 @media (max-width: 1050px) {
+  .workspace-root:has(#more-sheet) .assistant-launch { display: none; }
   .workspace-root .mobile-bar { position: fixed; right: 0; bottom: 0; left: 0; z-index: 50; display: block; padding: 6px 6px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--edge); background: rgb(255 255 255 / 96%); backdrop-filter: blur(14px); }
   .workspace-root .mobile-bar ul { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; margin: 0; padding: 0; list-style: none; }
   .workspace-root .mobile-bar .mobile-tab { position: relative; display: flex; min-height: 52px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 100%; padding: 4px 2px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); cursor: pointer; font: inherit; font-size: 11px; font-weight: 500; text-decoration: none; transition: background-color 160ms ease, color 160ms ease, transform 160ms ease; }
@@ -838,7 +810,6 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
   .workspace-root .mobile-sheet-link:focus-visible { outline: 2px solid var(--data-accent); outline-offset: -2px; }
   .workspace-root .workspace-content { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
   .workspace-root .assistant-launch { bottom: calc(84px + env(safe-area-inset-bottom)); }
-  .workspace-root:has(#more-sheet) .assistant-launch { display: none; }
   .toast-region { bottom: calc(92px + env(safe-area-inset-bottom)); }
 }
 @keyframes sheet-up { from { opacity: 0; transform: translateY(14px); } }
@@ -897,7 +868,6 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
   .workspace-root .topbar-refresh[data-tip] { position: relative; }
   .workspace-root .topbar-refresh[data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; padding: 4px 8px; border-radius: 6px; background: var(--ink); color: #fff; font-size: 12px; white-space: nowrap; opacity: 0; transform: translateX(-50%); pointer-events: none; transition: opacity var(--duration-quick, 150ms) ease-out; }
   .workspace-root .topbar-refresh[data-tip]:hover::after, .workspace-root .topbar-refresh[data-tip]:focus-visible::after { opacity: 1; }
-  .workspace-root .topbar-refresh.is-pending svg { animation: topbar-spin 900ms linear infinite; }
   .workspace-root .page-enter > header .dashboard-date, .workspace-root .page-enter > header .heading-refresh, .workspace-root .workspace-stamp .heading-refresh { display: none; }
 }
 @media (min-width: 1400px) {
@@ -905,7 +875,17 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
   .workspace-root .page-enter > .dashboard-heading > div:first-child, .workspace-root .page-enter > .section-heading > div:first-child { max-width: min(760px, calc(100% - 620px)); }
 }
 @keyframes topbar-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .workspace-root .topbar-refresh.is-pending svg { animation: none; } .workspace-root .topbar-refresh[data-tip]::after { transition: none; } }
+/* Refresh button states (top bar and heading): spinning while it works, a green check when done, amber when offline.
+   The result itself is announced by a toast, so the button doesn't repeat it in a bubble. */
+.workspace-root :is(.topbar-refresh, .heading-refresh).is-pending .app-icon { animation: topbar-spin 800ms linear infinite; }
+.workspace-root :is(.topbar-refresh, .heading-refresh).is-pending:disabled { opacity: 1; cursor: progress; }
+.workspace-root :is(.topbar-refresh, .heading-refresh).is-done { border-color: #b9dcc6; background: var(--green-50); color: var(--green-800); }
+.workspace-root :is(.topbar-refresh, .heading-refresh).is-offline { border-color: #f0d2b5; background: #fff8f1; color: #a25522; }
+.workspace-root .topbar-refresh { transition: background-color var(--duration-quick, 150ms) ease-out, border-color var(--duration-quick, 150ms) ease-out, color var(--duration-quick, 150ms) ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .workspace-root :is(.topbar-refresh, .heading-refresh).is-pending .app-icon { animation: none; opacity: .5; }
+  .workspace-root .topbar-refresh, .workspace-root .topbar-refresh[data-tip]::after { transition: none; }
+}
 
 /* Add records: the two side cards fill the height of the drop area, and "Type it in" opens the forms in place. */
 .add-grid { align-items: stretch; }
@@ -1399,9 +1379,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
   .workspace-root .invoice-plan-asof { display: block; }
 }
 .workspace-root .invoice-detail-header .back-link { display: inline-flex; align-items: center; width: fit-content; min-height: 44px; }
-.workspace-root .invoice-identity { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 16px; }
 .workspace-root .invoice-identity > div { min-width: 0; overflow-wrap: anywhere; }
-.workspace-root .invoice-identity h1 { font-size: clamp(24px, 3vw, 32px); line-height: 1.15; }
 .workspace-root .invoice-due-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 13px; }
 .workspace-root .invoice-state { border-radius: 999px; padding: 2px 8px; background: var(--ground); color: var(--ink-soft); font-size: 12px; font-weight: 700; }
 .workspace-root .invoice-state.is-overdue { background: #fceddf; color: #a25522; }
@@ -1418,8 +1396,6 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .invoice-record-payment[open] > summary .app-icon,
 .workspace-root .collection-plan details[open] > summary .app-icon { transform: rotate(180deg); }
 .workspace-root .invoice-record-payment > .record-form { max-width: 42rem; }
-.workspace-root .invoice-section-links { display: flex; flex-wrap: wrap; gap: 8px; }
-.workspace-root .invoice-section-links .row-action { min-height: 44px; }
 .workspace-root .invoice-work-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 376px), 1fr)); align-items: start; gap: 16px; }
 .workspace-root .invoice-work-grid > div { min-width: 0; }
 .workspace-root .invoice-expected-summary { display: grid; gap: 4px; margin-block: 12px; }
@@ -1430,8 +1406,20 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
 .workspace-root .invoice-detail-page .followup-panel .two-column { display: flex; flex-wrap: wrap; align-items: start; gap: 4px 16px; }
 .workspace-root .invoice-detail-page .followup-panel .two-column > details[open] { flex: 1 1 100%; min-width: 0; }
 .workspace-root .invoice-tools h2 { margin-bottom: 8px; font-size: 16px; font-weight: 700; }
-.workspace-root .invoice-tools .reminder-panel > summary small { margin-left: auto; text-transform: capitalize; }
-.workspace-root .invoice-tools .reminder-panel > summary small + .app-icon { margin-left: 0; }
+/* More actions: each row says what it does in one short line, with its status on the right. */
+.workspace-root .invoice-tools .disclosure.panel > summary { gap: 12px; min-height: 60px; padding-block: 10px; cursor: pointer; }
+.workspace-root .invoice-tools .disclosure.panel > summary:hover .action-text > span { color: var(--primary); }
+.workspace-root .invoice-tools .disclosure.panel > summary > .app-icon:first-child { flex: none; width: 18px; height: 18px; color: var(--primary); }
+.workspace-root .invoice-tools .action-text { display: grid; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.workspace-root .invoice-tools .action-text > span { font-size: 14px; font-weight: 700; color: var(--ink); transition: color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .invoice-tools .action-text > small { color: var(--ink-soft); font-size: 12.5px; font-weight: 400; line-height: 1.4; overflow-wrap: anywhere; }
+.workspace-root .invoice-tools .action-state { flex: none; white-space: nowrap; }
+.workspace-root .invoice-tools .action-state.is-approved { background: var(--green-50); color: var(--green-900); }
+.workspace-root .invoice-tools .action-state.is-rejected { background: #fff1ef; color: var(--negative); }
+.workspace-root .invoice-tools .action-state.is-awaiting_review { background: #fff8f1; color: #a25522; }
+.workspace-root .invoice-tools .disclosure.panel > summary > .app-icon:last-child { flex: none; margin-left: 0; }
+@media (max-width: 560px) { .workspace-root .invoice-tools .disclosure.panel > summary { flex-wrap: wrap; } .workspace-root .invoice-tools .action-text { flex-basis: calc(100% - 64px); } .workspace-root .invoice-tools .action-state { order: 3; margin-left: 30px; } }
+@media (prefers-reduced-motion: reduce) { .workspace-root .invoice-tools .action-text > span { transition: none; } }
 .workspace-root .invoice-history-entry > summary {
   display: flex;
   justify-content: space-between;
@@ -1451,14 +1439,509 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
   .workspace-root .invoice-balances > div:first-child { grid-column: 1 / -1; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
 }
 
-/* Manual entry shortcuts: quick date choices and action buttons */
-.workspace-root .quick-date-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.workspace-root .quick-date-chip { min-height: 28px; padding: 2px 10px; border: 1px solid var(--edge, #e5e7eb); border-radius: 999px; background: var(--surface, #fff); color: var(--ink-soft, #526057); cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; transition: border-color var(--duration-quick, 150ms) ease-out, background-color var(--duration-quick, 150ms) ease-out; }
-.workspace-root .quick-date-chip:hover { border-color: var(--data-accent, #28734f); color: var(--ink, #1f2937); background: var(--green-50, #f0fdf4); }
-.workspace-root .quick-date-chip.is-selected { border-color: var(--primary, #28734f); background: var(--green-100, #e7f4ec); color: var(--green-900, #1f5a3d); font-weight: 700; }
-.workspace-root .quick-date-chip:focus-visible { outline: 2px solid #28734f; outline-offset: 2px; }
-@media (pointer: coarse) { .workspace-root .quick-date-chip { min-height: 36px; padding: 4px 12px; } }
-@media (prefers-reduced-motion: reduce) { .workspace-root .quick-date-chip { transition: none; } }
+/* Invoice page, expected payment: one plain sentence first, coloured by where the money stands. */
+.workspace-root .expected-status { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--green-50); color: var(--green-900); font-size: 14px; font-weight: 600; line-height: 1.45; }
+.workspace-root .expected-status.is-warn { background: #fff8f1; color: #a25522; }
+.workspace-root .expected-status.is-later { background: #f1f3ef; color: var(--ink); }
+.workspace-root .expected-status.is-done { background: #f1f3ef; color: var(--ink-soft); }
+.workspace-root .expected-status + .expected-status { margin-top: 6px; }
+.workspace-root .expected-source { margin-top: 10px; }
+.workspace-root .expected-source > summary { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer; list-style: none; }
+.workspace-root .expected-source > summary::-webkit-details-marker { display: none; }
+.workspace-root .expected-source > summary:hover { color: var(--ink); }
+.workspace-root .expected-source > summary .app-icon { width: 14px; height: 14px; transition: transform var(--duration-fast, 250ms) var(--ease-smooth-out, ease-out); }
+.workspace-root .expected-source[open] > summary .app-icon { transform: rotate(180deg); }
+.workspace-root .expected-source p { margin: 6px 0 4px; font-size: 12px; }
+.workspace-root .expected-source blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--edge); border-radius: 0 8px 8px 0; background: #f6f7f4; color: var(--ink); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .workspace-root .expected-source > summary .app-icon { transition: none; } }
+.workspace-root .expected-action { margin-top: 12px; }
+
+/* Invoice page header: back pill, then the number with its status, then one line of customer, due date and timing. */
+.workspace-root .invoice-detail-header { gap: 10px; }
+.workspace-root .invoice-back { min-height: 36px; padding: 0 12px; border: 1px solid var(--edge); border-radius: 999px; background: var(--surface); color: var(--ink-soft); font-size: 13px; font-weight: 600; text-decoration: none; transition: border-color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .invoice-back:hover { border-color: var(--data-accent); color: var(--green-800); }
+@media (pointer: coarse) { .workspace-root .invoice-back { min-height: 44px; } }
+.workspace-root .invoice-identity { display: grid; gap: 6px; min-width: 0; }
+.workspace-root .invoice-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.workspace-root .invoice-title h1 { margin: 0; font-size: clamp(26px, 3vw, 34px); line-height: 1.1; letter-spacing: -.03em; overflow-wrap: anywhere; }
+.workspace-root .invoice-title .invoice-state { padding: 3px 10px; font-size: 12px; }
+.workspace-root .invoice-subline { display: flex; flex-wrap: wrap; gap: 4px 0; margin: 0; color: var(--ink-soft); font-size: 14px; }
+.workspace-root .invoice-subline > span + span::before { content: "·"; margin: 0 8px; color: var(--ink-faint); }
+.workspace-root .invoice-subline .is-late { color: #a25522; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .workspace-root .invoice-back { transition: none; } }
+
+@media (max-width: 560px) { .workspace-root .invoice-subline { flex-direction: column; gap: 2px; } .workspace-root .invoice-subline > span + span::before { content: none; } }
+
+/* Invoice page balance: what is still owed, how much has come in, and the one action to record more. */
+.workspace-root .invoice-balance { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "main action" "main hint" "form form"; align-items: start; gap: 6px 24px; padding: 20px 22px; }
+.workspace-root .balance-main { grid-area: main; display: grid; gap: 6px; min-width: 0; max-width: 560px; }
+.workspace-root .balance-label { color: var(--ink-soft); font-size: 13px; font-weight: 600; }
+.workspace-root .balance-main > strong { font-family: var(--font-workspace-heading), sans-serif; font-size: clamp(28px, 3vw, 38px); letter-spacing: -.03em; line-height: 1.1; color: var(--primary); white-space: nowrap; }
+.workspace-root .balance-bar { height: 8px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: #edf0eb; }
+.workspace-root .balance-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--data-accent); }
+.workspace-root .balance-main > p { margin: 0; color: var(--ink-soft); font-size: 13px; }
+.workspace-root .balance-main > p strong { color: var(--ink); }
+.workspace-root .balance-hint { grid-area: hint; justify-self: end; margin: 0; color: var(--ink-faint); font-size: 12px; text-align: right; }
+/* Record payment stays where it is; its form slides open across the card below (transitions-dev accordion). */
+.workspace-root .record-payment-button { grid-area: action; justify-self: end; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 12px; white-space: nowrap; }
+.workspace-root .record-payment-button .app-icon { transition: transform var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(.22, 1, .36, 1)); }
+.workspace-root .record-payment-button[aria-expanded="true"] .app-icon { transform: rotate(180deg); }
+.workspace-root .record-payment-panel { grid-area: form; display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--duration-slow, 400ms) var(--ease-smooth-out, cubic-bezier(.22, 1, .36, 1)), opacity var(--duration-fast, 250ms) ease-out; }
+.workspace-root .record-payment-panel[data-open="true"] { grid-template-rows: 1fr; opacity: 1; }
+.workspace-root .record-payment-inner { min-height: 0; overflow: hidden; }
+.workspace-root .record-payment-panel[data-open="true"] .record-payment-inner { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.workspace-root .record-payment-inner > .record-form { max-width: 44rem; }
+.workspace-root .invoice-balance.is-paid .balance-label { color: var(--green-800); }
+@media (max-width: 640px) {
+  .workspace-root .invoice-balance { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "action" "hint" "form"; padding: 16px; }
+  .workspace-root .record-payment-button, .workspace-root .balance-hint { justify-self: start; text-align: left; }
+  .workspace-root .record-payment-button { margin-top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .workspace-root .record-payment-panel, .workspace-root .record-payment-button .app-icon { transition: none; } }
+.workspace-root .invoice-balance:has(.record-payment-button[aria-expanded="true"]) .balance-hint { visibility: hidden; }
+
+/* Follow-ups card (invoice page and Follow-ups page): the task, when it's due and who has it, then one main action. */
+.workspace-root .followup-head { display: flex; align-items: center; gap: 8px; }
+.workspace-root .followup-head h2 { margin: 0; }
+.workspace-root .followup-tasks { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
+.workspace-root .followup-task { padding: 12px 14px; border: 1px solid var(--edge); border-left: 3px solid var(--data-accent); border-radius: 12px; background: var(--surface); }
+.workspace-root .followup-task.is-late { border-left-color: var(--negative); }
+.workspace-root .followup-task.is-today { border-left-color: #d88645; }
+.workspace-root .followup-task h3 { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.workspace-root .followup-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.workspace-root .task-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin-top: 12px; }
+.workspace-root .task-action > summary { cursor: pointer; list-style: none; }
+.workspace-root .task-action > summary::-webkit-details-marker { display: none; }
+.workspace-root .task-action[open] { flex: 1 1 100%; }
+.workspace-root .task-action[open] > summary { border-color: var(--primary); background: var(--green-50); }
+.workspace-root .task-action-body { margin-top: 10px; padding: 14px; border: 1px solid var(--edge); border-radius: 12px; background: #fbfcfa; }
+.workspace-root .row-action.is-main { border-color: var(--primary); background: var(--primary); color: #fff !important; }
+.workspace-root .row-action.is-main:hover { background: #20583d; }
+.workspace-root .task-action[open] > summary.is-main { background: var(--primary); color: #fff !important; }
+.workspace-root .followup-add { margin-top: 12px; }
+.workspace-root .followup-empty { margin: 10px 0 0; color: var(--ink-soft); font-size: 14px; }
+.workspace-root .followup-done { margin-top: 12px; }
+
+/* Inline actions (follow-ups, bill rows): the buttons stay in one fixed row; the chosen form slides open below. */
+.workspace-root .inline-actions { margin-top: 12px; }
+.workspace-root .inline-actions-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.workspace-root .inline-actions-buttons .row-action { cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+.workspace-root .inline-actions-buttons .row-action.is-quiet[aria-expanded="true"] { border-color: var(--primary); background: var(--green-50); }
+.workspace-root .inline-action-panel { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--duration-slow, 400ms) var(--ease-smooth-out, cubic-bezier(.22, 1, .36, 1)), opacity var(--duration-fast, 250ms) ease-out; }
+.workspace-root .inline-action-panel[data-open="true"] { grid-template-rows: 1fr; opacity: 1; }
+.workspace-root .inline-action-inner { min-height: 0; overflow: hidden; }
+.workspace-root .inline-action-panel[data-open="true"] .inline-action-inner { margin-top: 10px; padding: 14px; border: 1px solid var(--edge); border-radius: 12px; background: #fbfcfa; }
+.workspace-root .followup-add .inline-actions { margin-top: 12px; }
+@media (pointer: coarse) { .workspace-root .inline-actions-buttons .row-action { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .workspace-root .inline-action-panel { transition: none; } }
+
+/* Expected payment form: a plain two-way choice instead of a dropdown. */
+.workspace-root .choice-field { margin: 0; padding: 0; border: 0; min-width: 0; }
+.workspace-root .choice-field legend { padding: 0; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--ink); }
+.workspace-root .choice-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.workspace-root .choice { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px solid var(--edge); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; cursor: pointer; }
+.workspace-root .choice:has(input:checked) { border-color: var(--primary); background: var(--green-50); }
+.workspace-root .choice:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+.workspace-root .choice input { accent-color: var(--primary); margin: 0; }
+.workspace-root .collection-plan .inline-actions { margin-top: 12px; }
+
+/* Expected payment form: two short sections, a quiet impact placeholder, and a clear save footer. */
+.workspace-root .collection-plan .record-form { margin-top: 0; }
+.workspace-root .collection-plan .expectation-fields { gap: 14px; }
+.workspace-root .collection-plan .form-section-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: .01em; }
+.workspace-root .collection-plan .form-section-title:not(:first-child) { margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.workspace-root .collection-plan .impact-empty { margin: 0; padding: 12px; border: 1px dashed var(--edge); border-radius: 10px; color: var(--ink-soft); font-size: 13px; text-align: center; }
+.workspace-root .collection-plan .expectation-fields > .check-field { padding-top: 14px; border-top: 1px solid var(--rule); font-size: 13px; }
+.workspace-root .collection-plan .record-form > fieldset + div, .workspace-root .collection-plan .record-form > div:last-child { margin-top: 14px; }
+@media (max-width: 560px) { .workspace-root .collection-plan .form-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Payment reminder: four steps, one sentence for what to do now, the message itself, one main button. */
+.workspace-root .reminder-body { display: grid; gap: 12px; padding-top: 4px; }
+.workspace-root .reminder-steps { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: 12.5px; font-weight: 600; }
+.workspace-root .reminder-steps li { display: inline-flex; align-items: center; gap: 6px; }
+.workspace-root .reminder-step-dot { display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--edge); border-radius: 999px; background: var(--surface); font-size: 11px; font-weight: 700; }
+.workspace-root .reminder-steps .is-done { color: var(--green-900); }
+.workspace-root .reminder-steps .is-done .reminder-step-dot { border-color: var(--green-50); background: var(--green-50); color: var(--primary); }
+.workspace-root .reminder-steps .is-current { color: var(--ink); }
+.workspace-root .reminder-steps .is-current .reminder-step-dot { border-color: var(--primary); background: var(--primary); color: #fff; }
+.workspace-root .reminder-next { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--green-50); color: var(--green-900); font-size: 14px; font-weight: 600; line-height: 1.45; }
+.workspace-root .reminder-next.is-warn { background: #fff8f1; color: #a25522; }
+.workspace-root .reminder-feedback { margin: 0; padding: 8px 12px; border-left: 3px solid #d88645; border-radius: 0 8px 8px 0; background: #fffaf5; font-size: 13px; }
+.workspace-root .reminder-message { padding: 12px 14px; border: 1px solid var(--edge); border-radius: 12px; background: #fbfcfa; }
+.workspace-root .reminder-to { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.workspace-root .reminder-to span { margin-right: 6px; color: var(--ink-soft); font-weight: 500; }
+.workspace-root .reminder-message blockquote { margin: 0; padding: 0; border: 0; white-space: pre-wrap; font-size: 13.5px; line-height: 1.55; color: var(--ink); max-height: 14em; overflow: auto; }
+.workspace-root .reminder-body > .inline-actions { margin-top: 0; }
+.workspace-root .inline-actions-lead { display: contents; }
+.workspace-root .inline-actions-lead .record-form { display: contents; }
+.workspace-root .inline-actions-lead .record-form > fieldset:empty { display: none; }
+.workspace-root .inline-actions-lead .record-form .button { min-height: 36px; padding: 0 14px; border-radius: 10px; font-size: 12px; }
+.workspace-root .inline-actions-lead .form-feedback { flex-basis: 100%; }
+@media (pointer: coarse) { .workspace-root .inline-actions-lead .record-form .button { min-height: 44px; } }
+.workspace-root .reminder-hint { margin: 0; color: var(--ink-soft); font-size: 12.5px; }
+.workspace-root .reminder-body > .record-form { margin-top: 0; }
+
+/* Edit invoice: locked fields read as plain text, not disabled inputs. */
+.workspace-root .invoice-edit-locked { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--edge); border-radius: 10px; background: #f6f7f4; font-size: 14px; }
+.workspace-root .invoice-edit-locked span { margin-left: auto; color: var(--ink-soft); font-size: 12px; }
+.workspace-root .invoice-edit-note { margin: 4px 0 0; color: var(--ink-soft); font-size: 13px; }
+.workspace-root .invoice-tools .record-form { max-width: 44rem; }
+.workspace-root .invoice-tools .record-form > fieldset:not(:empty) + div { margin-top: 14px; }
+
+/* Invoice page, payments received: date and amount first; void sits quietly under each row. */
+.workspace-root .invoice-payments-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.workspace-root .invoice-payments-head h2 { margin: 0; }
+.workspace-root .invoice-payments-total { margin: 0; color: var(--ink-soft); font-size: 13px; }
+.workspace-root .invoice-payments-total strong { color: var(--green-800); font-size: 15px; }
+.workspace-root .invoice-payment-list { display: grid; margin: 12px 0 0; padding: 0; list-style: none; }
+.workspace-root .invoice-payment-list > li { padding: 12px 0; }
+.workspace-root .invoice-payment-list > li + li { border-top: 1px solid var(--rule); }
+.workspace-root .invoice-payment-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.workspace-root .invoice-payment-main { display: grid; gap: 3px; min-width: 0; }
+.workspace-root .invoice-payment-main strong { font-size: 14px; }
+.workspace-root .invoice-payment-main small { color: var(--ink-soft); font-size: 12.5px; overflow-wrap: anywhere; }
+.workspace-root .invoice-payment-amount { color: var(--green-800); font-size: 15px; white-space: nowrap; }
+.workspace-root .invoice-payment-list .is-voided .invoice-payment-main strong,
+.workspace-root .invoice-payment-list .is-voided .invoice-payment-amount { color: var(--ink-faint); text-decoration: line-through; }
+.workspace-root .invoice-payment-main .invoice-payment-void { color: var(--negative); }
+.workspace-root .invoice-payment-list .inline-actions { margin-top: 8px; }
+.workspace-root .invoice-payment-list .inline-actions-buttons .row-action { min-height: 30px; padding: 0 10px; font-size: 12px; color: var(--ink-soft) !important; }
+.workspace-root .invoice-payment-list .inline-actions-buttons .row-action[aria-expanded="true"] { color: var(--negative) !important; border-color: #f0c7c2; background: #fff6f5; }
+@media (pointer: coarse) { .workspace-root .invoice-payment-list .inline-actions-buttons .row-action { min-height: 44px; } }
+.workspace-root .invoice-payment-list .inline-action-inner .record-form { margin-top: 0; max-width: 40rem; }
+.workspace-root .invoice-payments-empty { margin: 10px 0 0; padding: 14px; border: 1px dashed var(--edge); border-radius: 10px; color: var(--ink-soft); font-size: 13.5px; }
+.workspace-root .invoice-payments-foot { margin: 10px 0 0; color: var(--ink-soft); font-size: 12.5px; }
+
+/* Invoice history: a quiet timeline. Title and the key fact show without opening; details on click. */
+.workspace-root .invoice-history-head h2 { margin: 0; }
+.workspace-root .invoice-history-head p { margin: 2px 0 0; font-size: 13px; }
+.workspace-root .invoice-history-list { display: grid; margin: 12px 0 0; padding: 0; list-style: none; }
+.workspace-root .invoice-history-list > li { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 10px; }
+.workspace-root .invoice-history-list > li::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: var(--rule); }
+.workspace-root .invoice-history-list > li:first-child::before { top: 18px; }
+.workspace-root .invoice-history-list > li:last-child::before { bottom: calc(100% - 18px); }
+.workspace-root .invoice-history-list > li:only-child::before { display: none; }
+.workspace-root .invoice-history-dot { position: relative; z-index: 1; width: 12px; height: 12px; margin: 14px 0 0 5px; border: 2px solid var(--surface); border-radius: 999px; background: var(--ink-faint); box-shadow: 0 0 0 1px var(--edge); }
+.workspace-root .invoice-history-list .is-payment .invoice-history-dot { background: var(--green-800); }
+.workspace-root .invoice-history-list .is-void .invoice-history-dot { background: var(--negative); }
+.workspace-root .invoice-history-list .is-plan .invoice-history-dot { background: var(--data-accent); }
+.workspace-root .invoice-history-list .is-followup .invoice-history-dot { background: #d88645; }
+.workspace-root .invoice-history-entry { min-width: 0; padding: 6px 0 8px; border-bottom: 1px solid var(--rule); }
+.workspace-root .invoice-history-list > li:last-child .invoice-history-entry { border-bottom: 0; }
+.workspace-root .invoice-history-entry > summary { cursor: pointer; border-radius: 8px; }
+.workspace-root .invoice-history-entry > summary:hover strong { color: var(--primary); }
+.workspace-root .invoice-history-entry > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.workspace-root .invoice-history-entry > summary strong { font-size: 14px; transition: color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .invoice-history-fact { display: -webkit-box; overflow: hidden; color: var(--ink); font-size: 13px; overflow-wrap: anywhere; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.workspace-root .invoice-history-entry > summary .app-icon { flex: none; transition: transform var(--duration-fast, 250ms) var(--ease-smooth-out, ease-out); }
+.workspace-root .invoice-history-details { gap: 6px; margin: 6px 0 4px; padding: 10px 12px; border-radius: 10px; background: #f6f7f4; font-size: 13px; }
+.workspace-root .invoice-history-details p { margin: 0; }
+.workspace-root .invoice-history-details blockquote { margin: 0; padding: 6px 10px; border-left: 3px solid var(--edge); border-radius: 0 8px 8px 0; background: var(--surface); }
+.workspace-root .invoice-history-links { display: flex; flex-wrap: wrap; gap: 4px 14px; font-weight: 600; }
+.workspace-root .invoice-history-pages { display: flex; gap: 8px; margin-top: 12px; }
+.workspace-root .invoice-history-empty { margin: 10px 0 0; padding: 14px; border: 1px dashed var(--edge); border-radius: 10px; color: var(--ink-soft); font-size: 13.5px; }
+.workspace-root .invoice-history-foot { margin: 10px 0 0; color: var(--ink-faint); font-size: 12px; }
+@media (prefers-reduced-motion: reduce) { .workspace-root .invoice-history-entry > summary strong, .workspace-root .invoice-history-entry > summary .app-icon { transition: none; } }
+
+/* Review Inbox card: one main action (Confirm); Edit, Ask a question and Reject open their own small form. */
+.workspace-root .intake-item .inline-actions { margin-top: 4px; }
+.workspace-root .intake-action-form { display: grid; gap: 12px; }
+.workspace-root .intake-action-form .intake-buttons { margin: 0; }
+.workspace-root .intake-action-lead { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.45; }
+.workspace-root .intake-action-blocked { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fff8f1; color: #a25522; font-size: 13.5px; font-weight: 600; }
+.workspace-root .intake-action-form .button.intake-reject { border-color: var(--negative); background: var(--negative); }
+
+/* Review Inbox card: status in words, a field-by-field comparison, and the original row as a small table. */
+.workspace-root .intake-head p { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 4px; }
+.workspace-root .intake-status { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.workspace-root .intake-status.is-warn { background: #fff8f1; color: #a25522; }
+.workspace-root .intake-status.is-ok { background: var(--green-50); color: var(--green-900); }
+.workspace-root .intake-status.is-off { background: #f1f3ef; color: var(--ink-soft); }
+.workspace-root .intake-diff { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13.5px; }
+.workspace-root .intake-diff th, .workspace-root .intake-diff td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.workspace-root .intake-diff thead th { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+.workspace-root .intake-diff th, .workspace-root .intake-diff td { white-space: normal; text-transform: none; letter-spacing: normal; }
+.workspace-root .intake-diff { table-layout: fixed; }
+.workspace-root .intake-diff tbody th { width: 28%; color: var(--ink-soft); font-weight: 500; }
+.workspace-root .intake-diff tbody td:first-of-type { color: var(--ink-soft); }
+.workspace-root .intake-diff tr.is-changed td:last-child { background: #fff8f1; color: #a25522; font-weight: 700; }
+.workspace-root .intake-new { padding: 12px 14px; border: 1px solid var(--edge); border-radius: 12px; background: #fbfcfa; }
+.workspace-root .intake-new-title { margin: 0 0 10px; font-size: 13.5px; font-weight: 600; }
+.workspace-root .intake-new dl, .workspace-root .intake-source-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; margin: 0; }
+.workspace-root .intake-new dt, .workspace-root .intake-source-row dt { color: var(--ink-soft); font-size: 12px; }
+.workspace-root .intake-new dd, .workspace-root .intake-source-row dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.workspace-root .intake-source > summary, .workspace-root .intake-source-tech > summary { color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer; }
+.workspace-root .intake-source > summary:hover { color: var(--ink); }
+.workspace-root .intake-source[open] { display: grid; gap: 8px; }
+.workspace-root .intake-source p { margin: 0; font-size: 12.5px; }
+.workspace-root .intake-source-row { padding: 10px 12px; border-radius: 10px; background: #f6f7f4; }
+.workspace-root .intake-note { margin: 0; padding: 8px 12px; border-left: 3px solid #d88645; border-radius: 0 8px 8px 0; background: #fffaf5; font-size: 13px; }
+.workspace-root .intake-note span { font-weight: 700; }
+.workspace-root .intake-resolved { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
+@media (max-width: 560px) { .workspace-root .intake-diff tbody th { width: auto; } .workspace-root .intake-diff th, .workspace-root .intake-diff td { padding: 8px 6px; } }
+
+/* Review Inbox top: two pill tabs with a count, like the invoice filters. */
+.workspace-root .inbox-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.workspace-root .inbox-tabs > a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--edge); border-radius: 999px; background: var(--surface); color: var(--ink-soft); font-size: 13px; font-weight: 600; text-decoration: none; transition: border-color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .inbox-tabs > a:hover { border-color: var(--data-accent); }
+.workspace-root .inbox-tabs > a[aria-current="page"] { border-color: var(--primary); background: var(--primary); color: #fff; }
+.workspace-root .inbox-tabs > a[aria-current="page"] .history-count { background: #ffffff26; color: #fff; }
+.workspace-root .inbox-tabs > a:focus-visible { outline: 2px solid #28734f; outline-offset: 2px; }
+.workspace-root .inbox-tabs-note { margin-left: 4px; color: var(--ink-soft); font-size: 12.5px; }
+@media (pointer: coarse) { .workspace-root .inbox-tabs > a { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .workspace-root .inbox-tabs > a { transition: none; } }
+.workspace-root .inbox-empty h2 { margin: 0 0 6px; }
+.workspace-root .inbox-empty p { margin: 0; max-width: 60ch; }
+
+/* Confirm several at once: a compact pick list; look-alikes sit apart and can't be ticked. */
+.workspace-root .bulk-confirm h2 { margin: 0; }
+.workspace-root .bulk-confirm > .intake-panel-body > p { margin: 4px 0 0; }
+.workspace-root .bulk-list { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.workspace-root .bulk-pick { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--edge); border-radius: 10px; background: var(--surface); cursor: pointer; transition: border-color var(--duration-quick, 150ms) ease-out, background-color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .bulk-pick:hover { border-color: var(--data-accent); }
+.workspace-root .bulk-pick.is-picked { border-color: var(--primary); background: var(--green-50); }
+.workspace-root .bulk-pick.is-off { cursor: default; background: #f6f7f4; color: var(--ink-soft); }
+.workspace-root .bulk-pick input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
+.workspace-root .bulk-row { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.workspace-root .bulk-row-main { display: grid; gap: 2px; min-width: 0; }
+.workspace-root .bulk-row-main strong { font-size: 14px; overflow-wrap: anywhere; }
+.workspace-root .bulk-row-main small { color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+.workspace-root .bulk-kind { width: fit-content; padding: 1px 7px; border-radius: 999px; background: #f1f3ef; color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+.workspace-root .bulk-row-amount { flex: none; font-size: 14px; }
+.workspace-root .bulk-lookalikes { margin-top: 14px; }
+.workspace-root .bulk-lookalikes > p { margin: 0; color: #a25522; font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .workspace-root .bulk-pick { transition: none; } }
+
+/* Follow-ups page queue: one row per invoice that leads with the next task; tasks open below, no inner scroll box. */
+.workspace-root .followup-queue-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.workspace-root .followup-queue-item + .followup-queue-item { border-top: 1px solid var(--rule); }
+.workspace-root .followup-queue-item { border-left: 3px solid transparent; }
+.workspace-root .followup-queue-item.is-late { border-left-color: var(--negative); }
+.workspace-root .followup-queue-item.is-today { border-left-color: #d88645; }
+.workspace-root .followup-queue-item.is-later { border-left-color: var(--data-accent); }
+.workspace-root .followups-page .followup-queue .followup-invoice-card { margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.workspace-root .followups-page .followup-queue .followup-invoice-card > summary { display: flex; align-items: center; gap: 16px; padding: 14px 20px; list-style: none; cursor: pointer; transition: background-color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .followups-page .followup-queue .followup-invoice-card > summary::-webkit-details-marker { display: none; }
+.workspace-root .followups-page .followup-queue .followup-invoice-card > summary:hover { background: #f8faf7; }
+.workspace-root .followups-page .followup-queue .followup-invoice-card > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.workspace-root .followup-queue-main { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.workspace-root .followup-queue-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.workspace-root .followup-queue-main > strong { font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+.workspace-root .followup-queue-main > small { color: var(--ink-soft); font-size: 12.5px; overflow-wrap: anywhere; }
+.workspace-root .followup-queue-toggle { display: inline-flex; flex: none; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--edge); border-radius: 10px; background: var(--surface); color: var(--primary); font-size: 12px; font-weight: 700; }
+.workspace-root .followup-queue-toggle svg { transition: transform var(--duration-fast, 250ms) var(--ease-smooth-out, ease-out); }
+.workspace-root .followups-page .followup-queue details[open] > summary .followup-queue-toggle { border-color: var(--primary); background: var(--green-50); }
+.workspace-root .followups-page .followup-queue details[open] > summary .followup-queue-toggle svg { transform: rotate(180deg); }
+.workspace-root .followup-queue-toggle .when-open { display: none; }
+.workspace-root .followups-page .followup-queue details[open] > summary .followup-queue-toggle .when-open { display: inline; }
+.workspace-root .followups-page .followup-queue details[open] > summary .followup-queue-toggle .when-closed { display: none; }
+/* With a single task, the row already names it and when it is due, so inside show only its actions. With several, each keeps its own title. */
+.workspace-root .followups-page .followup-queue .followup-tasks > .followup-task:only-child { padding: 0; border: 0; background: transparent; }
+.workspace-root .followups-page .followup-queue .followup-tasks > .followup-task:only-child > h3,
+.workspace-root .followups-page .followup-queue .followup-tasks > .followup-task:only-child > .followup-meta { display: none; }
+.workspace-root .followups-page .followup-queue .followup-tasks { margin-top: 0; }
+.workspace-root .followups-page .followup-queue .followup-invoice-body { display: grid; gap: 12px; padding: 0 20px 18px; border: 0; }
+.workspace-root .followups-page .followup-queue .followup-invoice-body .followup-panel { padding: 0; border: 0; box-shadow: none; background: transparent; }
+.workspace-root .followup-queue-link { display: inline-flex; align-items: center; gap: 4px; width: fit-content; font-size: 13px; }
+@media (max-width: 560px) {
+  .workspace-root .followups-page .followup-queue .followup-invoice-card > summary { align-items: flex-start; padding: 12px 14px; gap: 10px; }
+  .workspace-root .followup-queue-toggle span { display: none; }
+  .workspace-root .followups-page .followup-queue .followup-invoice-body { padding: 0 14px 14px; }
+}
+@media (pointer: coarse) { .workspace-root .followup-queue-toggle { min-height: 44px; min-width: 44px; justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .workspace-root .followups-page .followup-queue .followup-invoice-card > summary, .workspace-root .followup-queue-toggle svg { transition: none; } }
+.workspace-root .followup-queue .records-head > span { flex: none; white-space: nowrap; }
+
+/* Follow-ups page: checks card in plain words, then one summary (amount waiting + task counts). */
+.workspace-root .followup-checks { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; padding: 18px 20px; border: 1px solid var(--edge); border-radius: 18px; background: var(--surface); }
+.workspace-root .followup-checks.is-paused { border-color: #f1d9c2; background: #fffaf5; }
+.workspace-root .followup-checks-copy { display: grid; gap: 4px; flex: 1 1 420px; min-width: 0; }
+.workspace-root .followup-checks-copy h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; font-weight: 700; }
+.workspace-root .followup-checks.is-paused .followup-checks-copy h2 { color: #a25522; }
+.workspace-root .followup-checks-copy p { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.workspace-root .followup-checks-copy small { color: var(--ink-soft); font-size: 12px; }
+.workspace-root .followup-checks-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.workspace-root .followup-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); margin-top: 16px; border: 1px solid var(--edge); border-radius: 18px; background: var(--surface); overflow: hidden; }
+.workspace-root .followup-summary-total { display: grid; align-content: center; gap: 4px; padding: 20px 22px; background: linear-gradient(135deg, var(--green-50), transparent 75%); }
+.workspace-root .followup-summary-total > span, .workspace-root .followup-summary-tasks-head > span { color: var(--ink-soft); font-size: 13px; font-weight: 600; }
+.workspace-root .followup-summary-total > strong { font-size: clamp(26px, 3vw, 34px); line-height: 1.15; color: var(--primary); }
+.workspace-root .followup-summary-total > p { margin: 0; color: var(--ink-soft); font-size: 13px; }
+.workspace-root .followup-summary-total .followup-source-link { width: fit-content; margin-top: 6px; }
+.workspace-root .followup-summary-tasks { display: grid; align-content: center; gap: 12px; padding: 20px 22px; border-left: 1px solid var(--rule); }
+.workspace-root .followup-summary-tasks-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.workspace-root .followup-summary-tasks-head strong { font-size: 22px; }
+.workspace-root .followup-stack { display: flex; gap: 3px; height: 12px; border-radius: 999px; overflow: hidden; background: #eef1ec; }
+.workspace-root .followup-stack > span { flex-basis: 0; min-width: 6px; transition: flex-grow var(--duration-slow, 400ms) var(--ease-smooth-out, ease-out); }
+.workspace-root .followup-stack .is-empty { flex-grow: 1; background: transparent; }
+.workspace-root .followup-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.workspace-root .followup-legend li { display: grid; grid-template-columns: 10px minmax(0, 1fr); align-items: center; column-gap: 6px; padding: 8px 10px; border-radius: 10px; background: #f6f7f4; }
+.workspace-root .followup-legend li span { color: var(--ink-soft); font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.workspace-root .followup-legend li strong { grid-column: 2; font-size: 20px; line-height: 1.2; }
+.workspace-root .followup-legend i, .workspace-root .followup-stack > span { display: block; }
+.workspace-root .followup-legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--edge); }
+.workspace-root :is(.followup-stack, .followup-legend) .is-late, .workspace-root .followup-legend .is-late i { background: var(--negative); }
+.workspace-root :is(.followup-stack, .followup-legend) .is-today, .workspace-root .followup-legend .is-today i { background: #d88645; }
+.workspace-root :is(.followup-stack, .followup-legend) .is-later, .workspace-root .followup-legend .is-later i { background: var(--data-accent); }
+.workspace-root .followup-legend li.is-late, .workspace-root .followup-legend li.is-today, .workspace-root .followup-legend li.is-later { background: #f6f7f4; }
+.workspace-root .followup-legend li.is-late[data-count]:not([data-count="0"]) { background: #fff1ef; }
+.workspace-root .followup-legend li.is-late[data-count]:not([data-count="0"]) strong { color: var(--negative); }
+.workspace-root .followup-legend .is-done i { background: var(--green-800); }
+@media (prefers-reduced-motion: reduce) { .workspace-root .followup-stack > span { transition: none; } }
+@media (max-width: 1100px) { .workspace-root .followup-summary { grid-template-columns: minmax(0, 1fr); } .workspace-root .followup-summary-tasks { border-left: 0; border-top: 1px solid var(--rule); } }
+@media (max-width: 560px) { .workspace-root .followup-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workspace-root .followup-checks { padding: 16px; } }
+
+/* Overview: four separate cards that add up to the 30-day number (cash now + coming in − going out = in 30 days).
+   The signs sit in the gaps between cards; overdue invoices are one quiet line under the row. */
+.workspace-root .cash-sum { margin-top: 16px; }
+.workspace-root .cash-sum-row { --sum-gap: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sum-gap); margin: 0; padding: 0; list-style: none; }
+.workspace-root .cash-sum-part { position: relative; display: flex; min-width: 0; }
+.workspace-root .cash-sum-part > a { display: grid; flex: 1; align-content: start; gap: 4px; min-width: 0; padding: 18px 20px; border: 1px solid var(--edge); border-radius: 18px; background: var(--surface); color: var(--ink); text-decoration: none; transition: border-color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .cash-sum-part > a:hover { border-color: var(--data-accent); }
+.workspace-root .cash-sum-part > a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.workspace-root .cash-sum-op { position: absolute; left: calc(var(--sum-gap) / -2 - 13px); top: 50%; z-index: 1; display: grid; place-items: center; width: 26px; height: 26px; margin-top: -13px; border: 1px solid var(--edge); border-radius: 999px; background: var(--surface); color: var(--ink-soft); font-size: 15px; font-weight: 700; line-height: 1; box-shadow: 0 1px 2px rgb(0 0 0 / 6%); }
+.workspace-root .cash-sum-label { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 13px; font-weight: 600; }
+.workspace-root .cash-sum-label svg { flex: none; }
+.workspace-root .cash-sum-part strong { font-size: clamp(20px, 2vw, 26px); line-height: 1.2; overflow-wrap: anywhere; }
+.workspace-root .cash-sum-part small { color: var(--ink-faint); font-size: 12.5px; }
+.workspace-root .cash-sum-part.is-now .cash-sum-label svg { color: var(--green-800); }
+.workspace-root .cash-sum-part.is-in .cash-sum-label svg { color: var(--data-accent); }
+.workspace-root .cash-sum-part.is-out .cash-sum-label svg { color: #8a6bbf; }
+.workspace-root .cash-sum-part.is-result > a { border-color: #cfe3d6; background: var(--green-50); }
+.workspace-root .cash-sum-part.is-result strong { color: var(--green-900); }
+.workspace-root .cash-sum-part.is-result.is-negative > a { border-color: #f3d3c3; background: #fff5ef; }
+.workspace-root .cash-sum-part.is-result.is-negative strong, .workspace-root .cash-sum-part.is-result.is-negative small { color: #b4471f; }
+.workspace-root .cash-sum-part.is-result .cash-sum-op { border-color: transparent; background: var(--ink); color: #fff; }
+.workspace-root .cash-sum-overdue, .workspace-root .cash-sum-clear { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; padding: 0 4px; font-size: 13px; }
+.workspace-root .cash-sum-overdue { width: fit-content; max-width: 100%; color: #a25522; text-decoration: none; }
+.workspace-root .cash-sum-overdue:hover .cash-sum-overdue-cta { text-decoration: underline; }
+.workspace-root .cash-sum-overdue:focus-visible { outline: 2px solid #a25522; outline-offset: 2px; border-radius: 6px; }
+.workspace-root .cash-sum-overdue-cta { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; white-space: nowrap; }
+.workspace-root .cash-sum-clear { color: var(--green-900); }
+@media (max-width: 1100px) {
+  .workspace-root .cash-sum-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Third card starts a new row, so its sign sits at its top-left corner instead of in a gap. */
+  .workspace-root .cash-sum-part:nth-child(3) .cash-sum-op { left: 12px; top: -13px; margin-top: 0; }
+}
+@media (max-width: 560px) {
+  .workspace-root .cash-sum-row { --sum-gap: 12px; }
+  .workspace-root .cash-sum-part > a { padding: 14px; }
+  .workspace-root .cash-sum-part strong { font-size: 18px; }
+  .workspace-root .cash-sum-part small { font-size: 11.5px; }
+  .workspace-root .cash-sum-part:nth-child(even) .cash-sum-op { width: 22px; height: 22px; margin-top: -11px; left: calc(var(--sum-gap) / -2 - 11px); font-size: 13px; }
+  .workspace-root .cash-sum-part:nth-child(3) .cash-sum-op { width: 22px; height: 22px; left: 10px; top: -11px; font-size: 13px; }
+  .workspace-root .cash-sum-overdue { display: block; line-height: 1.5; }
+  .workspace-root .cash-sum-overdue > svg { display: inline; margin-right: 6px; vertical-align: -2px; }
+  .workspace-root .cash-sum-overdue > span { display: inline; }
+  .workspace-root .cash-sum-overdue-cta { margin-left: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .workspace-root .cash-sum-part > a { transition: none; } }
+
+/* Cash balance chart (Overview hero and Forecast tab): fills its card; the part below ₱0 is shaded orange;
+   the end balance is labelled at the right edge; the daily plan sits in the head instead of a fake 30d control. */
+.workspace-root .overview-forecast { display: flex; flex-direction: column; gap: 10px; }
+.workspace-root .overview-forecast .forecast-head { align-items: center; gap: 12px; }
+.workspace-root .overview-forecast .forecast-head .daily-plan { flex: none; }
+.workspace-root .overview-forecast .chart-wrap { display: flex; flex: 1; flex-direction: column; gap: 6px; height: auto; min-height: 240px; margin: 0; padding: 0 64px 0 52px; }
+.workspace-root .overview-forecast .chart-plot { position: relative; flex: 1; min-height: 210px; }
+.workspace-root .overview-forecast .chart { position: absolute; inset: 0; width: 100%; height: 100%; }
+.workspace-root .overview-forecast .chart-labels { position: absolute; top: 0; bottom: 0; left: -52px; display: block; width: 46px; }
+.workspace-root .overview-forecast .chart-labels span { position: absolute; right: 0; transform: translateY(-50%); color: var(--ink-faint); font-size: 11.5px; white-space: nowrap; }
+.workspace-root .overview-forecast .chart-labels span.is-zero { color: var(--ink); font-weight: 700; }
+.workspace-root .overview-forecast .chart-zero { stroke: #9aa59c; stroke-width: 1.25; stroke-dasharray: none; }
+.workspace-root .overview-forecast .forecast-points { inset: 0; }
+.workspace-root .overview-forecast .chart-dates { padding: 0; }
+.workspace-root .overview-forecast .end-tip { position: absolute; right: -64px; display: grid; width: 60px; text-align: right; line-height: 1.25; pointer-events: none; }
+.workspace-root .overview-forecast .end-tip span { color: var(--ink-faint); font-size: 11px; }
+.workspace-root .overview-forecast .end-tip strong { color: var(--green-800); font-size: 12px; white-space: nowrap; }
+.workspace-root .overview-forecast .end-tip.is-negative strong { color: #b4471f; }
+.workspace-root .overview-forecast .risk-tip { pointer-events: none; }
+.workspace-root .overview-forecast .chart-legend { flex-wrap: wrap; row-gap: 6px; padding-left: 52px; }
+.workspace-root .overview-forecast .legend-below { width: 14px; height: 10px; border-radius: 3px; background: linear-gradient(#d886454d, #d886450f); border-top: 2px solid #d88645; }
+.workspace-root .overview-page .hero-summary .ai-label { margin-bottom: 20px; }
+@media (max-width: 560px) {
+  .workspace-root .overview-forecast .chart-wrap { min-height: 220px; padding: 0 8px 0 44px; }
+  .workspace-root .overview-forecast .chart-labels { left: -44px; width: 40px; }
+  .workspace-root .overview-forecast .end-tip { display: none; }
+  .workspace-root .overview-forecast .chart-legend { padding-left: 0; }
+  .workspace-root .overview-forecast .forecast-head { flex-wrap: wrap; }
+}
+
+/* Forecast weekly summary: the end balance is each week’s last forecast day. */
+.workspace-root .section-forecast > .forecast-weeks { order: 2; min-width: 0; }
+/* Cash by week: one card; each busy week lists the invoices and bills the forecast counted; quiet weeks are one short row.
+   Balances and the low point live in the chart above, so they are not repeated here. */
+.workspace-root .forecast-weeks.records-panel { padding: 0; }
+.workspace-root .forecast-week-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.workspace-root .forecast-week-row { display: grid; grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); gap: 8px 24px; padding: 16px 20px; }
+.workspace-root .forecast-week-row + .forecast-week-row { border-top: 1px solid var(--rule); }
+.workspace-root .forecast-week-row h3 { margin: 0; font-size: 14px; font-weight: 700; }
+.workspace-root .forecast-week-when { display: grid; align-content: start; gap: 8px; }
+.workspace-root .forecast-week-when p { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.workspace-root .forecast-week-when span { padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.workspace-root .forecast-week-when .is-in { background: var(--green-50); color: var(--green-800); }
+.workspace-root .forecast-week-when .is-out { background: #f4eef9; color: #6c4fa0; }
+.workspace-root .forecast-week-items { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.workspace-root .forecast-week-items a { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; color: var(--ink); text-decoration: none; transition: background-color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .forecast-week-items a:hover { background: #f6f8f5; }
+.workspace-root .forecast-week-items a:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.workspace-root .forecast-week-items time { color: var(--ink-soft); font-size: 12.5px; font-weight: 600; }
+.workspace-root .forecast-week-item-name { display: grid; min-width: 0; }
+.workspace-root .forecast-week-item-name strong { font-size: 13.5px; overflow-wrap: anywhere; }
+.workspace-root .forecast-week-item-name small { color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+.workspace-root .forecast-week-items a > .num { font-size: 14px; white-space: nowrap; }
+.workspace-root .forecast-week-items .is-in a > .num { color: var(--green-800); }
+.workspace-root .forecast-week-items .is-out a > .num { color: #6c4fa0; }
+.workspace-root .forecast-week-more { padding: 4px 10px; color: var(--ink-soft); font-size: 12.5px; }
+.workspace-root .forecast-week-row.is-quiet { align-items: baseline; }
+.workspace-root .forecast-week-row.is-quiet h3 { color: var(--ink-soft); font-weight: 600; }
+.workspace-root .forecast-week-row.is-quiet p { margin: 0; padding-left: 10px; color: var(--ink-faint); font-size: 13px; }
+@media (max-width: 760px) {
+  .workspace-root .forecast-week-row { grid-template-columns: minmax(0, 1fr); padding: 14px 16px; }
+  .workspace-root .forecast-week-row.is-quiet p { padding-left: 0; }
+  .workspace-root .forecast-week-items a { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; padding: 8px 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .workspace-root .forecast-week-items a { transition: none; } }
+
+/* Notification bell: a count instead of a dot; the panel groups what needs someone now (bills, money to collect,
+   follow-ups, review) with amounts and how late each item is. */
+.workspace-root .notification > .notification-count { top: 4px; right: 4px; display: grid; place-items: center; width: auto; min-width: 18px; height: 18px; padding: 0 5px; border: 2px solid var(--surface); border-radius: 999px; background: var(--data-accent); color: #fff; font-size: 10.5px; font-weight: 700; line-height: 1; }
+.workspace-root .notification.has-urgent > .notification-count { background: var(--negative); }
+.workspace-root .notification-panel { width: min(380px, calc(100vw - 24px)); max-height: min(70vh, 560px); overflow-y: auto; padding: 6px 6px 8px; }
+.workspace-root .notification-panel .notification-head { display: grid; justify-content: stretch; gap: 2px; padding: 10px 10px 12px; }
+.workspace-root .notification-panel .notification-head strong { font-size: 14px; font-weight: 700; }
+.workspace-root .notification-panel .notification-head small { color: var(--ink-soft); font-size: 12px; }
+.workspace-root .notification-group { padding-top: 6px; }
+.workspace-root .notification-group + .notification-group { margin-top: 2px; border-top: 1px solid var(--line); }
+.workspace-root .notification-group-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px 2px; }
+.workspace-root .notification-group-head span { color: var(--ink-faint); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.workspace-root .notification-group-head a { color: var(--green-700); font-size: 12px; font-weight: 600; text-decoration: none; }
+.workspace-root .notification-group-head a:hover { text-decoration: underline; }
+.workspace-root .popover .notification-item { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; margin-top: 2px; padding: 8px 10px; border-radius: 10px; color: var(--ink); text-decoration: none; transition: background-color var(--duration-quick, 150ms) ease-out; }
+.workspace-root .popover .notification-item:hover { background: #f4f8f5; }
+.workspace-root .popover .notification-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.workspace-root .notification-panel .notification-icon { width: 30px; height: 30px; border-radius: 9px; }
+.workspace-root .notification-group.is-bills .notification-icon { background: #f4eef9; color: #6c4fa0; }
+.workspace-root .notification-group.is-collect .notification-icon { background: var(--green-100); color: var(--green-800); }
+.workspace-root .notification-group.is-followups .notification-icon { background: var(--amber-100); color: var(--amber-700); }
+.workspace-root .notification-group.is-review .notification-icon { background: #eef1ec; color: var(--ink-soft); }
+.workspace-root .notification-copy { display: grid; min-width: 0; }
+.workspace-root .notification-copy strong { overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-root .notification-copy small { overflow: hidden; color: var(--ink-faint); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-root .notification-item.is-late .notification-when { color: var(--negative); font-weight: 600; }
+.workspace-root .notification-amount { color: var(--ink); font-size: 13px; font-weight: 700; white-space: nowrap; }
+.workspace-root .notification-empty { display: flex; align-items: center; gap: 8px; margin: 0; padding: 16px 10px 10px; color: var(--green-800); font-size: 13.5px; font-weight: 600; }
+.workspace-root .notification-empty > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: var(--green-50); }
+@media (prefers-reduced-motion: reduce) { .workspace-root .popover .notification-item { transition: none; } }
+
+/* Invoice form: "+ Add a new customer…" in the Customer dropdown opens this small panel right under it. */
+.workspace-root .customer-select { position: relative; }
+.workspace-root .customer-new { display: grid; gap: 10px; margin-top: 6px; padding: 12px 14px; border: 1px solid var(--edge); border-radius: 12px; background: #fbfcfa; container-type: inline-size; }
+.workspace-root .customer-new-title { margin: 0; font-size: 13px; font-weight: 700; }
+.workspace-root .customer-new-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.workspace-root .customer-new-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.workspace-root .customer-new-actions .button { min-height: 38px; }
+.workspace-root .customer-new-hint { margin: 0; font-size: 12px; }
+@container (max-width: 360px) { .workspace-root .customer-new-fields { grid-template-columns: minmax(0, 1fr); } }
 
 /* Contextual assistant actions and the scope shown beside the composer. */
 .workspace-root .ask-ai { display: inline-flex; align-items: center; gap: 7px; width: fit-content; max-width: 100%; min-height: 44px; padding: 0 12px 0 10px; border: 1px solid #cfe3d6; border-radius: 999px; background: var(--green-50, #eef8f1); color: var(--primary); font: inherit; font-size: 12.5px; font-weight: 700; text-align: left; cursor: pointer; transition: background-color var(--duration-quick, 150ms) ease-out, border-color var(--duration-quick, 150ms) ease-out; }

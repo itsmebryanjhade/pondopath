@@ -64,11 +64,17 @@ export function invoiceList(workspace: WorkspaceSnapshot): InvoiceListItem[] {
 
 export type WorkspaceSearchRow = Pick<ActivityRow, "id" | "kind" | "label" | "reference" | "href" | "status">;
 
-export function paidInvoiceSearchRows(workspace: WorkspaceSnapshot): WorkspaceSearchRow[] {
-  return invoiceList(workspace).filter((invoice) => invoice.state === "paid").map((invoice) => ({
+export function paidRecordSearchRows(workspace: WorkspaceSnapshot): WorkspaceSearchRow[] {
+  const invoices = invoiceList(workspace).filter((invoice) => invoice.state === "paid").map<WorkspaceSearchRow>((invoice) => ({
     id: invoice.id, kind: "invoice", label: invoice.customer, reference: invoice.number,
     href: `/invoices/${invoice.id}`, status: "Paid",
   }));
+  const expenseHrefs = expenseLinks(workspace.expenses);
+  const bills = workspace.expenses.filter((expense) => expense.unpaid_cents === 0).map<WorkspaceSearchRow>((expense) => ({
+    id: expense.id, kind: "expense", label: expense.payee || expense.label, reference: expense.label,
+    href: expenseHrefs.get(expense.id)!, status: "Paid",
+  }));
+  return [...invoices, ...bills];
 }
 
 export function searchWorkspaceRecords(rows: WorkspaceSearchRow[], query: string) {
@@ -115,3 +121,6 @@ export function historyRows(workspace: WorkspaceSnapshot, movements: Movement[])
   });
 }
 
+
+
+export const paidInvoiceSearchRows = paidRecordSearchRows;

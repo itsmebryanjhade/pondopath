@@ -31,4 +31,10 @@ describe("toasts", () => {
     expect(toastIcon("notice")).toBe("!");
     expect(pushToast([], { message: "Only Excel (.xlsx) and CSV files.", tone: "notice" }, 1)[0].tone).toBe("notice");
   });
+  it("replaces a toast with the same key instead of stacking it, and leaves other toasts alone", () => {
+    let list = pushToast([], { message: "Saved" }, 1);
+    list = pushToast(list, { message: "Records refreshed · 4:18 PM", key: "refresh" }, 2);
+    list = pushToast(list, { message: "Records refreshed · 4:19 PM", key: "refresh" }, 3);
+    expect(list.map((toast) => toast.message)).toEqual(["Saved", "Records refreshed · 4:19 PM"]);
+  });
 });

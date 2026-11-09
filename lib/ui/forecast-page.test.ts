@@ -2,6 +2,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import ForecastPage from "@/app/(workspace)/forecast/page";
+import { calculateForecast } from "@/lib/domain/forecast";
+import { formatPHP } from "@/lib/domain/money";
+import { forecastWeeks } from "@/lib/ui/forecast-weeks";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 
 const readers = vi.hoisted(() => ({ getWorkspace: vi.fn() }));
@@ -40,13 +43,34 @@ describe("source Forecast layout preserves calculated risk", () => {
     expect(html).toContain("Before you trust this forecast");
     expect(html).not.toContain("Compare a scenario");
   });
+  it("lists the invoices and bills behind each week in one card without repeating the chart's balances", async () => {
+    const workspace = uiWorkspace();
+    workspace.forecastInput.invoices[0].expectation!.date = "2026-11-12";
+    workspace.forecastInput.expenses[1].dueDate = "2026-11-07";
+    workspace.forecastInput.expenses[2].dueDate = "2026-11-26";
+
+    const weeks = forecastWeeks(calculateForecast(workspace.forecastInput).days, workspace.forecastInput);
+    const html = await render(workspace);
+    const summary = html.match(/<section [^>]*aria-labelledby="forecast-weeks-heading"[^>]*>([\s\S]*?)<\/section>/)?.[1] ?? "";
+    const rows = summary.match(/class="forecast-week-row/g) ?? [];
+
+    expect(rows).toHaveLength(weeks.length);
+    for (const week of weeks.filter((row) => !row.quiet)) {
+      for (const item of week.items) expect(summary).toContain(`${item.kind === "in" ? "+" : "−"}${formatPHP(item.cents)}`);
+    }
+    expect(summary).toContain(`href="/invoices/${workspace.invoices[0].id}?from=forecast"`);
+    expect(summary).toContain("Nothing comes in or goes out.");
+    expect(summary).not.toContain("Lowest");
+    expect(summary).not.toContain("Ends at");
+    expect(summary).not.toContain("₱0.00");
+  });
   it("keeps incomplete promises and overdue due-now expenses visible", async () => {
     const workspace = uiWorkspace();
     workspace.forecastInput.invoices[0].expectation!.remainingCents = 3_000_000;
     workspace.forecastInput.expenses[0].dueDate = "2026-10-28";
     const html = await render(workspace);
     expect(html).toContain("Incomplete plan: 1 unpaid invoice has money with no expected date");
-    expect(html).toContain(`/invoices/${workspace.invoices[0].id}?plan=edit#collection-plan`);
+    expect(html).toContain(`/invoices/${workspace.invoices[0].id}?from=forecast&amp;plan=edit#collection-plan`);
     expect(html).toContain("1 overdue bill is counted as due today");
     expect(html).toContain("isn’t money received");
   });

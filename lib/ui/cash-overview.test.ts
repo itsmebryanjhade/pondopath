@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildActivityRows, filterActivityRows, paidInvoiceSearchRows, searchWorkspaceRecords } from "./cash-overview";
+import { buildActivityRows, filterActivityRows, paidRecordSearchRows, searchWorkspaceRecords } from "./cash-overview";
 import { delayedCase } from "../../tests/fixtures/business";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 
@@ -47,12 +47,27 @@ describe("live cash-flow activity", () => {
     const workspace = fixture();
     workspace.invoices[1] = { ...workspace.invoices[0], id: "paid", number: "DEMO-PAID", outstanding_cents: 0 };
     const activity = buildActivityRows(workspace);
-    const rows = [...activity, ...paidInvoiceSearchRows(workspace)];
+    const rows = [...activity, ...paidRecordSearchRows(workspace)];
     const exact = searchWorkspaceRecords(rows, " demo-paid ");
     expect(exact.direct).toMatchObject({ status: "Paid", href: "/invoices/paid" });
     expect(exact.results[0]).toBe(exact.direct);
     expect(searchWorkspaceRecords(rows, "Fictional services").direct).toBeUndefined();
     expect(activity.some((row) => row.id === "paid")).toBe(false);
+  });
+
+  it("finds a paid bill by name on its actual Expenses page", () => {
+    const workspace = fixture();
+    const base = workspace.expenses[0];
+    workspace.expenses = Array.from({ length: 51 }, (_, index) => ({
+      ...base,
+      id: `item-${String(index).padStart(2, "0")}`,
+      label: index === 50 ? "Closed supplier bill" : base.label,
+      unpaid_cents: index === 50 ? 0 : base.unpaid_cents,
+    }));
+    const activity = buildActivityRows(workspace);
+    const search = searchWorkspaceRecords([...activity, ...paidRecordSearchRows(workspace)], "closed supplier bill");
+    expect(search.direct).toMatchObject({ kind: "expense", status: "Paid", href: "/expenses?page=2#expense-item-50" });
+    expect(activity.some((row) => row.id === "item-50")).toBe(false);
   });
 
   it("links to the expense's actual page even when earlier records have already been paid", () => {
