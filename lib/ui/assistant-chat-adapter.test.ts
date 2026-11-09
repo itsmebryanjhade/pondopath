@@ -1,133 +1,154 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildAssistantChatRequest,
   generatePageStarters,
-  generateMockReply,
-  createIsolatedChatModelAdapter,
-  trimChatHistory,
+  resolveAssistantDraftTarget,
+  sendAssistantChat,
+  sendReplyExtraction,
 } from "./assistant-chat-adapter";
+import type { AssistantChatProposal } from "@/lib/domain/assistant-chat";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 
-describe("assistant-chat-adapter", () => {
-  it("provides 3 page-aware starters based on pathname", () => {
-    const overviewStarters = generatePageStarters("/overview");
-    expect(overviewStarters).toHaveLength(3);
-    expect(overviewStarters[0]).toBe("What should I do first?");
+const workspace = uiWorkspace();
+const invoiceId = workspace.invoices[0].id;
+const scope = {
+  expectedRevision: workspace.revision, language: "taglish",
+  context: { page: "invoices", record: { kind: "invoice", id: invoiceId } },
+  intent: "draft_reminder",
+} as const;
+const proposal = {
+  task: "chat", kind: "answer", summary: "Here is the cash outlook.", sourceRevision: workspace.revision,
+  facts: [{ id: "cash-now", label: "Cash now", value: "₱40,000.00" }],
+  sources: [{ id: invoiceId, kind: "invoice", label: "DEMO-001", href: "/invoices/" + invoiceId }],
+  draft: null,
+} satisfies AssistantChatProposal;
+const message = (role: string, text: string, status = "complete") =>
+  ({ role, content: [{ type: "text", text }], status: { type: status } });
+const request = [message("user", "What should I check?")];
+const signal = () => new AbortController().signal;
+const success = (result: unknown = proposal) => Response.json({ ok: true, proposal: result, usage: null, model: null, provider: null });
 
-    const forecastStarters = generatePageStarters("/forecast");
-    expect(forecastStarters).toHaveLength(3);
-    expect(forecastStarters[0]).toContain("projected shortage");
+afterEach(() => vi.unstubAllGlobals());
 
-    const invoicesStarters = generatePageStarters("/invoices");
-    expect(invoicesStarters).toHaveLength(3);
-    expect(invoicesStarters[0]).toContain("customer owes the most");
-
-    const expensesStarters = generatePageStarters("/expenses");
-    expect(expensesStarters).toHaveLength(3);
-    expect(expensesStarters[0]).toContain("bills are due");
-
-    const followupsStarters = generatePageStarters("/followups");
-    expect(followupsStarters).toHaveLength(3);
-    expect(followupsStarters[0]).toContain("follow-ups are overdue");
+describe("Task 3 chat adapter", () => {
+  it("posts only the Task 3 fields and accepts a verified result or local clarification", async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(success()).mockResolvedValueOnce(success({
+      ...proposal, kind: "clarify", summary: "Choose one invoice.", facts: [], sources: [],
+    }));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(sendAssistantChat(request, scope, signal())).resolves.toEqual(proposal);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const [url, options] = fetcher.mock.calls[0];
+    expect(url).toBe("/api/assistant");
+    expect(options).toMatchObject({ method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, signal: expect.any(AbortSignal) });
+    expect(JSON.parse(options.body)).toEqual({ task: "chat", question: "What should I check?", history: [], ...scope });
+    await expect(sendAssistantChat(request, scope, signal())).resolves.toMatchObject({ kind: "clarify", draft: null });
   });
 
-  it("generates deterministic mock replies for cash questions with verified facts", () => {
-    const workspace = uiWorkspace();
-    const reply = generateMockReply("Explain our cash shortage", workspace);
-    expect(reply.text).toBeDefined();
-    expect(reply.sourceRevision).toBe(workspace.revision);
-    expect(reply.facts).toBeDefined();
-    expect(reply.facts?.some((f) => f.label === "Recorded available cash")).toBe(true);
-    expect(reply.sources).toBeDefined();
+  it("sends only the last three completed text pairs and excludes failed turns, tool parts, and the new question", () => {
+    const pairs = [1, 2, 3, 4].flatMap(i => [message("user", "Q" + i), message("assistant", "A" + i)]);
+    const input = buildAssistantChatRequest([
+      ...pairs, message("user", "Failed"), message("assistant", "Should be omitted", "incomplete"),
+      { role: "user", content: [{ type: "data", text: "private tool data" }, { type: "text", text: "New question" }] },
+    ], scope);
+    expect(input.question).toBe("New question");
+    expect(input.history).toEqual([2, 3, 4].map(i => ({ question: "Q" + i, answer: "A" + i })));
   });
 
-  it("generates draft reminder proposal when requested with matching source revision", () => {
-    const workspace = uiWorkspace();
-    const reply = generateMockReply("Draft a reminder for DEMO-001", workspace);
-    expect(reply.draft?.kind).toBe("reminder");
-    expect(reply.draft?.invoiceId).toBe(workspace.invoices[0].id);
-    expect(reply.draft?.suggestedBody).toContain("DEMO-001");
-    expect(reply.draft?.sourceRevision).toBe(workspace.revision);
+  it("trims the oldest whole pair against the full UTF-8 request limit", async () => {
+    const pairs = [1, 2, 3].flatMap(i => [message("user", String(i)), message("assistant", "あ".repeat(3000))]);
+    const input = buildAssistantChatRequest([...pairs, message("user", "界".repeat(1000))], scope);
+    expect(new TextEncoder().encode(JSON.stringify(input)).byteLength).toBeLessThanOrEqual(16_384);
+    expect(input.history.map(pair => pair.question)).toEqual(["3"]);
+    await expect(sendAssistantChat([message("user", "a".repeat(1001))], scope, signal())).rejects.toThrow();
   });
 
-  it("generates follow-up task draft proposal when requested", () => {
-    const workspace = uiWorkspace();
-    const reply = generateMockReply("Plan a follow-up task", workspace);
-    expect(reply.draft?.kind).toBe("followup");
-    expect(reply.draft?.invoiceId).toBe(workspace.invoices[0].id);
-    expect(reply.draft?.sourceRevision).toBe(workspace.revision);
+  it.each(["https://untrusted.example", "/invoices/another", "/expenses?page=2#expense-other"])(
+    "rejects an unverified source link %s and a mismatched revision", async href => {
+      vi.stubGlobal("fetch", vi.fn()
+        .mockResolvedValueOnce(success({ ...proposal, sources: [{ ...proposal.sources[0], href }] }))
+        .mockResolvedValueOnce(success({ ...proposal, sourceRevision: workspace.revision + 1 })));
+      await expect(sendAssistantChat(request, scope, signal())).rejects.toThrow();
+      await expect(sendAssistantChat(request, scope, signal())).rejects.toThrow(/Records changed/);
+    },
+  );
+
+  it("accepts the app's paginated expense link and preserves the selected invoice draft", async () => {
+    const expenseId = workspace.expenses[0].id;
+    const result = {
+      ...proposal,
+      sources: [...proposal.sources, { kind: "expense", id: expenseId, label: "Bill", href: "/expenses?page=2#expense-" + expenseId }],
+      draft: { kind: "followup", invoiceId, text: "Check the collection status.", date: "2026-11-06" },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(success(result)));
+    await expect(sendAssistantChat(request, { ...scope, intent: "draft_followup" }, signal())).resolves.toEqual(result);
   });
 
-  it("creates an isolated chat model adapter conforming to useLocalRuntime", async () => {
-    const workspace = uiWorkspace();
-    const adapter = createIsolatedChatModelAdapter(workspace);
-    const generator = adapter.run({
-      messages: [{ role: "user", content: [{ type: "text", text: "How much cash do we have?" }] }],
-    });
-    const result = await generator.next();
-    expect(result.done).toBe(false);
-    if (!result.done && result.value) {
-      expect(result.value.content[0].text).toBeDefined();
-    }
+  it.each([
+    [403, "FORBIDDEN", "Open the assistant from your signed-in workspace."],
+    [409, "STALE_VERSION", "Refresh records before asking again."],
+    [429, "AI_LIMIT", "The daily allowance is used."],
+    [503, "AI_PROVIDER_BUSY", "The provider is unavailable."],
+    [504, "AI_TIMEOUT", "The assistant timed out."],
+  ])("returns a recoverable error for %s without resending", async (status, code, message) => {
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ ok: false, code, message }, { status }));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(sendAssistantChat(request, scope, signal())).rejects.toThrow(message);
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it("terminates immediately when abortSignal is triggered", async () => {
-    const workspace = uiWorkspace();
-    const adapter = createIsolatedChatModelAdapter(workspace);
+  it("handles sign-in redirects and non-JSON replies safely", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(Response.redirect("http://localhost:3000/login"))
+      .mockResolvedValueOnce(new Response("<html>failure</html>")));
+    await expect(sendAssistantChat(request, scope, signal())).rejects.toThrow(/Sign in again/);
+    await expect(sendAssistantChat(request, scope, signal())).rejects.toThrow(/unavailable/i);
+  });
+
+  it("discards an answer that arrives after cancellation even if the fetch completes", async () => {
+    let finish!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(resolve => { finish = resolve; })));
     const controller = new AbortController();
+    const pending = sendAssistantChat(request, scope, controller.signal);
     controller.abort();
-
-    const generator = adapter.run({
-      messages: [{ role: "user", content: [{ type: "text", text: "How much cash do we have?" }] }],
-      abortSignal: controller.signal,
-    });
-    const result = await generator.next();
-    expect(result.done).toBe(true);
+    finish(success());
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   });
 
-  describe("trimChatHistory", () => {
-    it("trims chat history to the latest 3 completed question/answer pairs", () => {
-      const messages = [
-        { role: "user", text: "Q1" },
-        { role: "assistant", text: "A1" },
-        { role: "user", text: "Q2" },
-        { role: "assistant", text: "A2" },
-        { role: "user", text: "Q3" },
-        { role: "assistant", text: "A3" },
-        { role: "user", text: "Q4" },
-        { role: "assistant", text: "A4" },
-      ];
-      const trimmed = trimChatHistory(messages, 3);
-      expect(trimmed).toHaveLength(3);
-      expect(trimmed[0]).toEqual({ question: "Q2", answer: "A2" });
-      expect(trimmed[1]).toEqual({ question: "Q3", answer: "A3" });
-      expect(trimmed[2]).toEqual({ question: "Q4", answer: "A4" });
-    });
+  it("keeps the extraction review result while rejecting a response for another invoice", async () => {
+    const extraction = {
+      task: "extract_reply", sourceRevision: workspace.revision, invoiceId,
+      amountCents: null, date: null, reason: null, needsReview: true,
+      sourceQuotes: ["PHP 20000"], issues: Array.from({ length: 9 }, (_, i) => "Issue " + i),
+    };
+    const input = { task: "extract_reply", expectedRevision: workspace.revision, language: "taglish", invoiceId, reply: "PHP 20000" } as const;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(success(extraction)).mockResolvedValueOnce(success({
+      ...extraction, invoiceId: "00000000-0000-4000-8000-000000000999",
+    })));
+    await expect(sendReplyExtraction(input, signal())).resolves.toEqual(extraction);
+    await expect(sendReplyExtraction(input, signal())).rejects.toThrow();
+  });
 
-    it("ignores incomplete trailing user question without assistant answer", () => {
-      const messages = [
-        { role: "user", text: "Q1" },
-        { role: "assistant", text: "A1" },
-        { role: "user", text: "Incomplete Question" },
-      ];
-      const trimmed = trimChatHistory(messages, 3);
-      expect(trimmed).toHaveLength(1);
-      expect(trimmed[0]).toEqual({ question: "Q1", answer: "A1" });
-    });
+  it("matches the draft invoice and its customer rather than either first row", () => {
+    const current = uiWorkspace();
+    const secondCustomer = { ...current.customers[0], id: "00000000-0000-4000-8000-000000000999" };
+    const secondInvoice = { ...current.invoices[0], id: "00000000-0000-4000-8000-000000000998", customer_id: secondCustomer.id };
+    current.customers.push(secondCustomer);
+    current.invoices.push(secondInvoice);
+    const result = { ...proposal, draft: { kind: "reminder", invoiceId: secondInvoice.id, text: "Please check the invoice." } } as const;
+    expect(resolveAssistantDraftTarget(current, result)).toEqual({ invoice: secondInvoice, customer: secondCustomer });
+    expect(resolveAssistantDraftTarget({ ...current, revision: current.revision + 1 }, result)).toBeNull();
+    expect(resolveAssistantDraftTarget({ ...current, customers: current.customers.slice(0, 1) }, result)).toBeNull();
+    expect(resolveAssistantDraftTarget({ ...current, invoices: current.invoices.slice(0, 1) }, result)).toBeNull();
+  });
 
-    it("trims oldest pairs further if total bytes exceed max limit", () => {
-      const longText = "x".repeat(300);
-      const messages = [
-        { role: "user", text: "Q1" },
-        { role: "assistant", text: longText },
-        { role: "user", text: "Q2" },
-        { role: "assistant", text: longText },
-        { role: "user", text: "Q3" },
-        { role: "assistant", text: "Short" },
-      ];
-      // Limit to 400 bytes, which fits Q3 + maybe Q2
-      const trimmed = trimChatHistory(messages, 3, 400);
-      expect(trimmed.length).toBeLessThan(3);
-      expect(trimmed[trimmed.length - 1].question).toBe("Q3");
-    });
+  it("provides three distinct supported starters on each workspace page", () => {
+    expect(generatePageStarters("/overview")[0]).toBe("What should I do first?");
+    expect(generatePageStarters("/forecast")[0]).toContain("projected shortage");
+    expect(generatePageStarters("/invoices")[0]).toContain("customer owes the most");
+    expect(generatePageStarters("/expenses")[0]).toContain("bills are due");
+    for (const pathname of ["/overview", "/forecast", "/invoices", "/expenses", "/cash", "/followups"]) {
+      expect(new Set(generatePageStarters(pathname)).size).toBe(3);
+    }
   });
 });

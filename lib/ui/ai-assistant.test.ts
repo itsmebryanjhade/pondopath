@@ -1,23 +1,30 @@
-import { createElement } from "react";
+import { createElement, createRef, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { AiAssistant, WORKSPACE_TOOLS } from "@/components/ai-assistant";
+import { AiAssistantLauncher } from "@/components/ai-assistant-launcher";
 import { CollectionPanel } from "@/components/collection-panel";
-import { generatePageStarters, generateMockReply } from "./assistant-chat-adapter";
+import { ReminderPanel } from "@/components/reminder-panel";
+import { executeWorkspaceAction } from "@/app/(workspace)/actions";
+import { generatePageStarters, resolveAssistantDraftTarget } from "./assistant-chat-adapter";
 import { uiWorkspace } from "../../tests/fixtures/ui-workspace";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/overview",
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
 vi.mock("@/app/(workspace)/actions", () => ({
   executeWorkspaceAction: vi.fn(),
   getApprovedReminderText: vi.fn(),
 }));
 
+const renderDialog = (workspace = uiWorkspace()) => renderToStaticMarkup(createElement(AiAssistant, {
+  workspace, dialog: createRef<HTMLDialogElement>(), onClose: () => {},
+}));
+
 describe("multilingual assistant presentation & Task 4 conversation UI", () => {
   it("has a named native dialog, language choices, New chat button, privacy notice and manual fallback", () => {
-    const html = renderToStaticMarkup(createElement(AiAssistant, { workspace: uiWorkspace() }));
+    const html = renderDialog();
     for (const text of [
       "<dialog",
       "aria-labelledby",
@@ -41,7 +48,7 @@ describe("multilingual assistant presentation & Task 4 conversation UI", () => {
 
   it("renders 3 page-aware starters in empty chat state", () => {
     const workspace = uiWorkspace();
-    const html = renderToStaticMarkup(createElement(AiAssistant, { workspace }));
+    const html = renderDialog(workspace);
     expect(html).toContain('aria-label="Suggested questions"');
     expect(html).toContain("What should I do first?");
     expect(html).toContain("How much cash will we have in 30 days?");
@@ -68,34 +75,58 @@ describe("multilingual assistant presentation & Task 4 conversation UI", () => {
       "Add a record from text",
     ]);
 
-    const html = renderToStaticMarkup(createElement(AiAssistant, { workspace: uiWorkspace() }));
+    const html = renderDialog();
     expect(html).toContain("+ Workspace tools");
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain('aria-label="Workspace tools"');
   });
 
   it("renders composer with placeholder and send button", () => {
-    const html = renderToStaticMarkup(createElement(AiAssistant, { workspace: uiWorkspace() }));
+    const html = renderDialog();
     expect(html).toContain('placeholder="Ask about cash, invoices, or bills…');
     expect(html).toContain("Send");
   });
 
-  it("generates mocked chat responses with verified facts and safe source links", () => {
-    const workspace = uiWorkspace();
-    const reply = generateMockReply("Why is cash dipping?", workspace);
-    expect(reply.text).toBeDefined();
-    expect(reply.facts?.length).toBeGreaterThan(0);
-    expect(reply.sources?.length).toBeGreaterThan(0);
-    expect(reply.sources?.[0].href).toMatch(/^\/invoices\//);
+  it("only mounts the launcher on the initial workspace render", () => {
+    const html = renderToStaticMarkup(createElement(AiAssistantLauncher, { workspace: uiWorkspace() }));
+    expect(html).toContain('aria-label="Open AI assistant"');
+    expect(html).toContain('aria-haspopup="dialog"');
+    expect(html).not.toContain("<dialog");
   });
 
-  it("generates reviewable draft reminder with safe invoice link and source revision", () => {
+  it("renders the exact draft customer's recipient with no save on review", () => {
     const workspace = uiWorkspace();
-    const reply = generateMockReply("Draft a reminder for DEMO-001", workspace);
-    expect(reply.draft?.kind).toBe("reminder");
-    expect(reply.draft?.title).toContain("Payment reminder");
-    expect(reply.draft?.suggestedBody).toContain("DEMO-001");
-    expect(reply.draft?.sourceRevision).toBe(workspace.revision);
+    const customer = { ...workspace.customers[0], id: "00000000-0000-4000-8000-000000000999", email: "invoice-b@example.test" };
+    const invoice = { ...workspace.invoices[0], id: "00000000-0000-4000-8000-000000000998", customer_id: customer.id };
+    workspace.customers.push(customer);
+    workspace.invoices.push(invoice);
+    const body = "Please check the outstanding invoice.";
+    const target = resolveAssistantDraftTarget(workspace, {
+      task: "chat", kind: "answer", summary: "Here is a reminder.", sourceRevision: workspace.revision,
+      facts: [], sources: [], draft: { kind: "reminder", invoiceId: invoice.id, text: body },
+    });
+    expect(target).not.toBeNull();
+    const html = renderToStaticMarkup(createElement(ReminderPanel, {
+      workspace, ...target!, template: body, suggestedBody: body,
+    }));
+    expect(html).toContain('value="invoice-b@example.test"');
+    expect(html).toContain(body);
+    expect(executeWorkspaceAction).not.toHaveBeenCalled();
+  });
+
+  it("gives the embedded receipt review its own heading while keeping the invoice page anchor", () => {
+    const workspace = uiWorkspace();
+    const invoice = workspace.invoices[0];
+    const html = renderToStaticMarkup(createElement(Fragment, null,
+      createElement(CollectionPanel, { workspace, invoice }),
+      createElement(CollectionPanel, {
+        workspace, invoice, proposed: { amountCents: 2_000_000, date: "2026-11-06", sourceNote: "Partial muna po." },
+      }),
+    ));
+    const headings = [...html.matchAll(/<h2 id="([^"]+)">Expected payment<\/h2>/g)].map(match => match[1]);
+    expect(new Set(headings).size).toBe(2);
+    expect(html.match(/id="collection-plan"/g)).toHaveLength(1);
+    for (const id of headings) expect(html).toContain('aria-labelledby="' + id + '"');
   });
 
   it("prefills a proposal only in the existing review form with explicit confirmation and cash impact", () => {

@@ -7,7 +7,7 @@ import { AppIcon } from "./app-icon";
 import { WorkspaceInvitationLink, WorkspaceNavigation } from "./workspace-navigation";
 import { WorkspaceTools } from "./workspace-tools";
 import { buildActivityRows, paidInvoiceSearchRows } from "@/lib/ui/cash-overview";
-import { AiAssistant } from "./ai-assistant";
+import { AiAssistantLauncher } from "./ai-assistant-launcher";
 import { FileDropOverlay } from "./file-drop-overlay";
 import { MobileTabBar } from "./mobile-tab-bar";
 import { SidebarToggle } from "./sidebar-toggle";
@@ -44,7 +44,7 @@ export function WorkspaceFrame({ workspace, children }: {
       <main id="workspace-main" tabIndex={-1} className="workspace-content">{children}</main>
       </div>
       <MobileTabBar followupCount={followupCount} inboxCount={inboxCount} />
-      <AiAssistant workspace={workspace} />
+      <AiAssistantLauncher workspace={workspace} />
     </div>
     </ToastHost>
   );

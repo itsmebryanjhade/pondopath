@@ -3,18 +3,20 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
+  type RefObject,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AssistantRuntimeProvider, useLocalRuntime } from "@assistant-ui/react";
+import { AssistantRuntimeProvider, AuiIf, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useLocalRuntime, type ChatModelAdapter } from "@assistant-ui/react";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import type { AiProposal, AiRequest } from "@/lib/domain/ai";
-import { aiOutputSchemas } from "@/lib/domain/ai";
+import type { AssistantChatProposal } from "@/lib/domain/assistant-chat";
 import { DashboardIcon } from "./dashboard-icon";
 import { TextAreaField } from "./command-form";
 import { CollectionPanel } from "./collection-panel";
@@ -24,20 +26,19 @@ import { calculateForecast, compareScenario } from "@/lib/domain/forecast";
 import { formatPHP } from "@/lib/domain/money";
 import { formatPlanDate } from "@/lib/display";
 import {
+  assistantPage,
   generatePageStarters,
-  generateMockReply,
-  createIsolatedChatModelAdapter,
-  type MockChatReply,
+  resolveAssistantDraftTarget,
+  sendAssistantChat,
+  sendReplyExtraction,
+  type AssistantChatScope,
 } from "@/lib/ui/assistant-chat-adapter";
 
-type ChatItem = {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  facts?: { label: string; value: string }[];
-  sources?: { id: string; label: string; href: string }[];
-  draft?: MockChatReply["draft"];
-};
+const cancelled = { status: { type: "incomplete", reason: "cancelled" } } as const;
+
+function assistantError(error: unknown) {
+  return error instanceof Error ? error.message : "The assistant is unavailable. Your message is retained.";
+}
 
 export const WORKSPACE_TOOLS = [
   { id: "page", label: "Ask about this page" },
@@ -47,188 +48,178 @@ export const WORKSPACE_TOOLS = [
   { id: "add_record", label: "Add a record from text" },
 ] as const;
 
-export function AiAssistant({ workspace }: { workspace: WorkspaceSnapshot }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const launchButton = useRef<HTMLButtonElement>(null);
+export function AiAssistant({ workspace, dialog, onClose }: {
+  workspace: WorkspaceSnapshot;
+  dialog: RefObject<HTMLDialogElement | null>;
+  onClose: () => void;
+}) {
   const toolsButton = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
-  const answer = useRef<HTMLElement>(null);
+  const replyPicker = useRef<HTMLSelectElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const headingId = useId();
 
-  // Dialog & view state
   const [mode, setMode] = useState<"chat" | "reply">("chat");
   const [language, setLanguage] = useState<AiRequest["language"]>("auto");
-  const [messages, setMessages] = useState<ChatItem[]>([]);
   const [composerText, setComposerText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [chatError, setChatError] = useState("");
-  const [lastAttemptedPrompt, setLastAttemptedPrompt] = useState("");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [focusedMenuIndex, setFocusedMenuIndex] = useState(0);
-  const [activeReviewDraft, setActiveReviewDraft] = useState<MockChatReply["draft"]>(null);
-  const currentAbortController = useRef<AbortController | null>(null);
-  const activeRunId = useRef<string | null>(null);
+  const [draftIntent, setDraftIntent] = useState<AssistantChatScope["intent"]>();
+  const [draftInvoiceId, setDraftInvoiceId] = useState("");
+  const [review, setReview] = useState<{ messageId: string; proposal: AssistantChatProposal } | null>(null);
+  const activeRequest = useRef<AbortController | null>(null);
+  const queuedChat = useRef<AssistantChatScope | null>(null);
 
-  // Source reply extraction state (preserved from legacy assistant)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [replyText, setReplyText] = useState("");
   const [replyPending, setReplyPending] = useState(false);
   const [replyError, setReplyError] = useState("");
-  const [replyProposal, setReplyProposal] = useState<AiProposal | null>(null);
+  const [replyProposal, setReplyProposal] = useState<Extract<AiProposal, { task: "extract_reply" }> | null>(null);
   const [sourceReplySaved, setSourceReplySaved] = useState("");
   const [replyReviewOpen, setReplyReviewOpen] = useState(false);
 
-  // Setup isolated @assistant-ui/react runtime
-  const adapter = useMemo(() => createIsolatedChatModelAdapter(workspace), [workspace]);
+  const adapter = useMemo<ChatModelAdapter>(() => ({
+    async run({ messages, abortSignal }) {
+      const controller = activeRequest.current;
+      const scope = queuedChat.current;
+      queuedChat.current = null;
+      if (!controller || !scope) return cancelled;
+      const signal = AbortSignal.any([controller.signal, abortSignal]);
+      try {
+        const proposal = await sendAssistantChat(messages, scope, signal);
+        signal.throwIfAborted();
+        if (activeRequest.current !== controller) return cancelled;
+        setComposerText("");
+        if (proposal.kind === "answer") {
+          setDraftIntent(undefined);
+          setDraftInvoiceId("");
+        }
+        return { content: [
+          { type: "text", text: proposal.summary },
+          { type: "data", name: "pondopath-proposal", data: proposal },
+        ] };
+      } catch (error) {
+        if (signal.aborted || activeRequest.current !== controller) return cancelled;
+        setChatError(assistantError(error));
+        return { status: { type: "incomplete", reason: "error" } };
+      } finally {
+        if (activeRequest.current === controller) {
+          activeRequest.current = null;
+          setIsSending(false);
+        }
+      }
+    },
+  }), []);
   const runtime = useLocalRuntime(adapter);
+  const forecast = useMemo(() => calculateForecast(workspace.forecastInput), [workspace.forecastInput]);
+  const starters = generatePageStarters(pathname);
+  const currentInvoice = workspace.invoices.find(row => pathname === "/invoices/" + row.id);
+  const openInvoices = workspace.invoices.filter(row => row.outstanding_cents > 0);
+  const currentOpenInvoice = openInvoices.find(row => row.id === currentInvoice?.id);
+  const draftInvoice = openInvoices.find(row => row.id === draftInvoiceId);
+  const replyInvoice = openInvoices.find(row => row.id === selectedInvoiceId);
+  const activeReview = review?.proposal;
+  const reviewTarget = activeReview && resolveAssistantDraftTarget(workspace, activeReview);
 
-  const forecast = useMemo(
-    () => calculateForecast(workspace.forecastInput),
-    [workspace.forecastInput]
-  );
-  const starters = useMemo(() => generatePageStarters(pathname), [pathname]);
-
-  const currentInvoice = workspace.invoices.find((row) => pathname === `/invoices/${row.id}`);
-  const activeInvoice =
-    workspace.invoices.find((row) => row.id === selectedInvoiceId) || currentInvoice;
-
-  // Focus management when menu opens
   useEffect(() => {
-    if (toolsOpen && menuRef.current) {
-      const items = menuRef.current.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
-      items[focusedMenuIndex]?.focus();
+    if (dialog.current && !dialog.current.open) dialog.current.showModal();
+  }, [dialog]);
+
+  useLayoutEffect(() => () => activeRequest.current?.abort(), [workspace.revision]);
+
+  useEffect(() => {
+    if (toolsOpen) {
+      menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[focusedMenuIndex]?.focus();
     }
   }, [toolsOpen, focusedMenuIndex]);
 
-  // Reset conversation on actor or business change
-  const actorBusinessKey = `${workspace.business.id}:${workspace.actor.userId}`;
-  const prevActorBusinessKey = useRef(actorBusinessKey);
   useEffect(() => {
-    if (prevActorBusinessKey.current !== actorBusinessKey) {
-      prevActorBusinessKey.current = actorBusinessKey;
-      clearChat();
-    }
-  }, [actorBusinessKey]);
-
-  function open() {
-    if (currentInvoice && currentInvoice.id !== selectedInvoiceId) {
-      setSelectedInvoiceId(currentInvoice.id);
-    }
-    dialog.current?.showModal();
-  }
+    if (mode === "reply") replyPicker.current?.focus();
+  }, [mode]);
 
   function close() {
     dialog.current?.close();
-    setToolsOpen(false);
-    launchButton.current?.focus();
   }
 
   function clearChat() {
-    currentAbortController.current?.abort();
-    currentAbortController.current = null;
-    activeRunId.current = null;
-    setIsSending(false);
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+    queuedChat.current = null;
+    runtime.thread.cancelRun();
     runtime.thread.reset();
-    setMessages([]);
+    setIsSending(false);
     setComposerText("");
-    setActiveReviewDraft(null);
+    setReview(null);
     setChatError("");
+    setDraftIntent(undefined);
+    setDraftInvoiceId("");
+    setSelectedInvoiceId("");
+    setReplyText("");
+    setSourceReplySaved("");
+    setReplyProposal(null);
+    setReplyReviewOpen(false);
+    setReplyError("");
+    setReplyPending(false);
+    setToolsOpen(false);
     setMode("chat");
   }
 
-  function handleSend(textToSend?: string) {
-    if (isSending) return;
-    const text = (textToSend ?? composerText).trim();
-    if (!text) return;
-
-    setChatError("");
-    setLastAttemptedPrompt(text);
-    setIsSending(true);
-
-    currentAbortController.current?.abort();
-    const controller = new AbortController();
-    currentAbortController.current = controller;
-    const runId = crypto.randomUUID();
-    activeRunId.current = runId;
-
-    const userMsg: ChatItem = {
-      id: crypto.randomUUID(),
-      role: "user",
-      text,
-    };
-
-    try {
-      const reply = generateMockReply(text, workspace);
-      if (controller.signal.aborted || activeRunId.current !== runId) {
-        return;
-      }
-
-      const assistantMsg: ChatItem = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: reply.text,
-        facts: reply.facts,
-        sources: reply.sources,
-        draft: reply.draft,
-      };
-
-      setMessages((prev) => [...prev, userMsg, assistantMsg]);
-      setComposerText("");
-      runtime.thread.append({
-        role: "user",
-        content: [{ type: "text", text }],
-      });
-    } catch {
-      if (!controller.signal.aborted) {
-        setChatError("The assistant could not respond. Your question is retained; retry or use manual forms.");
-      }
-    } finally {
-      if (activeRunId.current === runId) {
-        setIsSending(false);
-        activeRunId.current = null;
-      }
+  function handleSend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = composerText.trim();
+    if (!text || activeRequest.current || runtime.thread.getState().isRunning) return;
+    if (draftIntent && !draftInvoice) {
+      setChatError("Choose an unpaid invoice for this draft.");
+      return;
     }
+
+    const invoice = draftIntent ? draftInvoice : currentInvoice;
+    const page = assistantPage(pathname) ?? (invoice ? "invoices" : undefined);
+    const scope: AssistantChatScope = {
+      expectedRevision: workspace.revision, language, intent: draftIntent,
+      context: page ? { page, record: invoice ? { kind: "invoice", id: invoice.id } : undefined } : undefined,
+    };
+    activeRequest.current = new AbortController();
+    queuedChat.current = scope;
+    setChatError("");
+    setIsSending(true);
+    runtime.thread.append({ role: "user", content: [{ type: "text", text }] });
+  }
+
+  function prepareQuestion(text: string) {
+    setDraftIntent(undefined);
+    setDraftInvoiceId("");
+    setComposerText(text);
+    setChatError("");
+    composerInputRef.current?.focus();
   }
 
   function selectTool(toolId: (typeof WORKSPACE_TOOLS)[number]["id"]) {
     setToolsOpen(false);
     toolsButton.current?.focus();
-
     if (toolId === "page") {
-      setComposerText(starters[0] || "What should I know about this page?");
+      prepareQuestion(starters[0]);
+      return;
+    }
+    if (toolId === "reminder" || toolId === "followup") {
+      setDraftIntent(toolId === "reminder" ? "draft_reminder" : "draft_followup");
+      setDraftInvoiceId(currentOpenInvoice?.id ?? "");
+      setComposerText(toolId === "reminder" ? "Draft a payment reminder for this invoice." : "Plan a follow-up for this invoice on ");
+      setChatError("");
       composerInputRef.current?.focus();
       return;
     }
-
-    if (toolId === "reminder") {
-      const inv = activeInvoice || workspace.invoices[0];
-      const target = inv ? inv.number : "open invoices";
-      setComposerText(`Draft a payment reminder for ${target}`);
-      composerInputRef.current?.focus();
-      return;
-    }
-
-    if (toolId === "followup") {
-      const inv = activeInvoice || workspace.invoices[0];
-      const target = inv ? inv.number : "unpaid invoices";
-      setComposerText(`Plan a follow-up task for ${target}`);
-      composerInputRef.current?.focus();
-      return;
-    }
-
     if (toolId === "reply") {
+      setSelectedInvoiceId(currentOpenInvoice?.id ?? "");
       setMode("reply");
       return;
     }
-
-    if (toolId === "add_record") {
-      setComposerText("Add a record from text: ");
-      composerInputRef.current?.focus();
-      return;
-    }
+    close();
+    router.push("/add");
   }
 
   function handleMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -261,54 +252,31 @@ export function AiAssistant({ workspace }: { workspace: WorkspaceSnapshot }) {
     }
   }
 
-  // Preserve legacy reply extraction logic
   async function extractCustomerReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (replyPending) return;
+    if (activeRequest.current || !replyInvoice) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setReplyPending(true);
     setReplyError("");
     setReplyProposal(null);
     setReplyReviewOpen(false);
-
     try {
-      const input = {
-        task: "extract_reply" as const,
-        language,
-        expectedRevision: workspace.revision,
-        invoiceId: selectedInvoiceId,
-        reply: replyText,
-      };
-      const response = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-        signal: AbortSignal.timeout(35_000),
-      });
-      if (response.redirected)
-        throw new Error("Sign in again to use the assistant. Your message is retained.");
-      const result = await response.json();
-      if (!response.ok || !result.ok)
-        throw new Error(result.message || "The assistant is unavailable. Your message is retained.");
-      aiOutputSchemas.extract_reply.parse({
-        invoiceId: result.proposal.invoiceId,
-        amountCents: result.proposal.amountCents,
-        date: result.proposal.date,
-        reason: result.proposal.reason,
-        sourceQuotes: result.proposal.sourceQuotes,
-        needsReview: result.proposal.needsReview,
-        issues: result.proposal.issues,
-      });
-      setReplyProposal(result.proposal);
+      const proposal = await sendReplyExtraction({
+        task: "extract_reply", language, expectedRevision: workspace.revision,
+        invoiceId: replyInvoice.id, reply: replyText,
+      }, controller.signal);
+      controller.signal.throwIfAborted();
+      if (activeRequest.current !== controller) return;
+      setReplyProposal(proposal);
       setSourceReplySaved(replyText);
-    } catch (failure) {
-      setReplyError(
-        failure instanceof Error &&
-          !["TimeoutError", "AbortError", "SyntaxError", "ZodError"].includes(failure.name)
-          ? failure.message
-          : "The assistant could not finish. Your input is retained; retry or use the manual forms."
-      );
+    } catch (error) {
+      if (!controller.signal.aborted && activeRequest.current === controller) setReplyError(assistantError(error));
     } finally {
-      setReplyPending(false);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setReplyPending(false);
+      }
     }
   }
 
@@ -322,7 +290,7 @@ export function AiAssistant({ workspace }: { workspace: WorkspaceSnapshot }) {
     !replyProposal.needsReview &&
     replyProposal.amountCents !== null &&
     replyProposal.date !== null &&
-    proposalInvoice;
+    proposalInvoice && selectedInvoiceId === proposalInvoice.id && replyText === sourceReplySaved;
 
   let replyImpact: ReturnType<typeof compareScenario> | null = null;
   if (replyConfirmed && !replyStale && replyProposal?.task === "extract_reply") {
@@ -335,18 +303,8 @@ export function AiAssistant({ workspace }: { workspace: WorkspaceSnapshot }) {
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <button
-        ref={launchButton}
-        type="button"
-        className="assistant-launch"
-        onClick={open}
-        aria-label="Open AI assistant"
-      >
-        <DashboardIcon name="sparkle" size={18} />
-        AI assistant
-      </button>
-
-      <dialog ref={dialog} className="assistant-dialog" aria-labelledby={headingId}>
+      <dialog ref={dialog} className="assistant-dialog" aria-labelledby={headingId}
+        onClose={() => { setToolsOpen(false); onClose(); }}>
         <header className="assistant-heading">
           <div>
             <span className="eyebrow">PondoPath · AI assistance</span>
@@ -430,14 +388,15 @@ export function AiAssistant({ workspace }: { workspace: WorkspaceSnapshot }) {
                     <span>Invoice (required)</span>
                     <select
                       className="field"
-                      value={selectedInvoiceId}
+                      ref={replyPicker}
+                      value={replyInvoice?.id ?? ""}
                       required
                       onChange={(e) => setSelectedInvoiceId(e.target.value)}
                     >
-                      <option value="" disabled>
+                      <option value="">
                         Select an invoice
                       </option>
-                      {workspace.invoices.map((inv) => (
+                      {openInvoices.map((inv) => (
                         <option key={inv.id} value={inv.id}>
                           {inv.number}
                         </option>
@@ -473,7 +432,6 @@ export function AiAssistant({ workspace }: { workspace: WorkspaceSnapshot }) {
 
               {replyProposal && replyProposal.task === "extract_reply" && (
                 <section
-                  ref={answer}
                   tabIndex={-1}
                   className="assistant-answer"
                   aria-label="Extracted reply proposal"
@@ -503,10 +461,10 @@ export function AiAssistant({ workspace }: { workspace: WorkspaceSnapshot }) {
                   </dl>
                   {replyProposal.reason && <p>{replyProposal.reason}</p>}
                   {replyProposal.needsReview && (
-                    <p className="negative">
-                      Clarification or payment verification is required. Use the original invoice’s
-                      manual review form after checking the details.
-                    </p>
+                    <div className="negative">
+                      <p>Clarification or payment verification is required. Check the original reply before saving.</p>
+                      <ul>{replyProposal.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>
+                    </div>
                   )}
                   {replyImpact && <CashImpact {...replyImpact} />}
                   {replyConfirmed && !replyStale && (
@@ -534,150 +492,120 @@ export function AiAssistant({ workspace }: { workspace: WorkspaceSnapshot }) {
               )}
             </div>
           ) : (
-            /* Conversational Chat View */
-            <div className="assistant-chat-mode">
-              {messages.length === 0 ? (
+            <ThreadPrimitive.Root className="assistant-chat-mode">
+              <AuiIf condition={state => state.thread.messages.length === 0}>
                 <div className="assistant-empty-thread">
-                  <p className="muted">Ask any question or pick a starter below:</p>
-                  <div
-                    className="assistant-starters"
-                    role="group"
-                    aria-label="Suggested questions"
-                  >
-                    {starters.map((starter) => (
-                      <button
-                        key={starter}
-                        type="button"
-                        className="assistant-starter-btn"
-                        onClick={() => handleSend(starter)}
-                      >
+                  <p className="muted">Ask a question or pick a starter.</p>
+                  <div className="assistant-starters" role="group" aria-label="Suggested questions">
+                    {starters.map(starter => (
+                      <button key={starter} type="button" className="assistant-starter-btn" disabled={isSending}
+                        onClick={() => prepareQuestion(starter)}>
                         <strong>{starter}</strong>
                       </button>
                     ))}
                   </div>
                 </div>
-              ) : (
-                <div className="assistant-messages" role="log" aria-live="polite">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className={`assistant-msg ${msg.role}`}>
-                      <p className="assistant-msg-text">{msg.text}</p>
-                      {msg.facts && msg.facts.length > 0 && (
-                        <dl className="assistant-extracted">
-                          {msg.facts.map((fact) => (
-                            <div key={fact.label}>
-                              <dt>{fact.label}</dt>
-                              <dd>{fact.value}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      )}
-                      {msg.sources && msg.sources.length > 0 && (
-                        <nav aria-label="Supporting records" className="assistant-msg-sources">
-                          {msg.sources.map((src) => (
-                            <Link
-                              key={src.id}
-                              className="text-link"
-                              href={src.href}
-                              onClick={close}
-                            >
-                              {src.label} →
-                            </Link>
-                          ))}
-                        </nav>
-                      )}
-                      {msg.draft && (
-                        <div
-                          className={`assistant-draft-card${
-                            msg.draft.sourceRevision !== undefined &&
-                            msg.draft.sourceRevision !== workspace.revision
-                              ? " stale"
-                              : ""
-                          }`}
-                        >
-                          <p>
-                            <strong>{msg.draft.title}</strong>
-                          </p>
-                          {msg.draft.suggestedBody && (
-                            <blockquote className="assistant-response">
-                              {msg.draft.suggestedBody}
-                            </blockquote>
-                          )}
-                          {msg.draft.sourceRevision !== undefined &&
-                          msg.draft.sourceRevision !== workspace.revision ? (
-                            <p className="negative" style={{ fontSize: "12px", margin: "4px 0" }}>
-                              This draft was prepared for revision {msg.draft.sourceRevision}. The
-                              workspace is now at revision {workspace.revision}.
-                            </p>
-                          ) : (
-                            <button
-                              type="button"
-                              className="button secondary"
-                              onClick={() => setActiveReviewDraft(msg.draft)}
-                            >
-                              Review draft
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              </AuiIf>
 
-              {/* Active Draft Review Panel Handoff */}
-              {activeReviewDraft && (
+              <div className="assistant-messages" role="log" aria-live="polite" aria-busy={isSending}>
+                <ThreadPrimitive.Messages>
+                  {({ message }) => {
+                    const text = message.content.find(part => part.type === "text");
+                    if (text?.type !== "text") return null;
+                    const part = message.content.find(item => item.type === "data" && item.name === "pondopath-proposal");
+                    const proposal = part?.type === "data" ? part.data as AssistantChatProposal : null;
+                    if (proposal && proposal.sourceRevision !== workspace.revision) {
+                      return (
+                        <MessagePrimitive.Root className="assistant-msg assistant">
+                          <p className="muted">Records changed since this answer. Ask again for current facts.</p>
+                        </MessagePrimitive.Root>
+                      );
+                    }
+                    const target = proposal?.draft && resolveAssistantDraftTarget(workspace, proposal);
+                    return (
+                      <MessagePrimitive.Root className={"assistant-msg " + message.role}>
+                        <p className="assistant-msg-text">{text.text}</p>
+                        {!!proposal?.facts.length && (
+                          <dl className="assistant-extracted">
+                            {proposal.facts.map(fact => (
+                              <div key={fact.id}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
+                            ))}
+                          </dl>
+                        )}
+                        {!!proposal?.sources.length && (
+                          <nav aria-label="Supporting records" className="assistant-msg-sources">
+                            {proposal.sources.map(source => (
+                              <Link key={source.id} className="text-link" href={source.href} onClick={close}>
+                                {source.label} →
+                              </Link>
+                            ))}
+                          </nav>
+                        )}
+                        {proposal?.draft && (
+                          <div className={"assistant-draft-card" + (target ? "" : " stale")}>
+                            <p><strong>{proposal.draft.kind === "reminder" ? "Payment reminder" : "Follow-up task"}</strong></p>
+                            <blockquote className="assistant-response">{proposal.draft.text}</blockquote>
+                            {proposal.draft.kind === "followup" && <p>Due {formatPlanDate(proposal.draft.date)}</p>}
+                            {target ? (
+                              <button type="button" className="button secondary" onClick={() => setReview({ messageId: message.id, proposal })}>
+                                Review draft
+                              </button>
+                            ) : <p className="negative">Records changed. Ask for a fresh draft before reviewing.</p>}
+                          </div>
+                        )}
+                      </MessagePrimitive.Root>
+                    );
+                  }}
+                </ThreadPrimitive.Messages>
+              </div>
+
+              {activeReview?.draft && (
                 <div className="assistant-active-draft-panel">
                   <div className="assistant-draft-header">
-                    <strong>Reviewing: {activeReviewDraft.title}</strong>
-                    <button
-                      type="button"
-                      className="text-link"
-                      onClick={() => setActiveReviewDraft(null)}
-                    >
-                      Hide draft review
-                    </button>
+                    <strong>{reviewTarget ? "Reviewing invoice " + reviewTarget.invoice.number : "Review draft"}</strong>
+                    <button type="button" className="text-link" onClick={() => setReview(null)}>Hide draft review</button>
                   </div>
-                  {activeReviewDraft.sourceRevision !== undefined &&
-                  activeReviewDraft.sourceRevision !== workspace.revision ? (
-                    <div role="alert" className="assistant-notice negative">
-                      <p>
-                        This draft was prepared for revision {activeReviewDraft.sourceRevision}, but
-                        the workspace is now at revision {workspace.revision}. Refresh or ask again
-                        to generate an up-to-date draft.
-                      </p>
-                    </div>
-                  ) : activeReviewDraft.kind === "reminder" ? (
-                    <ReminderPanel
-                      workspace={workspace}
-                      invoice={
-                        workspace.invoices.find((i) => i.id === activeReviewDraft.invoiceId) ||
-                        workspace.invoices[0]
-                      }
-                      customer={workspace.customers[0]}
-                      template={activeReviewDraft.suggestedBody || ""}
-                      suggestedBody={activeReviewDraft.suggestedBody}
-                    />
-                  ) : null}
+                  {!reviewTarget ? <p role="alert" className="negative">Records changed. Ask for a fresh draft before reviewing.</p>
+                    : activeReview.draft.kind === "reminder" ? (
+                      <ReminderPanel
+                        key={review?.messageId}
+                        workspace={workspace}
+                        invoice={reviewTarget.invoice}
+                        customer={reviewTarget.customer}
+                        template={activeReview.draft.text}
+                        suggestedBody={activeReview.draft.text}
+                      />
+                    ) : (
+                      <>
+                        <blockquote className="assistant-response">{activeReview.draft.text}</blockquote>
+                        <p>Due {formatPlanDate(activeReview.draft.date)}</p>
+                        <Link className="text-link" href={"/invoices/" + reviewTarget.invoice.id} onClick={close}>
+                          Open invoice to add follow-up
+                        </Link>
+                      </>
+                    )}
                 </div>
               )}
 
               {chatError && (
-                <div role="alert" className="assistant-notice negative" style={{ margin: "8px 0" }}>
+                <div role="alert" className="assistant-notice negative">
                   <p>{chatError}</p>
-                  {lastAttemptedPrompt && (
-                    <button
-                      type="button"
-                      className="text-link"
-                      onClick={() => handleSend(lastAttemptedPrompt)}
-                    >
-                      Retry question
-                    </button>
-                  )}
+                  <button type="button" className="text-link" onClick={() => router.refresh()}>Refresh records</button>
                 </div>
               )}
 
-              {/* Sticky Composer & Accessible Workspace tools (+) Menu */}
-              <div className="assistant-composer-root">
+              <ComposerPrimitive.Root className="assistant-composer-root" onSubmit={handleSend}>
+                {draftIntent && (
+                  <label className="form-field">
+                    <span>Invoice for this draft</span>
+                    <select className="field" value={draftInvoice?.id ?? ""} disabled={isSending} required
+                      onChange={event => setDraftInvoiceId(event.target.value)}>
+                      <option value="">Choose an unpaid invoice</option>
+                      {openInvoices.map(invoice => <option key={invoice.id} value={invoice.id}>{invoice.number}</option>)}
+                    </select>
+                    {draftIntent === "draft_followup" && <small>Include one due date in YYYY-MM-DD format.</small>}
+                  </label>
+                )}
                 <div className="assistant-composer-bar">
                   <div className="assistant-tools-container">
                     <button
@@ -688,71 +616,50 @@ export function AiAssistant({ workspace }: { workspace: WorkspaceSnapshot }) {
                       aria-expanded={toolsOpen}
                       aria-label="Workspace tools"
                       disabled={isSending}
-                      onClick={() => setToolsOpen(!toolsOpen)}
+                      onClick={() => { setFocusedMenuIndex(0); setToolsOpen(!toolsOpen); }}
                     >
                       + Workspace tools
                     </button>
-
                     {toolsOpen && (
-                      <div
-                        ref={menuRef}
-                        className="assistant-tools-menu"
-                        role="menu"
-                        aria-label="Workspace tools"
-                        onKeyDown={handleMenuKeyDown}
-                      >
+                      <div ref={menuRef} className="assistant-tools-menu" role="menu" aria-label="Workspace tools" onKeyDown={handleMenuKeyDown}>
                         {WORKSPACE_TOOLS.map((tool, index) => (
-                          <button
-                            key={tool.id}
-                            type="button"
-                            role="menuitem"
-                            tabIndex={focusedMenuIndex === index ? 0 : -1}
-                            className="assistant-tools-item"
-                            onClick={() => selectTool(tool.id)}
-                          >
+                          <button key={tool.id} type="button" role="menuitem" tabIndex={focusedMenuIndex === index ? 0 : -1}
+                            className="assistant-tools-item" onClick={() => selectTool(tool.id)}>
                             {tool.label}
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
-
                   <textarea
                     ref={composerInputRef}
                     className="field assistant-composer-input"
                     rows={1}
+                    aria-label="Your message"
                     placeholder="Ask about cash, invoices, or bills…"
+                    maxLength={1000}
                     value={composerText}
                     disabled={isSending}
-                    onChange={(e) => setComposerText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        if (!isSending) {
-                          handleSend();
-                        }
+                    onChange={event => setComposerText(event.target.value)}
+                    onKeyDown={event => {
+                      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        event.currentTarget.form?.requestSubmit();
                       }
                     }}
                   />
-
-                  <button
-                    type="button"
-                    className="section-primary assistant-send-btn"
-                    disabled={!composerText.trim() || isSending}
-                    onClick={() => handleSend()}
-                    aria-label="Send message"
-                  >
+                  <button type="submit" className="section-primary assistant-send-btn"
+                    disabled={!composerText.trim() || isSending} aria-label="Send message">
                     {isSending ? "Sending…" : "Send"}
                     <DashboardIcon name="arrowRight" size={15} />
                   </button>
                 </div>
-              </div>
-            </div>
+              </ComposerPrimitive.Root>
+            </ThreadPrimitive.Root>
           )}
 
           <p className="muted">
-            Manual entry and reminder templates remain available when AI is unavailable. Each
-            request attempt uses the business’s daily allowance.
+            Manual entry and reminder templates remain available when AI is unavailable. Each Gemini request uses the business’s daily allowance.
           </p>
         </div>
       </dialog>

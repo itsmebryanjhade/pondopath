@@ -25,7 +25,8 @@ try {
       ...process.env, APP_URL: base, NEXT_PUBLIC_SUPABASE_URL: process.env.TEST_SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.TEST_SUPABASE_PUBLISHABLE_KEY,
       SUPABASE_SERVICE_ROLE_KEY: process.env.TEST_SUPABASE_SERVICE_ROLE_KEY,
-      OPENROUTER_API_KEY: "", AUTOMATION_TOKEN: token, AUTOMATION_BUSINESS_ID: fixture.id,
+      PONDOPATH_AI_DEMO_BUSINESS_ID: fixture.id, GEMINI_API_KEY: "", OPENROUTER_API_KEY: "",
+      AUTOMATION_TOKEN: token, AUTOMATION_BUSINESS_ID: fixture.id,
     },
   });
   app.stdout.on("data", bytes => { output += bytes; });

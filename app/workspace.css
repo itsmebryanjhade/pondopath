@@ -103,7 +103,7 @@ body:has(.workspace-root) .first-paint-splash { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .workspace-root .assistant-starter-btn,
   .workspace-root .assistant-tools-btn,
-  .workspace-root .assistant-tools-item { transition: none; }
+  .workspace-root .assistant-tools-item, .workspace-root .assistant-launch { transition: none; }
 }
 /* Compatibility rules for PondoPath's saved forms, tables and real forecast. */
 .workspace-root, .workspace-root .workspace {
@@ -718,6 +718,7 @@ html.pondopath-workspace-document::-webkit-scrollbar, html.pondopath-workspace-d
   .workspace-root .mobile-sheet-link:focus-visible { outline: 2px solid var(--data-accent); outline-offset: -2px; }
   .workspace-root .workspace-content { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
   .workspace-root .assistant-launch { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .workspace-root:has(#more-sheet) .assistant-launch { display: none; }
   .toast-region { bottom: calc(92px + env(safe-area-inset-bottom)); }
 }
 @keyframes sheet-up { from { opacity: 0; transform: translateY(14px); } }

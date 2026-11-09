@@ -1,5 +1,5 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import type { WorkspaceSnapshot } from "@/lib/server/workspace";
 import { compareScenario as previewExpectation, FORECAST_DAYS } from "@/lib/domain/forecast";
 import { formatPHP, parseMoney } from "@/lib/domain/money";
@@ -132,6 +132,7 @@ function ExpectationFields({ workspace, invoice, proposed }: Props) {
 }
 
 export function CollectionPanel({ workspace, invoice, proposed, openPlan = false }: Props) {
+  const headingId = useId();
   const current = workspace.expectations.find((row) => row.invoice_id === invoice.id);
   const review =
     current &&
@@ -143,8 +144,8 @@ export function CollectionPanel({ workspace, invoice, proposed, openPlan = false
   const unplanned = Math.max(0, invoice.outstanding_cents - planned);
   const unpaid = invoice.outstanding_cents > 0;
   return (
-    <section id="collection-plan" className="panel collection-plan" aria-labelledby="collection-plan-heading">
-      <h2 id="collection-plan-heading">Expected payment</h2>
+    <section id={proposed ? undefined : "collection-plan"} className="panel collection-plan" aria-labelledby={headingId}>
+      <h2 id={headingId}>Expected payment</h2>
       {unpaid && <p className="muted">For the forecast. Record payment when the money arrives.</p>}
       {proposed && <p className="muted">Original due {formatPlanDate(invoice.due_date)} · Received {formatPHP(invoice.paid_cents)}</p>}
       {current ? (
