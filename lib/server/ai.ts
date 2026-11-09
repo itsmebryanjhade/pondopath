@@ -20,7 +20,8 @@ const chatInstructions = `CHAT: The current question and earlier question/answer
 
 function isApprovedDemo(workspace: WorkspaceSnapshot) {
   return workspace.business.is_demo && workspace.actor.businessId === workspace.business.id &&
-    workspace.business.id === process.env.PONDOPATH_AI_DEMO_BUSINESS_ID?.trim();
+    workspace.business.id === process.env.PONDOPATH_AI_DEMO_BUSINESS_ID?.trim() &&
+    workspace.actor.userId === process.env.PONDOPATH_AI_DEMO_USER_ID?.trim();
 }
 
 async function generate(

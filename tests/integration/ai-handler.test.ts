@@ -15,6 +15,7 @@ beforeAll(async () => {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", process.env.TEST_SUPABASE_PUBLISHABLE_KEY!);
   vi.stubEnv("APP_URL", "http://localhost:3000");
   vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", fixture.id);
+  vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", fixture.accounts.finance.id);
   vi.stubEnv("GEMINI_API_KEY", "mocked-provider-only");
   vi.stubEnv("OPENROUTER_API_KEY", undefined);
   const client = createServerClient(process.env.TEST_SUPABASE_URL!, process.env.TEST_SUPABASE_PUBLISHABLE_KEY!, { cookies: { getAll: () => [...state.cookies].map(([name, value]) => ({ name, value })), setAll: values => values.forEach(({ name, value }) => state.cookies.set(name, value)) } });

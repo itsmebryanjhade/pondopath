@@ -91,6 +91,7 @@ describe("assistant HTTP boundary", () => {
   it.each([[429, false], [503, true]] as const)("does not use OpenRouter after Gemini %i unless the request was quota-limited", async (status, hasBackup) => {
     const workspace = uiWorkspace();
     vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
+    vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", workspace.actor.userId);
     vi.stubEnv("GEMINI_API_KEY", "test-only");
     if (hasBackup) {
       vi.stubEnv("OPENROUTER_API_KEY", "test-only");
@@ -121,6 +122,7 @@ describe("assistant HTTP boundary", () => {
     const workspace = uiWorkspace();
     const invoiceId = workspace.invoices[0].id;
     vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
+    vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", workspace.actor.userId);
     vi.stubEnv("GEMINI_API_KEY", "test-only");
     vi.stubEnv("OPENROUTER_API_KEY", "test-backup");
     vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
@@ -162,6 +164,7 @@ describe("assistant HTTP boundary", () => {
   it("stops before OpenRouter when the records changed during the Gemini attempt", async () => {
     const workspace = uiWorkspace();
     vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
+    vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", workspace.actor.userId);
     vi.stubEnv("GEMINI_API_KEY", "test-only");
     vi.stubEnv("OPENROUTER_API_KEY", "test-backup");
     vi.stubEnv("OPENROUTER_MODEL", "test/model:free");

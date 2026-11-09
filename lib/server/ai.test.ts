@@ -17,6 +17,7 @@ const grounded = { kind: "answer", summary: "Cash now is the balance from verifi
 beforeEach(() => {
   vi.resetAllMocks();
   vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", uiWorkspace().business.id);
+  vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", uiWorkspace().actor.userId);
   mocks.workspace.mockResolvedValue(uiWorkspace());
   mocks.config.mockReturnValue(primary);
   mocks.provider.mockResolvedValue({ value: { summary: "Expected pa lang ang bayad.", recordIds: [] }, usage: { cost: null } });
@@ -81,6 +82,9 @@ describe("authorized AI orchestration", () => {
     vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", "different-workspace");
     await expect(requestAssistant(chat)).rejects.toThrow("AI_DEMO_ONLY");
     vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", uiWorkspace().business.id);
+    vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", "different-account");
+    await expect(requestAssistant(chat)).rejects.toThrow("AI_DEMO_ONLY");
+    vi.stubEnv("PONDOPATH_AI_DEMO_USER_ID", uiWorkspace().actor.userId);
     mocks.config.mockImplementationOnce(() => { throw new Error("AI_UNAVAILABLE"); });
     await expect(requestAssistant(chat)).rejects.toThrow("AI_UNAVAILABLE");
     expect(mocks.rpc).not.toHaveBeenCalled();
