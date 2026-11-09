@@ -1,29 +1,22 @@
 import "server-only";
 import { z } from "zod";
 
-export type AiConfig = { kind: "gemini" | "openrouter"; key: string; model: string; provider: string };
+export type AiConfig = { kind: "gemini" | "openai"; key: string; model: string; provider: string };
 
-export function aiConfig(attempt: "primary" | "backup" = "primary"): AiConfig {
-  if (attempt === "primary") {
-    const key = process.env.GEMINI_API_KEY?.trim();
-    if (!key) throw new Error("AI_UNAVAILABLE");
-    return { kind: "gemini", key, model: "gemini-3.1-flash-lite", provider: "google" };
-  }
-  const key = process.env.OPENROUTER_API_KEY?.trim();
-  const model = process.env.OPENROUTER_MODEL?.trim();
-  const provider = process.env.OPENROUTER_PROVIDER?.trim();
-  if (!key || !model || !/^[\w.-]+\/[\w.-]+:free$/.test(model) || !provider || !/^[\w.-]+(?:\/[\w.-]+)*$/.test(provider)) {
-    throw new Error("AI_UNAVAILABLE");
-  }
-  return { kind: "openrouter", key, model, provider };
+export function aiConfig(): AiConfig {
+  const key = process.env.GEMINI_API_KEY?.trim();
+  if (!key) throw new Error("AI_UNAVAILABLE");
+  return { kind: "gemini", key, model: "gemini-3.1-flash-lite", provider: "google" };
 }
 
-export function hasAiBackup() {
-  try {
-    aiConfig("backup");
-    return true;
-  } catch {
-    return false;
+export function aiBackupConfig(): AiConfig | null {
+  const key = process.env.OPENAI_API_KEY?.trim();
+  return key ? { kind: "openai", key, model: "gpt-5.4-mini", provider: "openai" } : null;
+}
+
+export class AiProviderRateLimit extends Error {
+  constructor() {
+    super("AI_PROVIDER_BUSY");
   }
 }
 
@@ -36,10 +29,10 @@ const geminiEnvelope = z.object({
   })).min(1),
   usageMetadata: z.object({ promptTokenCount: tokenCount, candidatesTokenCount: tokenCount }).optional(),
 });
-const openRouterEnvelope = z.object({
+const openAiEnvelope = z.object({
   error: z.unknown().optional(),
-  choices: z.array(z.object({ finish_reason: z.string().optional(), message: z.object({ content: z.string(), refusal: z.string().nullable().optional() }) })).min(1),
-  usage: z.object({ prompt_tokens: tokenCount, completion_tokens: tokenCount, cost: z.number().finite().nonnegative().optional() }).optional(),
+  choices: z.array(z.object({ finish_reason: z.literal("stop"), message: z.object({ content: z.string(), refusal: z.string().nullable().optional() }) })).min(1),
+  usage: z.object({ prompt_tokens: tokenCount, completion_tokens: tokenCount }).optional(),
 });
 
 export async function readLimitedJson(request: Request | Response, maximum: number): Promise<unknown> {
@@ -68,19 +61,19 @@ export async function readLimitedJson(request: Request | Response, maximum: numb
   } finally { await reader.cancel().catch(() => {}); }
 }
 
-// Project to Gemini's schema subset. The full Zod validators still check the reply.
-function geminiSchema(value: unknown): unknown {
+// Both providers accept this schema subset. The full Zod validators still check the reply.
+function providerSchema(value: unknown): unknown {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
   const source = value as Record<string, unknown>;
   const keywords = ["type", "title", "description", "enum", "required", "minimum", "maximum", "minItems", "maxItems", "additionalProperties"];
   const result = Object.fromEntries(keywords.filter(key => Object.hasOwn(source, key)).map(key => [key, source[key]]));
   if (Object.hasOwn(source, "const")) result.enum = [source.const];
   if (source.properties && typeof source.properties === "object") {
-    result.properties = Object.fromEntries(Object.entries(source.properties).map(([key, child]) => [key, geminiSchema(child)]));
+    result.properties = Object.fromEntries(Object.entries(source.properties).map(([key, child]) => [key, providerSchema(child)]));
   }
-  if (source.items) result.items = geminiSchema(source.items);
+  if (source.items) result.items = providerSchema(source.items);
   const variants = source.anyOf ?? source.oneOf;
-  if (Array.isArray(variants)) result.anyOf = variants.map(geminiSchema);
+  if (Array.isArray(variants)) result.anyOf = variants.map(providerSchema);
   return result;
 }
 
@@ -91,11 +84,11 @@ function providerTransportError(error: unknown, signal: AbortSignal) {
   return new Error(error instanceof TypeError ? "AI_PROVIDER_BUSY" : "AI_UNAVAILABLE");
 }
 
-async function fetchProviderJson(url: string, headers: Record<string, string>, body: object) {
-  const signal = AbortSignal.timeout(20_000);
+async function fetchProviderJson(url: string, headers: Record<string, string>, body: object, signal: AbortSignal) {
   const payload = JSON.stringify(body);
   let response: Response;
   try {
+    signal.throwIfAborted();
     response = await fetch(url, {
       method: "POST", cache: "no-store", redirect: "manual", signal,
       headers: { "Content-Type": "application/json", ...headers }, body: payload,
@@ -106,7 +99,8 @@ async function fetchProviderJson(url: string, headers: Record<string, string>, b
   if (!response.ok) {
     await response.body?.cancel().catch(() => {});
     if (response.status === 408) throw new Error("AI_TIMEOUT");
-    throw new Error(response.status === 429 || response.status >= 500 ? "AI_PROVIDER_BUSY" : "AI_UNAVAILABLE");
+    if (response.status === 429) throw new AiProviderRateLimit();
+    throw new Error(response.status >= 500 ? "AI_PROVIDER_BUSY" : "AI_UNAVAILABLE");
   }
   try {
     return await readLimitedJson(response, 65_536);
@@ -117,7 +111,9 @@ async function fetchProviderJson(url: string, headers: Record<string, string>, b
 
 type AiMessage = { role: "system" | "user"; content: string };
 
-export async function callAiProvider(config: AiConfig, messages: AiMessage[], schema: unknown) {
+export async function callAiProvider(config: AiConfig, messages: AiMessage[], schema: unknown, deadline?: AbortSignal) {
+  const timeout = AbortSignal.timeout(20_000);
+  const signal = deadline ? AbortSignal.any([deadline, timeout]) : timeout;
   const gemini = config.kind === "gemini";
   const json = gemini
     ? await fetchProviderJson(`https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent`, { "x-goog-api-key": config.key }, {
@@ -125,14 +121,13 @@ export async function callAiProvider(config: AiConfig, messages: AiMessage[], sc
       contents: [{ role: "user", parts: messages.filter(message => message.role === "user").map(message => ({ text: message.content })) }],
       generationConfig: {
         maxOutputTokens: 1800, candidateCount: 1,
-        responseFormat: { text: { mimeType: "APPLICATION_JSON", schema: geminiSchema(schema) } },
+        responseFormat: { text: { mimeType: "APPLICATION_JSON", schema: providerSchema(schema) } },
       },
-    })
-    : await fetchProviderJson("https://openrouter.ai/api/v1/chat/completions", { Authorization: `Bearer ${config.key}` }, {
-      model: config.model, messages, temperature: 0, max_tokens: 1800,
-      provider: { only: [config.provider], allow_fallbacks: false, require_parameters: true, data_collection: "deny", max_price: { prompt: 0, completion: 0, request: 0 } },
-      response_format: { type: "json_schema", json_schema: { name: "cash_plan_assistance", strict: true, schema } },
-    });
+    }, signal)
+    : await fetchProviderJson("https://api.openai.com/v1/chat/completions", { Authorization: `Bearer ${config.key}` }, {
+      model: config.model, messages, store: false, reasoning_effort: "none", max_completion_tokens: 1800,
+      response_format: { type: "json_schema", json_schema: { name: "cash_plan_assistance", strict: true, schema: providerSchema(schema) } },
+    }, signal);
   try {
     if (gemini) {
       const result = geminiEnvelope.parse(json);
@@ -143,12 +138,12 @@ export async function callAiProvider(config: AiConfig, messages: AiMessage[], sc
         completionTokens: result.usageMetadata?.candidatesTokenCount ?? null, cost: null,
       } };
     }
-    const result = openRouterEnvelope.parse(json);
+    const result = openAiEnvelope.parse(json);
     const choice = result.choices[0];
-    if (result.error || choice.message.refusal || (choice.finish_reason && choice.finish_reason !== "stop")) throw new Error("AI_UNAVAILABLE");
+    if (result.error || choice.message.refusal) throw new Error("AI_UNAVAILABLE");
     return { value: JSON.parse(choice.message.content) as unknown, usage: {
       promptTokens: result.usage?.prompt_tokens ?? null,
-      completionTokens: result.usage?.completion_tokens ?? null, cost: result.usage?.cost ?? null,
+      completionTokens: result.usage?.completion_tokens ?? null, cost: null,
     } };
   } catch {
     throw new Error("AI_UNAVAILABLE");

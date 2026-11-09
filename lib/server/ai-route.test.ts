@@ -66,10 +66,7 @@ describe("assistant HTTP boundary", () => {
     expect(await response.text()).not.toContain("private credential");
   });
 
-  it.each([["AI_PROVIDER_BUSY", 503], ["AI_TIMEOUT", 504]])("keeps a provider failure distinct without offering a backup: %s", async (code, status) => {
-    vi.stubEnv("OPENROUTER_API_KEY", "test-only");
-    vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
-    vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
+  it.each([["AI_PROVIDER_BUSY", 503], ["AI_TIMEOUT", 504]])("keeps provider failures distinct in the response: %s", async (code, status) => {
     const input = { task: "explain", question: "Bakit?", expectedRevision: 1 };
     mocks.request.mockRejectedValueOnce(new Error(code));
     const response = await POST(request(JSON.stringify(input)));
@@ -80,9 +77,6 @@ describe("assistant HTTP boundary", () => {
   });
 
   it("keeps app limits distinct and omits retry metadata", async () => {
-    vi.stubEnv("OPENROUTER_API_KEY", "test-only");
-    vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
-    vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
     const input = { task: "explain", question: "Bakit?", expectedRevision: 1 };
     for (const [code, status] of [["AI_LIMIT", 429], ["AI_MEMBER_LIMIT", 429], ["STALE_VERSION", 409], ["AI_UNAVAILABLE", 503], ["AI_DEMO_ONLY", 503]] as const) {
       mocks.request.mockRejectedValueOnce(new Error(code));
@@ -92,22 +86,17 @@ describe("assistant HTTP boundary", () => {
       expect(body.code).toBe(code);
       expect(body).not.toHaveProperty("canTryBackup");
     }
-    vi.stubEnv("OPENROUTER_MODEL", "test/paid");
-    mocks.request.mockRejectedValueOnce(new Error("AI_PROVIDER_BUSY"));
-    expect(await (await POST(request(JSON.stringify(input)))).json()).not.toHaveProperty("canTryBackup");
   });
 
-  it("runs Gemini once and rejects a backup attempt even when OpenRouter is configured", async () => {
+  it.each([[429, undefined], [503, "test-only"]] as const)("keeps Gemini %i recoverable when OpenAI is unavailable or ineligible", async (status, key) => {
     const workspace = uiWorkspace();
     vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
     vi.stubEnv("GEMINI_API_KEY", "test-only");
-    vi.stubEnv("OPENROUTER_API_KEY", "test-only");
-    vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
-    vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
+    vi.stubEnv("OPENAI_API_KEY", key);
     mocks.workspace.mockResolvedValue(workspace);
     mocks.rpc.mockResolvedValueOnce({ data: 1 });
     mocks.request.mockImplementation((await vi.importActual<typeof import("./ai")>("./ai")).requestAssistant);
-    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 429 }));
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status }));
     vi.stubGlobal("fetch", fetch);
 
     const input = { task: "explain", question: "Bakit?", expectedRevision: 1 };
@@ -124,30 +113,59 @@ describe("assistant HTTP boundary", () => {
     expect(mocks.rpc.mock.calls.map(call => call[0])).toEqual(["reserve_ai_request"]);
   });
 
-  it("runs the chat route through the real service and Gemini adapter without executing any financial command", async () => {
+  it.each(["gemini", "openai"] as const)("validates chat through %s after one quota reservation", async provider => {
     const workspace = uiWorkspace();
     const invoiceId = workspace.invoices[0].id;
     vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
     vi.stubEnv("GEMINI_API_KEY", "test-only");
+    vi.stubEnv("OPENAI_API_KEY", "test-backup");
     mocks.workspace.mockResolvedValue(workspace);
     mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: workspace });
     mocks.request.mockImplementation((await vi.importActual<typeof import("./ai")>("./ai")).requestAssistant);
     const output = { kind: "answer", summary: "Review this invoice and check the cash plan.", factIds: ["cash-now"], recordIds: [invoiceId], draft: null };
-    const fetch = vi.fn().mockResolvedValueOnce(Response.json({
-      candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(output) }] } }],
-    }));
+    const fetch = vi.fn();
+    if (provider === "openai") {
+      mocks.rpc.mockResolvedValueOnce({ data: workspace });
+      fetch.mockResolvedValueOnce(new Response(null, { status: 429 })).mockResolvedValueOnce(Response.json({
+        choices: [{ finish_reason: "stop", message: { content: JSON.stringify(output), refusal: null } }],
+      }));
+    } else {
+      fetch.mockResolvedValueOnce(Response.json({
+        candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(output) }] } }],
+      }));
+    }
     vi.stubGlobal("fetch", fetch);
 
     const response = await POST(request(JSON.stringify({ task: "chat", question: "What should I do first?", history: [], expectedRevision: 1 })));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      ok: true, model: "gemini-3.1-flash-lite",
+      ok: true, provider: provider === "openai" ? "openai" : "google",
       proposal: { task: "chat", sourceRevision: 1, draft: null,
         facts: [{ id: "cash-now", value: "₱40,000.00" }], sources: [{ id: invoiceId, href: "/invoices/" + invoiceId }],
       },
     });
-    expect(fetch.mock.calls.map(call => new URL(call[0]).hostname)).toEqual(["generativelanguage.googleapis.com"]);
-    expect(mocks.rpc.mock.calls.map(call => call[0])).toEqual(["reserve_ai_request", "workspace_snapshot"]);
+    expect(fetch.mock.calls.map(call => new URL(call[0]).hostname)).toEqual(
+      provider === "openai" ? ["generativelanguage.googleapis.com", "api.openai.com"] : ["generativelanguage.googleapis.com"],
+    );
+    expect(mocks.rpc.mock.calls.map(call => call[0])).toEqual(
+      provider === "openai" ? ["reserve_ai_request", "workspace_snapshot", "workspace_snapshot"] : ["reserve_ai_request", "workspace_snapshot"],
+    );
+  });
+
+  it("stops before OpenAI when the records changed during the Gemini attempt", async () => {
+    const workspace = uiWorkspace();
+    vi.stubEnv("PONDOPATH_AI_DEMO_BUSINESS_ID", workspace.business.id);
+    vi.stubEnv("GEMINI_API_KEY", "test-only");
+    vi.stubEnv("OPENAI_API_KEY", "test-backup");
+    mocks.workspace.mockResolvedValue(workspace);
+    mocks.rpc.mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: { ...workspace, revision: 2 } });
+    mocks.request.mockImplementation((await vi.importActual<typeof import("./ai")>("./ai")).requestAssistant);
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 429 }));
+    vi.stubGlobal("fetch", fetch);
+
+    const response = await POST(request(JSON.stringify({ task: "chat", question: "What should I do first?", history: [], expectedRevision: 1 })));
+    expect(response.status).toBe(409);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("accepts a normal chat turn and enforces the byte limit on multibyte history", async () => {

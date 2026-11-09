@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { aiConfig, callAiProvider } from "./ai-provider";
+import { aiBackupConfig, aiConfig, callAiProvider } from "./ai-provider";
 import { reminderTemplate } from "../domain/reminders";
 
 vi.mock("server-only", () => ({}));
@@ -16,13 +16,11 @@ const schema = {
 };
 function configure() {
   vi.stubEnv("GEMINI_API_KEY", "gemini-test-only");
-  vi.stubEnv("OPENROUTER_API_KEY", "openrouter-test-only");
-  vi.stubEnv("OPENROUTER_MODEL", "test/model:free");
-  vi.stubEnv("OPENROUTER_PROVIDER", "test-provider");
+  vi.stubEnv("OPENAI_API_KEY", "openai-test-only");
 }
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-describe("Gemini and explicit free backup transport", () => {
+describe("Gemini and OpenAI transport", () => {
   it("uses Gemini once by default and sends a bounded supported schema", async () => {
     configure();
     const fetcher = vi.fn().mockResolvedValue(Response.json({
@@ -54,38 +52,56 @@ describe("Gemini and explicit free backup transport", () => {
     });
   });
 
-  it("pins an explicit OpenRouter retry to the free route and strict JSON", async () => {
+  it("uses the server-selected OpenAI model with a strict schema and storage disabled", async () => {
     configure();
     const fetcher = vi.fn().mockResolvedValue(Response.json({
       choices: [{ finish_reason: "stop", message: { content: JSON.stringify(answer) } }],
       usage: { prompt_tokens: 10, completion_tokens: 4 },
     }));
     vi.stubGlobal("fetch", fetcher);
-    expect(await callAiProvider(aiConfig("backup"), messages, schema)).toEqual({
+    expect(await callAiProvider(aiBackupConfig()!, messages, schema)).toEqual({
       value: answer, usage: { promptTokens: 10, completionTokens: 4, cost: null },
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
     const [url, options] = fetcher.mock.calls[0];
-    expect(url).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(url).toBe("https://api.openai.com/v1/chat/completions");
+    expect(options.headers).toEqual({ "Content-Type": "application/json", Authorization: "Bearer openai-test-only" });
     expect(JSON.parse(options.body)).toMatchObject({
-      model: "test/model:free",
-      provider: { only: ["test-provider"], allow_fallbacks: false, require_parameters: true, data_collection: "deny", max_price: { prompt: 0, completion: 0, request: 0 } },
-      response_format: { type: "json_schema", json_schema: { strict: true, schema } },
+      model: "gpt-5.4-mini", store: false, max_completion_tokens: 1800, reasoning_effort: "none",
+      response_format: { type: "json_schema", json_schema: { strict: true, schema: {
+        type: "object", properties: { kind: { type: "string", enum: ["answer"] }, records: { type: "array", items: { type: "string" } } },
+        required: ["kind", "records"], additionalProperties: false,
+      } } },
     });
   });
 
-  it("rejects a missing primary key or an ineligible backup while manual reminders work", () => {
+  it("requires a Gemini key and keeps OpenAI optional while manual reminders work", () => {
     configure();
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
     vi.stubEnv("GEMINI_API_KEY", "");
     expect(() => aiConfig()).toThrow("AI_UNAVAILABLE");
-    for (const model of ["test/paid", "openrouter/free", "", "https://example.test:free"]) {
-      vi.stubEnv("OPENROUTER_MODEL", model);
-      expect(() => aiConfig("backup")).toThrow("AI_UNAVAILABLE");
-    }
+    vi.stubEnv("OPENAI_API_KEY", "  ");
+    expect(aiBackupConfig()).toBeNull();
     expect(fetcher).not.toHaveBeenCalled();
     expect(reminderTemplate({ contactName: "Demo contact", invoiceNumber: "TEST-001", outstandingCents: 2_000_000, dueDate: "2026-11-06", referenceDate: "2026-10-29" })).toContain("TEST-001");
+  });
+
+  it("skips an OpenAI call if the shared deadline already expired", async () => {
+    configure();
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    const signal = AbortSignal.abort(new DOMException("Deadline expired", "TimeoutError"));
+    await expect(callAiProvider(aiBackupConfig()!, messages, schema, signal)).rejects.toThrow("AI_TIMEOUT");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it.each([["stop", "Refused"], ["length", null]])("rejects an incomplete OpenAI result (%s)", async (finish_reason, refusal) => {
+    configure();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({
+      choices: [{ finish_reason, message: { content: JSON.stringify(answer), refusal } }],
+    })));
+    await expect(callAiProvider(aiBackupConfig()!, messages, schema)).rejects.toThrow("AI_UNAVAILABLE");
   });
 
   it.each([429, 500, 503])("classifies upstream %i as retryable and never switches providers itself", async status => {

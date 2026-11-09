@@ -35,12 +35,13 @@ describe("multilingual assistant presentation & Task 4 conversation UI", () => {
       "Tagalog",
       "Taglish",
       "processed externally by Gemini",
+      "with OpenAI as a backup",
       "Use fictional data only",
       "Manual entry",
     ]) {
       expect(html).toContain(text);
     }
-    expect(html).not.toContain("OPENROUTER_API_KEY");
+    expect(html).not.toContain("OPENAI_API_KEY");
     expect(html).not.toContain("GEMINI_API_KEY");
     // Cash facts live on Overview and inside answers, not as a fixed box in the dialog.
     expect(html).not.toContain("Calculated cash facts");
