@@ -13,7 +13,13 @@ export function aiBackupConfig(): AiConfig | null {
   const key = process.env.OPENROUTER_API_KEY?.trim();
   const model = process.env.OPENROUTER_MODEL?.trim();
   const provider = process.env.OPENROUTER_PROVIDER?.trim();
-  if (!key || !model || !/^[\w.-]+\/[\w.-]+:free$/.test(model) || !provider || !/^[\w.-]+(?:\/[\w.-]+)*$/.test(provider)) return null;
+  if (!key || !model || !/^[\w.-]+\/[\w.-]+:free$/.test(model) || !provider || !/^[\w.-]+(?:\/[\w.-]+)*$/.test(provider)) {
+    if (process.env.VERCEL === "1") console.warn("Assistant backup config rejected", {
+      keyPresent: Boolean(key), freeModel: Boolean(model && /^[\w.-]+\/[\w.-]+:free$/.test(model)),
+      validProvider: Boolean(provider && /^[\w.-]+(?:\/[\w.-]+)*$/.test(provider)),
+    });
+    return null;
+  }
   return { kind: "openrouter", key, model, provider };
 }
 

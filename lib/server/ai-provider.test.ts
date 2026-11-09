@@ -95,6 +95,18 @@ describe("Gemini and OpenRouter transport", () => {
     expect(reminderTemplate({ contactName: "Demo contact", invoiceNumber: "TEST-001", outstandingCents: 2_000_000, dueDate: "2026-11-06", referenceDate: "2026-10-29" })).toContain("TEST-001");
   });
 
+  it("reports only which backup settings failed validation in production", () => {
+    configure();
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("OPENROUTER_MODEL", "test/paid");
+    vi.stubEnv("OPENROUTER_PROVIDER", "bad provider");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(aiBackupConfig()).toBeNull();
+    expect(warn).toHaveBeenCalledWith("Assistant backup config rejected", {
+      keyPresent: true, freeModel: false, validProvider: false,
+    });
+  });
+
   it("skips an OpenRouter call if the shared deadline already expired", async () => {
     configure();
     const fetcher = vi.fn();
